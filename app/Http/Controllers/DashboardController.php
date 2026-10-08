@@ -11,7 +11,7 @@ class DashboardController extends Controller
     {
         $porGrupo = Activo::query()
             ->join('ESTADOS_ACTIVO', 'ESTADOS_ACTIVO.id', '=', 'ACTIVOS.fk_estado')
-            ->selectRaw('ESTADOS_ACTIVO.Grupo as grupo, COUNT(*) as total')
+            ->selectRaw('"ESTADOS_ACTIVO"."Grupo" as grupo, COUNT(*) as total')
             ->groupBy('ESTADOS_ACTIVO.Grupo')
             ->pluck('total', 'grupo');
 

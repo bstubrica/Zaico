@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivosController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EstadosController;
 use App\Http\Controllers\HistorialController;
+use App\Http\Controllers\ImportacionesController;
 use App\Http\Controllers\MantenimientosController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\ProfileController;
@@ -26,6 +27,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('personal', PersonalController::class)->except(['show']);
         Route::get('personal/{personal}', [PersonalController::class, 'show'])->name('personal.show');
+
+        // Importación CSV: visible solo para Admin / SoporteTecnico
+        Route::get('importaciones', [ImportacionesController::class, 'index'])->name('importaciones.index');
+        Route::post('importaciones', [ImportacionesController::class, 'store'])->name('importaciones.store');
+        Route::post('importaciones/confirmar', [ImportacionesController::class, 'confirmar'])->name('importaciones.confirmar');
+        Route::get('importaciones/{importacion}', [ImportacionesController::class, 'show'])
+            ->whereNumber('importacion')
+            ->name('importaciones.show');
     });
 
     // Consulta: cualquier usuario autenticado

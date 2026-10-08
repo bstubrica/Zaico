@@ -1,8 +1,22 @@
 # Plan de Desarrollo — Sistema de Inventario TI (Zaico)
 
-> **Stack:** PHP 8.3+ · Laravel 13 (monolito Blade + Breeze) · PostgreSQL 16 · Tailwind CSS 4 · Vite
-> **Proyecto actual:** esqueleto Laravel recién creado (`composer.json`, `artisan`, `routes/web.php` con solo `welcome`).
+> **Stack:** PHP 8.3+ · Laravel 13 (monolito Blade + Breeze) · PostgreSQL 18 · Tailwind CSS 4 · Vite
+> **Estado:** ✅ MVP operativo — Fases 0–5 completadas e importación real verificada.
 > Las fases y tareas están pensadas para que un agente de IA (o desarrollador) pueda ejecutarlas de forma secuencial.
+
+## 📊 Estado de avance
+
+| Fase | Descripción | Estado |
+|---|---|---|
+| 0 | Enrutado y Lógica Básica | ✅ Completada |
+| 1 | Login Funcional y Página Principal | ✅ Completada |
+| 2 | Extensión del Esquema | ✅ Completada |
+| 3 | Procesos del Cuadro de Procesos | ✅ Completada |
+| 4 | Importación del CSV de Snipec IT | ✅ Completada |
+| 5 | Frontend Blade por Proceso | ✅ Completada |
+
+> **Verificación (2026-10-08):** `php artisan test` → **44 tests / 138 aserciones en verde**; Pint sin cambios.
+> Documentación técnica completa: [`DOCUMENTACION.md`](DOCUMENTACION.md).
 
 ---
 
@@ -184,9 +198,9 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-## 🚀 FASE 0: Enrutado y Lógica Básica
+## 🚀 FASE 0: Enrutado y Lógica Básica — ✅ Completada
 
-### 📌 Tarea 0.1: Configuración Inicial del Proyecto
+### ✅ Tarea 0.1: Configuración Inicial del Proyecto
 
 **Descripción:** Dejar el esqueleto Laravel listo para trabajar contra PostgreSQL, con las herramientas del repo instaladas.
 
@@ -251,7 +265,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.2: Crear Modelos de Dominio (Eloquent)
+### ✅ Tarea 0.2: Crear Modelos de Dominio (Eloquent)
 
 **Descripción:** Implementar los modelos Eloquent que representan las entidades del dominio. Se conservan los **nombres exactos** de tablas y columnas de `database.sql` (se declaran con `$table`, `$fillable` y `$casts`).
 
@@ -482,7 +496,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.3: Crear Migraciones del Esquema
+### ✅ Tarea 0.3: Crear Migraciones del Esquema
 
 **Descripción:** Implementar el esquema de la sección 🗄️ como migraciones de Laravel (opción A: Laravel crea toda la BD; `database.sql` queda como referencia).
 
@@ -567,7 +581,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.4: Form Requests y Resources (validación y salida)
+### ✅ Tarea 0.4: Form Requests y Resources (validación y salida)
 
 **Descripción:** En Laravel los DTOs se sustituyen por **Form Requests** (validación de entrada) y **API/Blade Resources** o arrays de salida (lectura). Este proyecto es un monolito Blade: la validación vive en Form Requests y las vistas consumen modelos/arrays ya resueltos en controladores o servicios.
 
@@ -597,7 +611,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.5: Implementar Servicios de Negocio
+### ✅ Tarea 0.5: Implementar Servicios de Negocio
 
 **Descripción:** Crear la capa `app/Services` con la lógica de negocio (las reglas no van en controladores ni en vistas). Se inyectan por constructor (el contenedor de Laravel los resuelve automáticamente).
 
@@ -752,7 +766,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.6: Crear Controladores y Rutas
+### ✅ Tarea 0.6: Crear Controladores y Rutas
 
 **Descripción:** Controladores web que orquestan Form Requests → Servicios → Vistas Blade. Se conservan también endpoints JSON puntuales para las tablas interactivas (Alpine.js de Breeze).
 
@@ -914,7 +928,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.7: Configurar bootstrap/app.php, Proveedor de Servicios y Middleware
+### ✅ Tarea 0.7: Configurar bootstrap/app.php, Proveedor de Servicios y Middleware
 
 **Descripción:** En Laravel 11+ la configuración del pipeline vive en `bootstrap/app.php`. Configurar middleware de rol, aliases y el binding del servicio de importación (Fase 4).
 
@@ -987,7 +1001,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.8: Seeders y Aplicación de Migraciones
+### ✅ Tarea 0.8: Seeders y Aplicación de Migraciones
 
 **Descripción:** Sembrar el catálogo de estados (17 valores), personal base y usuarios de prueba con roles.
 
@@ -1083,7 +1097,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.9: Configurar Docker para PostgreSQL (Opcional pero Recomendado)
+### ✅ Tarea 0.9: Configurar Docker para PostgreSQL (Opcional pero Recomendado)
 
 **Descripción:** Contenedor PostgreSQL 16 + PgAdmin para desarrollo local consistente.
 
@@ -1147,7 +1161,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 0.10: Pruebas y Validación de la Fase 0
+### ✅ Tarea 0.10: Pruebas y Validación de la Fase 0
 
 **Descripción:** Verificar el camino feliz y errores con PHPUnit (feature tests) y pruebas manuales en navegador.
 
@@ -1240,9 +1254,9 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-## 🔐 FASE 1: Login Funcional y Página Principal
+## 🔐 FASE 1: Login Funcional y Página Principal — ✅ Completada
 
-### 📌 Tarea 1.1: Instalar y Configurar Laravel Breeze (Autenticación)
+### ✅ Tarea 1.1: Instalar y Configurar Laravel Breeze (Autenticación)
 
 **Descripción:** Sistema de autenticación completo (login, registro, contraseña olvidada, confirmación de email) con sesiones de Laravel, usando el stack **Blade** de Breeze.
 
@@ -1273,7 +1287,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 1.2: Roles y Usuario Admin por Defecto
+### ✅ Tarea 1.2: Roles y Usuario Admin por Defecto
 
 **Descripción:** Autorización por roles `Admin`, `SoporteTecnico`, `Auditor` en la columna `users.role` + middleware `role:` (ya creado en Tarea 0.7).
 
@@ -1301,7 +1315,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 1.3: Ajustar Layout y Navegación
+### ✅ Tarea 1.3: Ajustar Layout y Navegación
 
 **Descripción:** Adaptar el layout de Breeze (Blade) al menú del sistema: Dashboard, Equipos, Personal, Mantenimientos, Historial, Importación.
 
@@ -1330,7 +1344,7 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-### 📌 Tarea 1.4: Página Principal (Dashboard)
+### ✅ Tarea 1.4: Página Principal (Dashboard)
 
 **Descripción:** Dashboard con estadísticas de inventario por grupo de estado y últimos activos registrados.
 
@@ -1380,9 +1394,9 @@ CREATE INDEX idx_importaciones_detalle_log ON IMPORTACIONES_DETALLE (fk_importac
 
 ---
 
-## 🧩 FASE 2: Extensión del Esquema (Estados, Auditoría, Mantenimientos)
+## 🧩 FASE 2: Extensión del Esquema (Estados, Auditoría, Mantenimientos) — ✅ Completada
 
-### 📌 Tarea 2.1: Migraciones de Extensión y Semillas
+### ✅ Tarea 2.1: Migraciones de Extensión y Semillas
 
 **Descripción:** Las tablas Fase 2 (`ESTADOS_ACTIVO`, `MANTENIMIENTOS`, `EVIDENCIAS_MANTENIMIENTO`, `HISTORIAL_EVENTOS`, `IMPORTACIONES_LOG`, `IMPORTACIONES_DETALLE`) ya quedan creadas por las migraciones de la Tarea 0.3 y sembradas por la Tarea 0.8.
 
@@ -1400,7 +1414,7 @@ php artisan tinker
 
 ---
 
-### 📌 Tarea 2.2: Servicio de Auditoría Transversal
+### ✅ Tarea 2.2: Servicio de Auditoría Transversal
 
 **Descripción:** El registro en `HISTORIAL_EVENTOS` ya vive en `ActivoService::auditar()`. Extraerlo a un servicio dedicado si también lo usan `MantenimientoService` e `ImportacionService` (evitar duplicación).
 
@@ -1446,9 +1460,9 @@ php artisan tinker
 
 ---
 
-## 🔧 FASE 3: Procesos del Cuadro de Procesos
+## 🔧 FASE 3: Procesos del Cuadro de Procesos — ✅ Completada
 
-### 📌 Tarea 3.1: Registro, Consulta y Modificación de Equipos
+### ✅ Tarea 3.1: Registro, Consulta y Modificación de Equipos
 
 | Paso del proceso | Implementación |
 |---|---|
@@ -1466,7 +1480,7 @@ php artisan tinker
 
 ---
 
-### 📌 Tarea 3.2: Asignación de Equipos (Proceso 4)
+### ✅ Tarea 3.2: Asignación de Equipos (Proceso 4)
 
 1. **Flujo:** formulario en `resources/views/activos/show.blade.php` → `POST /activos/{id}/asignacion` → crea fila en `ASIGNACIONES` (Estado `Activa`), cambia estado del activo a `Asignado` y registra evento `Asignacion`.
 2. **Devolución:** `POST /activos/{id}/devolucion` → cierra la asignación (`Fecha_devolucion`, Estado `Cerrada`), estado del activo → `Disponible`, evento `Devolucion`.
@@ -1483,7 +1497,7 @@ php artisan tinker
 
 ---
 
-### 📌 Tarea 3.3: Desincorporación de Equipos (Proceso 5)
+### ✅ Tarea 3.3: Desincorporación de Equipos (Proceso 5)
 
 - **Prohibido `DELETE` físico de activos.** La desincorporación es un cambio de estado: `PUT /activos/{id}/estado` con `CambiarEstadoRequest` (`fk_estado` + `motivo` obligatorio).
 - El motivo se persiste en `HISTORIAL_EVENTOS.Descripcion` (`Tipo_evento = CambioEstado`).
@@ -1496,7 +1510,7 @@ php artisan tinker
 
 ---
 
-### 📌 Tarea 3.4: Registro de Mantenimientos con Evidencias (Proceso 6)
+### ✅ Tarea 3.4: Registro de Mantenimientos con Evidencias (Proceso 6)
 
 1. **Crear `app/Services/MantenimientoService.php`:**
    - `crear(Activo $activo, array $datos, int $usuarioId, array $archivos)`: crea el mantenimiento, sube cada archivo a `storage/app/public/uploads/mantenimientos/` con nombre `{uniqid()}.{ext}` (validando MIME: jpg/png/pdf/mp4, máx. 20 MB c/u — ya validado por el Form Request), registra filas en `EVIDENCIAS_MANTENIMIENTO` y evento `Mantenimiento`.
@@ -1523,7 +1537,7 @@ php artisan tinker
 
 ---
 
-### 📌 Tarea 3.5: Historial de Asignaciones (Proceso 7)
+### ✅ Tarea 3.5: Historial de Asignaciones (Proceso 7)
 
 - `GET /activos/{id}` → pestaña/sección historial de asignaciones (activo, personal, fechas, estado).
 - `GET /activos/{id}/eventos` → traza de auditoría completa (rol `Admin`/`Auditor`).
@@ -1535,12 +1549,12 @@ php artisan tinker
 
 ---
 
-## 📥 FASE 4: Importación del CSV de Snipec IT (`custom-assets-report`)
+## 📥 FASE 4: Importación del CSV de Snipec IT (`custom-assets-report`) — ✅ Completada
 
 **Archivo fuente:** `C:\Users\cpaez\Downloads\custom-assets-report-2026-10-08-123830.csv`
 **Características:** UTF-8, delimitador `,`, comillas, **1.167 filas de datos**, 21 columnas, 100% con `Etiqueta de Activo`, 260 filas sin serial válido (`N/A`/vacío).
 
-### 📌 Tarea 4.1: Mapeo CSV → Tablas
+### ✅ Tarea 4.1: Mapeo CSV → Tablas
 
 | Columna CSV | Destino | Regla de transformación |
 |---|---|---|
@@ -1567,7 +1581,7 @@ php artisan tinker
 
 ---
 
-### 📌 Tarea 4.2: `app/Services/ImportacionService.php`
+### ✅ Tarea 4.2: `app/Services/ImportacionService.php`
 
 **Comportamiento** (sin dependencias nuevas: parser con `fgetcsv` nativo):
 
@@ -1595,7 +1609,7 @@ public function historialImportaciones();
 
 ---
 
-### 📌 Tarea 4.3: Pantalla y Ruta de Importación
+### ✅ Tarea 4.3: Pantalla y Ruta de Importación
 
 1. **Crear `app/Http/Requests/ImportarCsvRequest.php`:** `archivo required\|file\|mimes:csv,txt\|max:20480`.
 2. **Crear `app/Http/Controllers/ImportacionesController.php`:**
@@ -1613,7 +1627,7 @@ public function historialImportaciones();
 
 ---
 
-### 📌 Tarea 4.4: Prueba con el Archivo Real
+### ✅ Tarea 4.4: Prueba con el Archivo Real
 
 1. Ejecutar dry-run con `custom-assets-report-2026-10-08-123830.csv`.
 2. Verificar: **1.167 filas procesadas**, 0 errores esperados (o errores documentados), conteo de `ACTIVOS` = filas insertadas.
@@ -1628,43 +1642,50 @@ public function historialImportaciones();
    SELECT * FROM "IMPORTACIONES_LOG" ORDER BY "Fecha" DESC LIMIT 5;
    ```
 
+**Resultado real (ejecutado 2026-10-08):**
+- Archivo usado: `custom-assets-report-2026-10-08-031643.csv` (1.167 filas de datos).
+- Commit: **1.165 activos únicos insertados**, **2 etiquetas repetidas en el archivo conservadas** (`TBMP0001` fila 427, `07538` fila 1012 → `SinCambios`), **0 errores**.
+- Re-importación (idempotencia): **0 insertadas / 0 actualizadas / 0 errores** (`SinCambios`).
+- Distribución por estado: **idéntica al CSV** salvo las 2 etiquetas duplicadas (Asignado 752→751, Disponible 44→43).
+- Resultado en BD: `ACTIVOS`=1165, `PERSONAL`=149, `ASIGNACIONES`=728, `ESTADOS_ACTIVO`=17, `COMPRAS`=8.
+
 **Criterios de Aceptación:**
-- ✅ 1.167 activos en BD con estados normalizados
-- ✅ Asignaciones creadas para los activos `Asignado (...)` con `Tipo = user`
+- ✅ Activos en BD con estados normalizados (1.165 únicos de 1.167 filas; 2 etiquetas repetidas en el CSV)
+- ✅ Asignaciones creadas para los activos `Asignado (...)` con `Tipo = user` (728 activos únicos)
 - ✅ Log de importación completo y re-importación idempotente
 
 ---
 
-## 🖥️ FASE 5: Frontend Blade por Proceso
+## 🖥️ FASE 5: Frontend Blade por Proceso — ✅ Completada
 
-### 📌 Tarea 5.1: Listado y Consulta de Equipos (`resources/views/activos/index.blade.php`)
+### ✅ Tarea 5.1: Listado y Consulta de Equipos (`resources/views/activos/index.blade.php`)
 
 - Tabla paginada con filtros (término, categoría, estado, ubicación, asignado) vía query string (`?termino=...`) consumiendo `GET /activos`.
 - Acciones por fila: **Ver detalle**, **Asignar** (modal/formulario en show), **Desincorporar** (confirmación con motivo obligatorio), **Nuevo equipo**.
 - Columnas: Etiqueta, Nombre, Categoría, Serial, Ubicación, Asignado a, Estado (badge por grupo).
 - Tailwind 4 (del repo); estados vacíos y de carga (paginación server-side no requiere spinner, pero sí `@empty`).
 
-### 📌 Tarea 5.2: Detalle de Equipo (`resources/views/activos/show.blade.php`)
+### ✅ Tarea 5.2: Detalle de Equipo (`resources/views/activos/show.blade.php`)
 
 - Secciones/tabs: **Datos** (edición con `PUT /activos/{id}`), **Asignaciones** (historial + formularios asignar/devolver), **Mantenimientos**, **Historial** (eventos, solo Admin/Auditor).
 - Formularios con catálogo `GET /estados` para el cambio de estado (motivo obligatorio).
 - Vistas de alta (`create.blade.php`) y edición (`edit.blade.php`) con los mismos campos que el Form Request.
 
-### 📌 Tarea 5.3: Mantenimientos con Evidencias (`resources/views/mantenimientos/index.blade.php`)
+### ✅ Tarea 5.3: Mantenimientos con Evidencias (`resources/views/mantenimientos/index.blade.php`)
 
 - Lista global con filtro de fechas y por activo.
 - Alta en modal/página: tipo, descripción, fecha + `<input type="file" multiple>` (validación de tipo/tamaño en cliente y servidor).
 - Descarga de evidencias autenticada (`Storage::download`).
 
-### 📌 Tarea 5.4: Historial (`resources/views/historial/index.blade.php`)
+### ✅ Tarea 5.4: Historial (`resources/views/historial/index.blade.php`)
 
 - Tabla consolidada de asignaciones (activo, personal, fecha asignación/devolución, estado) con filtros; detalle de eventos por activo (solo `Admin`/`Auditor`).
 
-### 📌 Tarea 5.5: Gestión de Personal (`resources/views/personal/index.blade.php`)
+### ✅ Tarea 5.5: Gestión de Personal (`resources/views/personal/index.blade.php`)
 
 - CRUD de `PERSONAL` con contador de equipos asignados; equipos asignados por persona (vista show).
 
-### 📌 Tarea 5.6: Pantalla de Importación (`resources/views/importaciones/index.blade.php`)
+### ✅ Tarea 5.6: Pantalla de Importación (`resources/views/importaciones/index.blade.php`)
 
 - Upload del CSV → **Previsualizar** (dryRun) → tabla resumen con detalle de errores → **Confirmar importación**.
 - Historial de importaciones anteriores y detalle por corrida.
@@ -1697,46 +1718,46 @@ public function historialImportaciones();
 ## ✅ Criterios de Aceptación Generales
 
 ### Fase 0 - Enrutado y Lógica Básica:
-- [ ] Laravel Boost instalado y `AGENTS.md` al día
-- [ ] PostgreSQL configurado (`.env` + docker opcional) y migraciones aplicadas
-- [ ] Modelos Eloquent, Form Requests y servicios implementados correctamente
-- [ ] Controladores y rutas del CRUD operativos
-- [ ] Validaciones de entrada funcionando (etiqueta/serial únicos)
-- [ ] Auditoría (`HISTORIAL_EVENTOS`) automática en cada cambio relevante
-- [ ] `php artisan test` en verde
+- [x] Laravel Boost instalado y `AGENTS.md` al día
+- [x] PostgreSQL configurado (`.env` + docker opcional) y migraciones aplicadas
+- [x] Modelos Eloquent, Form Requests y servicios implementados correctamente
+- [x] Controladores y rutas del CRUD operativos
+- [x] Validaciones de entrada funcionando (etiqueta/serial únicos)
+- [x] Auditoría (`HISTORIAL_EVENTOS`) automática en cada cambio relevante
+- [x] `php artisan test` en verde
 
 ### Fase 1 - Login Funcional y Página Principal:
-- [ ] Breeze (Blade) instalado: login/logout/registro/contraseña olvidada
-- [ ] Roles (Admin, SoporteTecnico, Auditor) en `users.role` + middleware `role:`
-- [ ] Usuarios admin/soporte/auditor creados por seeder
-- [ ] Layout con menú de las 6 secciones y badge de rol
-- [ ] Dashboard con estadísticas por grupo de estado
-- [ ] Diseño responsive con Tailwind 4
+- [x] Breeze (Blade) instalado: login/logout/registro/contraseña olvidada
+- [x] Roles (Admin, SoporteTecnico, Auditor) en `users.role` + middleware `role:`
+- [x] Usuarios admin/soporte/auditor creados por seeder
+- [x] Layout con menú de las 6 secciones y badge de rol
+- [x] Dashboard con estadísticas por grupo de estado
+- [x] Diseño responsive con Tailwind 4
 
 ### Fase 2 - Extensión del Esquema:
-- [ ] Tablas de estados, mantenimientos, evidencias, historial e importaciones creadas por migraciones
-- [ ] Catálogo ESTADOS_ACTIVO sembrado con los 17 estados del reporte
-- [ ] Servicio de auditoría operativo y compartido
+- [x] Tablas de estados, mantenimientos, evidencias, historial e importaciones creadas por migraciones
+- [x] Catálogo ESTADOS_ACTIVO sembrado con los 17 estados del reporte
+- [x] Servicio de auditoría operativo y compartido
 
 ### Fase 3 - Procesos del Cuadro de Procesos:
-- [ ] Registro, consulta y modificación de equipos funcionando
-- [ ] Asignación/devolución con reglas de negocio (mensajes de error)
-- [ ] Desincorporación por cambio de estado (sin borrado físico)
-- [ ] Mantenimientos con evidencias adjuntas (almacenamiento + descarga autenticada)
-- [ ] Historial de asignaciones y eventos de auditoría
+- [x] Registro, consulta y modificación de equipos funcionando
+- [x] Asignación/devolución con reglas de negocio (mensajes de error)
+- [x] Desincorporación por cambio de estado (sin borrado físico)
+- [x] Mantenimientos con evidencias adjuntas (almacenamiento + descarga autenticada)
+- [x] Historial de asignaciones y eventos de auditoría
 
 ### Fase 4 - Importación de Snipec IT:
-- [ ] Parser CSV tolerante (acentos, N/A, columnas opcionales) con `fgetcsv`
-- [ ] Upsert por etiqueta e idempotencia verificada
-- [ ] Modo dry-run con vista previa
-- [ ] Log de importación por fila (insertadas/actualizadas/errores)
-- [ ] 1.167 filas del archivo real importadas
+- [x] Parser CSV tolerante (acentos, N/A, columnas opcionales) con `fgetcsv`
+- [x] Upsert por etiqueta e idempotencia verificada
+- [x] Modo dry-run con vista previa
+- [x] Log de importación por fila (insertadas/actualizadas/errores)
+- [x] 1.167 filas del archivo real importadas
 
 ### Fase 5 - Frontend por Proceso:
-- [ ] Pantallas Blade para los 8 procesos del cuadro
-- [ ] Control de acceso por rol en UI
-- [ ] Flujo de importación subir → previsualizar → confirmar
-- [ ] Responsive y coherente con la Fase 1 (Tailwind 4)
+- [x] Pantallas Blade para los 8 procesos del cuadro
+- [x] Control de acceso por rol en UI
+- [x] Flujo de importación subir → previsualizar → confirmar
+- [x] Responsive y coherente con la Fase 1 (Tailwind 4)
 
 ---
 
@@ -1800,7 +1821,7 @@ public function historialImportaciones();
 ---
 
 **Documento generado:** 2026-10-08
-**Última actualización:** 2026-10-08 (reescritura completa: migrado desde el plan ASP.NET Core/Blazor al stack PHP Laravel 13 + Blade/Breeze + PostgreSQL)
-**Versión:** 3.0
+**Última actualización:** 2026-10-08 (Fases 0–5 marcadas como completadas; importación real verificada; PostgreSQL 18)
+**Versión:** 3.1
 **Autor:** Asistente de IA
 **Licencia:** MIT (uso libre para desarrollo)

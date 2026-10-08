@@ -9,6 +9,7 @@ use App\Models\EstadoActivo;
 use App\Models\ImportacionDetalle;
 use App\Models\ImportacionLog;
 use App\Models\Personal;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -148,9 +149,11 @@ class ImportacionService
         $estados = EstadoActivo::query()->get()->keyBy('Nombre');
         $personasPorUsuario = Personal::query()->pluck('id', 'Nombre_usuario');
         $planes = [];
+        $etiquetasVistas = [];
+        $serialesVistos = [];
 
         foreach ($filas as $numero => $fila) {
-            $planes[] = $this->planearFila($numero, $fila, $estados, $personasPorUsuario);
+            $planes[] = $this->planearFila($numero, $fila, $estados, $personasPorUsuario, $etiquetasVistas, $serialesVistos);
         }
 
         return $planes;
@@ -159,9 +162,11 @@ class ImportacionService
     /**
      * @param  Collection<string, EstadoActivo>  $estados
      * @param  Collection<string, int>  $personasPorUsuario
+     * @param  array<string, true>  $etiquetasVistas
+     * @param  array<string, true>  $serialesVistos
      * @return array<string, mixed>
      */
-    private function planearFila(int $numero, array $fila, Collection $estados, Collection $personasPorUsuario): array
+    private function planearFila(int $numero, array $fila, Collection $estados, Collection $personasPorUsuario, array &$etiquetasVistas, array &$serialesVistos): array
     {
         $plan = [
             'fila' => $numero,
@@ -179,6 +184,12 @@ class ImportacionService
 
         if ($etiqueta === '') {
             return $this->error($plan, 'Etiqueta de activo vacía.');
+        }
+
+        if (isset($etiquetasVistas[$etiqueta])) {
+            $plan['mensaje'] = 'Etiqueta repetida en el archivo; se conserva el registro ya importado.';
+
+            return $plan;
         }
 
         if ($nombre === '') {
@@ -211,6 +222,7 @@ class ImportacionService
 
         $attrs = array_filter([
             'Nombre_de_activo' => $nombre,
+            'Etiqueta_activo' => $etiqueta,
             'Serial' => $serial,
             'Modelo' => $modelo !== '' ? $modelo : null,
             'Categoria' => ($c = trim($fila['categoria'] ?? '')) !== '' ? $c : null,
@@ -232,6 +244,11 @@ class ImportacionService
             if ($conflicto) {
                 unset($attrs['Serial']);
                 $avisoSerial = 'El serial ya existe en otro activo; se conserva el existente.';
+            } elseif (isset($serialesVistos[$serial])) {
+                unset($attrs['Serial']);
+                $avisoSerial = 'Serial repetido en el archivo; se deja vacío y se conserva el primer registro.';
+            } else {
+                $serialesVistos[$serial] = true;
             }
         }
 
@@ -363,6 +380,10 @@ class ImportacionService
         $plan['compra_cambios'] = $compraCambios;
         $plan['compra_attrs'] = $compraAttrs;
 
+        if ($plan['accion'] !== 'Error') {
+            $etiquetasVistas[$etiqueta] = true;
+        }
+
         return $plan;
     }
 
@@ -393,7 +414,9 @@ class ImportacionService
                     }
 
                     try {
-                        DB::transaction(fn () => $planPorFila[$plan['fila']] = $this->aplicarFila($plan, $usuarioId));
+                        DB::transaction(function () use (&$planPorFila, $plan, $usuarioId): void {
+                            $planPorFila[$plan['fila']] = $this->aplicarFila($plan, $usuarioId);
+                        });
                     } catch (Throwable $errorFila) {
                         $plan['accion'] = 'Error';
                         $plan['mensaje'] = 'Error al persistir: '.$errorFila->getMessage();
@@ -463,7 +486,7 @@ class ImportacionService
      */
     private function aplicarFila(array $plan, int $usuarioId): array
     {
-        if ($plan['accion'] === 'Error') {
+        if ($plan['accion'] === 'Error' || $plan['modo'] === null) {
             return $plan;
         }
 
@@ -477,6 +500,19 @@ class ImportacionService
         }
 
         if ($plan['modo'] === 'crear') {
+            // Defensa: entre la planificación y la aplicación la etiqueta pudo aparecer.
+            if (Activo::where('Etiqueta_activo', $plan['etiqueta'])->exists()) {
+                $plan['accion'] = 'SinCambios';
+                $plan['mensaje'] = 'La etiqueta ya existe en la BD; se conserva el registro existente.';
+
+                return $plan;
+            }
+
+            if (isset($plan['attrs']['Serial']) && Activo::where('Serial', $plan['attrs']['Serial'])->exists()) {
+                unset($plan['attrs']['Serial']);
+                $plan['mensaje'] = trim(($plan['mensaje'] ?? '').' El serial ya existe en la BD; se deja vacío.');
+            }
+
             $activo = Activo::create($plan['attrs']);
         } else {
             $activo = Activo::where('Etiqueta_activo', $plan['etiqueta'])->first();
@@ -519,10 +555,7 @@ class ImportacionService
         return $plan;
     }
 
-    /**
-     * @return Collection<int, ImportacionLog>
-     */
-    public function historialImportaciones(): Collection|\Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function historialImportaciones(): LengthAwarePaginator
     {
         return ImportacionLog::with('usuario:id,name')
             ->orderByDesc('Fecha')

@@ -30,6 +30,11 @@
                     <x-nav-link :href="route('estados.index')" :active="request()->routeIs('estados.*')">
                         Estados
                     </x-nav-link>
+                    @if (auth()->user()->puedeEscribir())
+                        <x-nav-link :href="route('importaciones.index')" :active="request()->routeIs('importaciones.*')">
+                            Importación CSV
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -104,6 +109,11 @@
             <x-responsive-nav-link :href="route('estados.index')" :active="request()->routeIs('estados.*')">
                 Estados
             </x-responsive-nav-link>
+            @if (auth()->user()->puedeEscribir())
+                <x-responsive-nav-link :href="route('importaciones.index')" :active="request()->routeIs('importaciones.*')">
+                    Importación CSV
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
