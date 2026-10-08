@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class EnsureRole
+{
+    /**
+     * Uso: ->middleware('role:Admin,SoporteTecnico')
+     */
+    public function handle(Request $request, Closure $next, string ...$roles): Response
+    {
+        if (! $request->user() || ! in_array($request->user()->role, $roles, true)) {
+            abort(403, 'No tiene permisos para esta operación.');
+        }
+
+        return $next($request);
+    }
+}
