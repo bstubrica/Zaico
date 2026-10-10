@@ -1,26 +1,30 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Registrar equipo</h2>
+        <x-page-header title="Registrar equipo" subtitle="Alta de un nuevo activo en el inventario" icon="plus">
+            <x-slot name="actions">
+                <a href="{{ route('activos.index') }}" class="btn btn-ghost">
+                    <x-icon name="arrow-left" :size="18" /> Volver
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
-    <div class="py-6">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            <form method="POST" action="{{ route('activos.store') }}" class="bg-white shadow-sm sm:rounded-lg p-6">
-                @csrf
+    <form method="POST" action="{{ route('activos.store') }}" class="mx-auto max-w-3xl">
+        @csrf
 
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Datos del equipo</h3>
+            </div>
+            <div class="card-body">
                 @include('activos.partials.form', ['grupos' => $grupos, 'estados' => $estados])
-
-                <div class="mt-6 flex justify-end gap-3">
-                    <a href="{{ route('activos.index') }}"
-                       class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
-                        Cancelar
-                    </a>
-                    <button type="submit"
-                            class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        Guardar equipo
-                    </button>
-                </div>
-            </form>
+            </div>
+            <div class="flex justify-end gap-3 border-t border-slate-200 px-5 py-4">
+                <a href="{{ route('activos.index') }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <x-icon name="check-circle" :size="18" /> Guardar equipo
+                </button>
+            </div>
         </div>
-    </div>
+    </form>
 </x-app-layout>

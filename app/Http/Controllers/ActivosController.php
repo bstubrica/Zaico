@@ -13,6 +13,7 @@ use App\Models\Personal;
 use App\Services\ActivoService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -40,6 +41,26 @@ class ActivosController extends Controller
         $estados = $this->catalogoEstados();
 
         return view('activos.show', compact('activo', 'historial', 'personas', 'estados'));
+    }
+
+    public function buscar(Request $request): View|RedirectResponse
+    {
+        $codigo = trim((string) $request->query('codigo', ''));
+
+        if ($codigo === '') {
+            return view('activos.buscar', ['codigo' => null]);
+        }
+
+        $activo = $this->activos->buscarPorCodigo($codigo);
+
+        if ($activo === null) {
+            return redirect()
+                ->route('activos.buscar')
+                ->withInput()
+                ->withErrors(['codigo' => "No se encontró ningún equipo con la etiqueta o serial «{$codigo}»."]);
+        }
+
+        return redirect()->route('activos.show', $activo);
     }
 
     public function create(): View

@@ -1,13 +1,16 @@
 <?php
 
 use App\Http\Controllers\ActivosController;
+use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EstadosController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\ImportacionesController;
 use App\Http\Controllers\MantenimientosController;
+use App\Http\Controllers\NotificacionesController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReporteController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -35,10 +38,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('importaciones/{importacion}', [ImportacionesController::class, 'show'])
             ->whereNumber('importacion')
             ->name('importaciones.show');
+
+        // Alertas de inventario (Fase 8)
+        Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
+        Route::post('alertas/revisar', [AlertaController::class, 'revisar'])->name('alertas.revisar');
     });
+
+    // Notificaciones: cualquier usuario autenticado
+    Route::post('notificaciones/leidas', [NotificacionesController::class, 'marcarLeidas'])
+        ->name('notificaciones.leidas');
+
+    // Exportación de reportes CSV: cualquier usuario autenticado
+    Route::get('reportes/activos', [ReporteController::class, 'activos'])->name('reportes.activos');
+    Route::get('reportes/personal', [ReporteController::class, 'personal'])->name('reportes.personal');
+    Route::get('reportes/historial', [ReporteController::class, 'historial'])->name('reportes.historial');
+    Route::get('reportes/mantenimientos', [ReporteController::class, 'mantenimientos'])->name('reportes.mantenimientos');
 
     // Consulta: cualquier usuario autenticado
     Route::get('activos', [ActivosController::class, 'index'])->name('activos.index');
+    Route::get('activos/buscar', [ActivosController::class, 'buscar'])->name('activos.buscar');
     Route::get('activos/{activo}', [ActivosController::class, 'show'])->name('activos.show');
     Route::get('activos/{activo}/mantenimientos', [MantenimientosController::class, 'porActivo'])
         ->name('activos.mantenimientos');

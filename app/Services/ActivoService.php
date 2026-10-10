@@ -7,6 +7,7 @@ use App\Models\Asignacion;
 use App\Models\EstadoActivo;
 use App\Models\Personal;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -16,9 +17,12 @@ class ActivoService
     public function __construct(private readonly HistorialService $historial) {}
 
     /**
-     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, asignado_a?: string, tamano?: int}  $filtros
+     * Consulta base del listado de activos con filtros (sin paginar).
+     *
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, asignado_a?: string}  $filtros
+     * @return Builder<Activo>
      */
-    public function listar(array $filtros): LengthAwarePaginator
+    public function consultaListado(array $filtros): Builder
     {
         return Activo::query()
             ->with(['estadoCatalogo', 'asignacionActiva.personal'])
@@ -37,9 +41,18 @@ class ActivoService
             ->when($filtros['ubicacion'] ?? null,
                 fn ($query, $ubicacion) => $query->where('Ubicacion', 'ilike', "%{$ubicacion}%"))
             ->when($filtros['asignado_a'] ?? null, function ($query, $asignadoA) {
-                $query->whereHas('asignacionActiva.personal', fn ($where) => $where->whereRaw("trim(Nombre || ' ' || Apellido) ilike ?", ["%{$asignadoA}%"]));
+                $query->whereHas('asignacionActiva.personal', fn ($where) => $where->whereRaw('trim("Nombre" || \' \' || "Apellido") ilike ?', ["%{$asignadoA}%"]));
             })
             ->orderBy('Nombre_de_activo')
+            ->orderBy('id');
+    }
+
+    /**
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, asignado_a?: string, tamano?: int}  $filtros
+     */
+    public function listar(array $filtros): LengthAwarePaginator
+    {
+        return $this->consultaListado($filtros)
             ->paginate($filtros['tamano'] ?? 50)
             ->withQueryString();
     }
@@ -195,5 +208,26 @@ class ActivoService
     public function historialAsignaciones(Activo $activo): Collection
     {
         return $activo->asignaciones()->with('personal')->orderByDesc('Fecha_asignacion')->get();
+    }
+
+    /**
+     * Busca un activo por su etiqueta o número de serie (coincidencia exacta,
+     * insensible a mayúsculas y espacios), pensado para lectores de códigos.
+     */
+    public function buscarPorCodigo(string $codigo): ?Activo
+    {
+        $codigo = trim($codigo);
+
+        if ($codigo === '') {
+            return null;
+        }
+
+        return Activo::query()
+            ->with(['estadoCatalogo', 'asignacionActiva.personal'])
+            ->where(function (Builder $query) use ($codigo) {
+                $query->whereRaw('lower("Etiqueta_activo") = lower(?)', [$codigo])
+                    ->orWhereRaw('lower("Serial") = lower(?)', [$codigo]);
+            })
+            ->first();
     }
 }

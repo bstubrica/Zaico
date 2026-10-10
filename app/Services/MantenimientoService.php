@@ -6,6 +6,7 @@ use App\Models\Activo;
 use App\Models\EvidenciaMantenimiento;
 use App\Models\Mantenimiento;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -64,9 +65,12 @@ class MantenimientoService
     }
 
     /**
-     * @param  array{desde?: string|null, hasta?: string|null, activo?: string|null, tamano?: int}  $filtros
+     * Consulta base del listado global de mantenimientos con filtros (sin paginar).
+     *
+     * @param  array{desde?: string|null, hasta?: string|null, activo?: string|null}  $filtros
+     * @return Builder<Mantenimiento>
      */
-    public function listarGlobal(array $filtros): LengthAwarePaginator
+    public function consultaGlobal(array $filtros): Builder
     {
         return Mantenimiento::query()
             ->with(['activo:id,Nombre_de_activo,Etiqueta_activo', 'usuario:id,name', 'evidencias'])
@@ -80,6 +84,15 @@ class MantenimientoService
                     ->orWhere('Etiqueta_activo', 'ilike', "%{$activo}%"));
             })
             ->orderByDesc('Fecha_mantenimiento')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * @param  array{desde?: string|null, hasta?: string|null, activo?: string|null, tamano?: int}  $filtros
+     */
+    public function listarGlobal(array $filtros): LengthAwarePaginator
+    {
+        return $this->consultaGlobal($filtros)
             ->paginate($filtros['tamano'] ?? 50)
             ->withQueryString();
     }

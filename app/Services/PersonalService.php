@@ -5,15 +5,19 @@ namespace App\Services;
 use App\Models\Asignacion;
 use App\Models\Personal;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use RuntimeException;
 
 class PersonalService
 {
     /**
-     * @param  array{termino?: string, estado?: string, tamano?: int}  $filtros
+     * Consulta base del listado de personal con filtros (sin paginar).
+     *
+     * @param  array{termino?: string, estado?: string}  $filtros
+     * @return Builder<Personal>
      */
-    public function listar(array $filtros): LengthAwarePaginator
+    public function consultaListado(array $filtros): Builder
     {
         return Personal::query()
             ->withCount(['asignaciones as asignaciones_activas' => fn ($query) => $query->activas()])
@@ -27,6 +31,15 @@ class PersonalService
             ->when($filtros['estado'] ?? null,
                 fn ($query, $estado) => $query->where('Estado', $estado))
             ->orderBy('Apellido')
+            ->orderBy('id');
+    }
+
+    /**
+     * @param  array{termino?: string, estado?: string, tamano?: int}  $filtros
+     */
+    public function listar(array $filtros): LengthAwarePaginator
+    {
+        return $this->consultaListado($filtros)
             ->paginate($filtros['tamano'] ?? 50)
             ->withQueryString();
     }

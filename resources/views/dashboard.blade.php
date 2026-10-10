@@ -1,97 +1,128 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Dashboard
-        </h2>
+        <x-page-header title="Dashboard" subtitle="Resumen general del inventario de equipos" icon="home" />
     </x-slot>
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            {{-- Contadores por grupo de estado --}}
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5">
-                    <div class="text-sm font-medium text-gray-500">Total equipos</div>
-                    <div class="mt-1 text-3xl font-bold text-gray-900">{{ $total }}</div>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5">
-                    <div class="text-sm font-medium text-gray-500">Asignados</div>
-                    <div class="mt-1 text-3xl font-bold text-blue-700">{{ $porGrupo['Asignado'] ?? 0 }}</div>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5">
-                    <div class="text-sm font-medium text-gray-500">Disponibles</div>
-                    <div class="mt-1 text-3xl font-bold text-green-700">{{ $porGrupo['Disponible'] ?? 0 }}</div>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5">
-                    <div class="text-sm font-medium text-gray-500">En reparación / defectuosos</div>
-                    <div class="mt-1 text-3xl font-bold text-amber-700">
-                        {{ ($porGrupo['Reparacion'] ?? 0) + ($porGrupo['Defectuoso'] ?? 0) }}
-                    </div>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5">
-                    <div class="text-sm font-medium text-gray-500">Desincorporados</div>
-                    <div class="mt-1 text-3xl font-bold text-red-700">{{ $porGrupo['Desincorporado'] ?? 0 }}</div>
-                </div>
-            </div>
+    @php
+        $total = $total ?? 0;
+        $reparacion = ($porGrupo['Reparacion'] ?? 0) + ($porGrupo['Defectuoso'] ?? 0);
 
-            {{-- Últimos activos registrados --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="text-base font-semibold text-gray-800">Últimos equipos registrados</h3>
+        $distribucion = [
+            ['clave' => 'Disponible', 'label' => 'Disponibles', 'color' => 'bg-emerald-500'],
+            ['clave' => 'Asignado', 'label' => 'Asignados', 'color' => 'bg-sky-500'],
+            ['clave' => 'Reparacion', 'label' => 'En reparación', 'color' => 'bg-amber-500'],
+            ['clave' => 'Defectuoso', 'label' => 'Defectuosos', 'color' => 'bg-orange-500'],
+            ['clave' => 'Desincorporado', 'label' => 'Desincorporados', 'color' => 'bg-rose-500'],
+        ];
+        $sumaDistribucion = max($porGrupo->sum(), 1);
+    @endphp
+
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <x-stat-card label="Total equipos" :value="$total" icon="cube" color="brand" :href="route('activos.index')" />
+        <x-stat-card label="Asignados" :value="$porGrupo['Asignado'] ?? 0" icon="users" color="sky" />
+        <x-stat-card label="Disponibles" :value="$porGrupo['Disponible'] ?? 0" icon="check-circle" color="emerald" />
+        <x-stat-card label="Reparación / defectuosos" :value="$reparacion" icon="wrench" color="amber" />
+        <x-stat-card label="Desincorporados" :value="$porGrupo['Desincorporado'] ?? 0" icon="inbox" color="rose" />
+    </div>
+
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {{-- Distribución --}}
+        <div class="card lg:col-span-1">
+            <div class="card-header">
+                <h3 class="card-title">Distribución por estado</h3>
+                <x-icon name="chart" :size="18" class="text-slate-400" />
+            </div>
+            <div class="card-body space-y-4">
+                @if ($total === 0)
+                    <x-empty-state title="Sin datos" description="Registra equipos para ver la distribución." icon="chart" />
+                @else
+                    <div class="flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                        @foreach ($distribucion as $fila)
+                            @php $valor = $porGrupo[$fila['clave']] ?? 0; @endphp
+                            @if ($valor > 0)
+                                <div class="{{ $fila['color'] }}" style="width: {{ round($valor / $sumaDistribucion * 100, 2) }}%" title="{{ $fila['label'] }}: {{ $valor }}"></div>
+                            @endif
+                        @endforeach
+                    </div>
+
+                    <ul class="space-y-2.5">
+                        @foreach ($distribucion as $fila)
+                            @php
+                                $valor = $porGrupo[$fila['clave']] ?? 0;
+                                $porcentaje = round($valor / $sumaDistribucion * 100);
+                            @endphp
+                            <li class="flex items-center gap-3 text-sm">
+                                <span class="h-2.5 w-2.5 rounded-full {{ $fila['color'] }}"></span>
+                                <span class="flex-1 text-slate-600">{{ $fila['label'] }}</span>
+                                <span class="font-semibold text-slate-900">{{ $valor }}</span>
+                                <span class="w-10 text-right text-xs text-slate-400">{{ $porcentaje }}%</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        </div>
+
+        {{-- Últimos equipos --}}
+        <div class="card lg:col-span-2">
+            <div class="card-header">
+                <h3 class="card-title">Últimos equipos registrados</h3>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('activos.index') }}" class="btn btn-ghost btn-sm">Ver todos</a>
                     @if (auth()->user()->puedeEscribir())
-                        <a href="{{ route('activos.create') }}"
-                           class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                            + Registrar equipo
+                        <a href="{{ route('activos.create') }}" class="btn btn-primary btn-sm">
+                            <x-icon name="plus" :size="16" /> Registrar
                         </a>
                     @endif
                 </div>
+            </div>
 
-                @empty($recientes)
-                    <div class="p-6 text-center text-sm text-gray-500">
-                        <p>Aún no hay equipos registrados.</p>
+            @empty($recientes->count())
+                <x-empty-state title="Aún no hay equipos registrados"
+                               description="Comienza registrando tu primer equipo en el inventario."
+                               icon="cube">
+                    <x-slot name="action">
                         @if (auth()->user()->puedeEscribir())
-                            <a href="{{ route('activos.create') }}"
-                               class="mt-2 inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                                Registrar el primero
+                            <a href="{{ route('activos.create') }}" class="btn btn-primary">
+                                <x-icon name="plus" :size="18" /> Registrar equipo
                             </a>
                         @endif
-                    </div>
-                @else
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                    </x-slot>
+                </x-empty-state>
+            @else
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Etiqueta</th>
+                                <th>Nombre</th>
+                                <th class="hidden md:table-cell">Categoría</th>
+                                <th class="hidden lg:table-cell">Asignado a</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($recientes as $activo)
                                 <tr>
-                                    <th class="px-6 py-3">Etiqueta</th>
-                                    <th class="px-6 py-3">Nombre</th>
-                                    <th class="px-6 py-3 hidden md:table-cell">Categoría</th>
-                                    <th class="px-6 py-3 hidden md:table-cell">Ubicación</th>
-                                    <th class="px-6 py-3 hidden lg:table-cell">Asignado a</th>
-                                    <th class="px-6 py-3">Estado</th>
+                                    <td class="font-medium">
+                                        <a class="link" href="{{ route('activos.show', $activo) }}">
+                                            {{ $activo->Etiqueta_activo }}
+                                        </a>
+                                    </td>
+                                    <td>{{ $activo->Nombre_de_activo }}</td>
+                                    <td class="hidden text-slate-500 md:table-cell">{{ $activo->Categoria ?? '—' }}</td>
+                                    <td class="hidden text-slate-500 lg:table-cell">
+                                        {{ $activo->asignacionActiva?->personal?->NombreCompleto ?? '—' }}
+                                    </td>
+                                    <td>
+                                        <x-status-badge :grupo="$activo->estadoCatalogo?->Grupo" />
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @foreach ($recientes as $activo)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-3 font-medium text-gray-900">
-                                            <a class="text-indigo-600 hover:underline" href="{{ route('activos.show', $activo) }}">
-                                                {{ $activo->Etiqueta_activo }}
-                                            </a>
-                                        </td>
-                                        <td class="px-6 py-3 text-gray-700">{{ $activo->Nombre_de_activo }}</td>
-                                        <td class="px-6 py-3 text-gray-500 hidden md:table-cell">{{ $activo->Categoria ?? '—' }}</td>
-                                        <td class="px-6 py-3 text-gray-500 hidden md:table-cell">{{ $activo->Ubicacion ?? '—' }}</td>
-                                        <td class="px-6 py-3 text-gray-500 hidden lg:table-cell">
-                                            {{ $activo->asignacionActiva?->personal?->NombreCompleto ?? '—' }}
-                                        </td>
-                                        <td class="px-6 py-3">
-                                            <x-status-badge :grupo="$activo->estadoCatalogo?->Grupo" />
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endempty
-            </div>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endempty
         </div>
     </div>
 </x-app-layout>
