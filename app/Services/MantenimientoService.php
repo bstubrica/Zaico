@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Activo;
 use App\Models\EvidenciaMantenimiento;
 use App\Models\Mantenimiento;
+use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -14,7 +15,15 @@ use Illuminate\Support\Facades\Storage;
 
 class MantenimientoService
 {
+    use PaginacionAcotada;
+
     private const DIRECTORIO = 'uploads/mantenimientos';
+
+    /**
+     * Disco privado: las evidencias solo se sirven a través del controlador
+     * autenticado, nunca como archivos estáticos públicos.
+     */
+    private const DISCO = 'local';
 
     public function __construct(private readonly HistorialService $historial) {}
 
@@ -34,12 +43,12 @@ class MantenimientoService
             ]);
 
             foreach ($archivos as $archivo) {
-                $ruta = $archivo->store(self::DIRECTORIO, 'public');
+                $ruta = $archivo->store(self::DIRECTORIO, self::DISCO);
 
                 EvidenciaMantenimiento::create([
                     'fk_mantenimiento' => $mantenimiento->id,
                     'Ruta_archivo' => $ruta,
-                    'Nombre_original' => $archivo->getClientOriginalName(),
+                    'Nombre_original' => basename($archivo->getClientOriginalName()),
                     'Tipo_mime' => $archivo->getMimeType(),
                     'Tamano_bytes' => $archivo->getSize(),
                 ]);
@@ -93,7 +102,7 @@ class MantenimientoService
     public function listarGlobal(array $filtros): LengthAwarePaginator
     {
         return $this->consultaGlobal($filtros)
-            ->paginate($filtros['tamano'] ?? 50)
+            ->paginate($this->tamanoPagina($filtros['tamano'] ?? null))
             ->withQueryString();
     }
 
@@ -103,12 +112,12 @@ class MantenimientoService
     public function descargarEvidencia(EvidenciaMantenimiento $evidencia)
     {
         abort_unless(
-            Storage::disk('public')->exists($evidencia->Ruta_archivo),
+            Storage::disk(self::DISCO)->exists($evidencia->Ruta_archivo),
             404,
             'El archivo de evidencia ya no está disponible.'
         );
 
-        return Storage::disk('public')->download(
+        return Storage::disk(self::DISCO)->download(
             $evidencia->Ruta_archivo,
             $evidencia->Nombre_original
         );

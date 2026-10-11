@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Activo;
+use App\Models\EvidenciaMantenimiento;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -30,7 +31,7 @@ class MantenimientoTest extends TestCase
 
     public function test_admin_puede_registrar_mantenimiento_con_evidencia(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $respuesta = $this->actingAs($this->admin)->post(
             "/activos/{$this->activo->id}/mantenimientos",
@@ -56,7 +57,7 @@ class MantenimientoTest extends TestCase
 
     public function test_archivo_invalido_es_rechazado(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $respuesta = $this->actingAs($this->admin)->post(
             "/activos/{$this->activo->id}/mantenimientos",
@@ -88,5 +89,52 @@ class MantenimientoTest extends TestCase
     public function test_listado_global_requiere_sesion(): void
     {
         $this->get('/mantenimientos')->assertRedirect(route('login'));
+    }
+
+    public function test_la_evidencia_se_guarda_en_disco_privado(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $this->actingAs($this->admin)->post(
+            "/activos/{$this->activo->id}/mantenimientos",
+            [
+                'Tipo' => 'Preventivo',
+                'Descripcion' => 'Limpieza interna',
+                'Fecha_mantenimiento' => '2026-10-08',
+                'evidencias' => [UploadedFile::fake()->create('reporte.pdf', 100, 'application/pdf')],
+            ]
+        )->assertSessionHasNoErrors();
+
+        $this->assertNotEmpty(Storage::disk('local')->files('uploads/mantenimientos'));
+        $this->assertEmpty(Storage::disk('public')->files('uploads/mantenimientos'));
+    }
+
+    public function test_usuario_autenticado_puede_descargar_evidencia(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs($this->admin)->post(
+            "/activos/{$this->activo->id}/mantenimientos",
+            [
+                'Tipo' => 'Preventivo',
+                'Descripcion' => 'Limpieza interna',
+                'Fecha_mantenimiento' => '2026-10-08',
+                'evidencias' => [UploadedFile::fake()->create('reporte.pdf', 100, 'application/pdf')],
+            ]
+        )->assertSessionHasNoErrors();
+
+        $evidencia = EvidenciaMantenimiento::firstOrFail();
+
+        $this->actingAs($this->admin)
+            ->get(route('mantenimientos.evidencia', $evidencia))
+            ->assertOk()
+            ->assertDownload('reporte.pdf');
+    }
+
+    public function test_descarga_de_evidencia_requiere_sesion(): void
+    {
+        $this->get('/mantenimientos/evidencias/'.$this->activo->id)
+            ->assertRedirect(route('login'));
     }
 }

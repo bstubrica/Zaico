@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreActivoRequest extends FormRequest
 {
@@ -27,9 +28,12 @@ class StoreActivoRequest extends FormRequest
             'Categoria' => ['nullable', 'string', 'max:100'],
             'Modelo' => ['nullable', 'string', 'max:100'],
             'Observaciones' => ['nullable', 'string'],
-            'Direccion_MAC' => ['nullable', 'string', 'mac_addr', 'max:17'],
-            'Estado' => ['required', 'string', 'max:20'],
-            'fk_estado' => ['nullable', 'exists:ESTADOS_ACTIVO,id'],
+            'Direccion_MAC' => ['nullable', 'string', 'mac_address', 'max:17'],
+            'Estado' => ['required', 'string', 'max:30', Rule::exists('ESTADOS_ACTIVO', 'Grupo')->where('Estado', 1)],
+            'fk_estado' => [
+                'nullable',
+                Rule::exists('ESTADOS_ACTIVO', 'id')->where('Grupo', $this->input('Estado')),
+            ],
         ];
     }
 
@@ -47,9 +51,10 @@ class StoreActivoRequest extends FormRequest
             'Etiqueta_activo.max' => 'La etiqueta no puede exceder 100 caracteres',
             'Serial.unique' => 'Ya existe un activo con ese número de serie',
             'Serial.max' => 'El número de serie no puede exceder 100 caracteres',
-            'Direccion_MAC.mac_addr' => 'La dirección MAC no es válida',
+            'Direccion_MAC.mac_address' => 'La dirección MAC no es válida',
             'Estado.required' => 'El estado es obligatorio',
-            'fk_estado.exists' => 'El estado seleccionado no existe en el catálogo',
+            'Estado.exists' => 'El grupo de estado seleccionado no es válido',
+            'fk_estado.exists' => 'El detalle de estado no corresponde al grupo seleccionado',
         ];
     }
 

@@ -19,6 +19,12 @@ use Illuminate\View\View;
 
 class ActivosController extends Controller
 {
+    /**
+     * Tope de eventos devueltos por el endpoint de auditoría para evitar
+     * respuestas desmedidas en equipos con mucho historial.
+     */
+    private const MAX_EVENTOS = 200;
+
     public function __construct(private readonly ActivoService $activos) {}
 
     public function index(Request $request): View
@@ -130,7 +136,11 @@ class ActivosController extends Controller
     public function eventos(Activo $activo): JsonResponse
     {
         return response()->json(
-            $activo->eventos()->with('usuario:id,name')->orderByDesc('Fecha')->get()
+            $activo->eventos()
+                ->with('usuario:id,name')
+                ->orderByDesc('Fecha')
+                ->limit(self::MAX_EVENTOS)
+                ->get()
         );
     }
 

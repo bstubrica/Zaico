@@ -4,6 +4,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Registro de usuarios
+    |--------------------------------------------------------------------------
+    |
+    | Sistema interno: el autorregistro público está deshabilitado por defecto.
+    | Los usuarios se crean por seeder/administración. Si se habilita, las
+    | cuentas nuevas reciben el rol de mínimo privilegio (solo lectura).
+    |
+    */
+
+    'registro_publico' => (bool) env('ZAICO_REGISTRO_PUBLICO', false),
+    'registro_role' => env('ZAICO_REGISTRO_ROLE', 'Auditor'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Alertas de inventario (Fase 8)
     |--------------------------------------------------------------------------
     |

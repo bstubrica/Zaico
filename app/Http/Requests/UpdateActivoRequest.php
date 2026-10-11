@@ -19,6 +19,7 @@ class UpdateActivoRequest extends FormRequest
     public function rules(): array
     {
         $activoId = $this->route('activo')?->id;
+        $grupo = $this->input('Estado', $this->route('activo')?->Estado);
 
         return [
             'Nombre_de_activo' => ['sometimes', 'required', 'string', 'min:3', 'max:150'],
@@ -36,9 +37,12 @@ class UpdateActivoRequest extends FormRequest
             'Categoria' => ['nullable', 'string', 'max:100'],
             'Modelo' => ['nullable', 'string', 'max:100'],
             'Observaciones' => ['nullable', 'string'],
-            'Direccion_MAC' => ['nullable', 'string', 'mac_addr', 'max:17'],
-            'Estado' => ['sometimes', 'required', 'string', 'max:20'],
-            'fk_estado' => ['nullable', 'exists:ESTADOS_ACTIVO,id'],
+            'Direccion_MAC' => ['nullable', 'string', 'mac_address', 'max:17'],
+            'Estado' => ['sometimes', 'required', 'string', 'max:30', Rule::exists('ESTADOS_ACTIVO', 'Grupo')->where('Estado', 1)],
+            'fk_estado' => [
+                'nullable',
+                Rule::exists('ESTADOS_ACTIVO', 'id')->where('Grupo', $grupo),
+            ],
         ];
     }
 
@@ -52,9 +56,10 @@ class UpdateActivoRequest extends FormRequest
             'Etiqueta_activo.required' => 'La etiqueta es obligatoria',
             'Etiqueta_activo.unique' => 'Ya existe un activo con esa etiqueta',
             'Serial.unique' => 'Ya existe un activo con ese número de serie',
-            'Direccion_MAC.mac_addr' => 'La dirección MAC no es válida',
+            'Direccion_MAC.mac_address' => 'La dirección MAC no es válida',
             'Estado.required' => 'El estado es obligatorio',
-            'fk_estado.exists' => 'El estado seleccionado no existe en el catálogo',
+            'Estado.exists' => 'El grupo de estado seleccionado no es válido',
+            'fk_estado.exists' => 'El detalle de estado no corresponde al grupo seleccionado',
         ];
     }
 

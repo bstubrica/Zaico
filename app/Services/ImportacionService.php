@@ -120,16 +120,21 @@ class ImportacionService
             }
         }
 
-        DB::transaction(function () use ($log, $planes, $conteos) {
-            foreach ($planes as $plan) {
-                ImportacionDetalle::create([
-                    'fk_importacion' => $log->id,
-                    'Fila_numero' => $plan['fila'],
-                    'Etiqueta' => $plan['etiqueta'],
-                    'Accion' => $plan['accion'],
-                    'Mensaje' => $plan['mensaje'],
-                    'Datos_previos' => $plan['datos_previos'],
-                ]);
+        $detalles = [];
+        foreach ($planes as $plan) {
+            $detalles[] = [
+                'fk_importacion' => $log->id,
+                'Fila_numero' => $plan['fila'],
+                'Etiqueta' => $plan['etiqueta'],
+                'Accion' => $plan['accion'],
+                'Mensaje' => $plan['mensaje'],
+                'Datos_previos' => $plan['datos_previos'] !== null ? json_encode($plan['datos_previos']) : null,
+            ];
+        }
+
+        DB::transaction(function () use ($log, $detalles, $conteos) {
+            foreach (array_chunk($detalles, self::LOTE) as $lote) {
+                ImportacionDetalle::insert($lote);
             }
 
             $log->update([...$conteos, 'Estado' => 'Completado']);
@@ -148,25 +153,98 @@ class ImportacionService
     {
         $estados = EstadoActivo::query()->get()->keyBy('Nombre');
         $personasPorUsuario = Personal::query()->pluck('id', 'Nombre_usuario');
+
+        [$activosPorEtiqueta, $serialesPorEtiqueta] = $this->cargarActivosReferenciados($filas);
+
         $planes = [];
         $etiquetasVistas = [];
         $serialesVistos = [];
 
         foreach ($filas as $numero => $fila) {
-            $planes[] = $this->planearFila($numero, $fila, $estados, $personasPorUsuario, $etiquetasVistas, $serialesVistos);
+            $planes[] = $this->planearFila(
+                $numero,
+                $fila,
+                $estados,
+                $personasPorUsuario,
+                $activosPorEtiqueta,
+                $serialesPorEtiqueta,
+                $etiquetasVistas,
+                $serialesVistos,
+            );
         }
 
         return $planes;
     }
 
     /**
+     * Precarga en una sola consulta los activos que el CSV referencia (por
+     * etiqueta o por serial), en lugar de consultar la BD una vez por fila.
+     *
+     * @param  array<int, array<string, string>>  $filas
+     * @return array{0: Collection<string, Activo>, 1: array<string, array<int, string>>}
+     */
+    private function cargarActivosReferenciados(array $filas): array
+    {
+        $etiquetas = [];
+        $seriales = [];
+
+        foreach ($filas as $fila) {
+            $etiqueta = trim($fila['etiqueta de activo'] ?? '');
+
+            if ($etiqueta !== '') {
+                $etiquetas[$etiqueta] = true;
+            }
+
+            $serial = $this->serialNormalizado($fila['serial'] ?? '');
+
+            if ($serial !== null) {
+                $seriales[$serial] = true;
+            }
+        }
+
+        if ($etiquetas === [] && $seriales === []) {
+            return [collect(), []];
+        }
+
+        $activos = Activo::query()
+            ->with(['compra', 'asignacionActiva'])
+            ->where(function ($consulta) use ($etiquetas, $seriales) {
+                $consulta->whereIn('Etiqueta_activo', array_keys($etiquetas));
+
+                if ($seriales !== []) {
+                    $consulta->orWhereIn('Serial', array_keys($seriales));
+                }
+            })
+            ->get();
+
+        $porEtiqueta = $activos->keyBy('Etiqueta_activo');
+
+        $porSerial = $activos
+            ->whereNotNull('Serial')
+            ->groupBy('Serial')
+            ->map(fn (Collection $grupo) => $grupo->pluck('Etiqueta_activo')->all())
+            ->all();
+
+        return [$porEtiqueta, $porSerial];
+    }
+
+    private function serialNormalizado(string $serialBruto): ?string
+    {
+        $serial = trim($serialBruto);
+
+        return ($serial === '' || strcasecmp($serial, 'N/A') === 0) ? null : $serial;
+    }
+
+    /**
      * @param  Collection<string, EstadoActivo>  $estados
      * @param  Collection<string, int>  $personasPorUsuario
+     * @param  Collection<string, Activo>  $activosPorEtiqueta
+     * @param  array<string, array<int, string>>  $serialesPorEtiqueta
      * @param  array<string, true>  $etiquetasVistas
      * @param  array<string, true>  $serialesVistos
      * @return array<string, mixed>
      */
-    private function planearFila(int $numero, array $fila, Collection $estados, Collection $personasPorUsuario, array &$etiquetasVistas, array &$serialesVistos): array
+    private function planearFila(int $numero, array $fila, Collection $estados, Collection $personasPorUsuario, Collection $activosPorEtiqueta, array $serialesPorEtiqueta, array &$etiquetasVistas, array &$serialesVistos): array
     {
         $plan = [
             'fila' => $numero,
@@ -205,8 +283,7 @@ class ImportacionService
 
         $grupo = $estado?->Grupo ?? $this->grupoDeEstado($estadoNombre);
 
-        $serialBruto = trim($fila['serial'] ?? '');
-        $serial = ($serialBruto === '' || strcasecmp($serialBruto, 'N/A') === 0) ? null : $serialBruto;
+        $serial = $this->serialNormalizado($fila['serial'] ?? '');
 
         $modelo = trim($fila['modelo'] ?? '');
         $modeloN = trim($fila['modelo n.'] ?? '');
@@ -237,9 +314,13 @@ class ImportacionService
 
         $avisoSerial = null;
         if ($serial !== null) {
-            $conflicto = Activo::where('Serial', $serial)
-                ->when($plan['etiqueta'] !== null, fn ($query) => $query->where('Etiqueta_activo', '!=', $plan['etiqueta']))
-                ->exists();
+            $conflicto = false;
+            foreach ($serialesPorEtiqueta[$serial] ?? [] as $etiquetaConSerial) {
+                if ($etiquetaConSerial !== $etiqueta) {
+                    $conflicto = true;
+                    break;
+                }
+            }
 
             if ($conflicto) {
                 unset($attrs['Serial']);
@@ -252,7 +333,7 @@ class ImportacionService
             }
         }
 
-        $existente = Activo::where('Etiqueta_activo', $etiqueta)->first();
+        $existente = $activosPorEtiqueta->get($etiqueta);
 
         $cambios = [];
         if ($existente === null) {
@@ -315,7 +396,7 @@ class ImportacionService
             }
 
             if (str_starts_with($estadoNombre, 'Asignado')) {
-                $yaAsignado = $existente?->asignacionActiva()->exists() ?? false;
+                $yaAsignado = $existente?->asignacionActiva !== null;
 
                 if (! $yaAsignado) {
                     $crearAsignacion = true;
@@ -337,7 +418,7 @@ class ImportacionService
         $compraCambios = [];
 
         if ($compraAttrs !== []) {
-            $compraActual = $existente?->compra()->first();
+            $compraActual = $existente?->compra;
 
             if ($compraActual === null) {
                 $crearCompra = true;

@@ -20,6 +20,8 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
+        abort_unless(config('zaico.registro_publico'), 404);
+
         return view('auth.register');
     }
 
@@ -30,6 +32,8 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        abort_unless(config('zaico.registro_publico'), 404);
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
@@ -41,6 +45,9 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        // `role` no es asignable en masa: se fija explícitamente al rol mínimo.
+        $user->forceFill(['role' => config('zaico.registro_role', 'Auditor')])->save();
 
         event(new Registered($user));
 

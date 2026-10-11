@@ -48,6 +48,12 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        if ($user->tieneRegistrosAsociados()) {
+            return Redirect::route('profile.edit')->withErrors([
+                'userDeletion' => 'No puede eliminar su cuenta: tiene registros asociados (asignaciones, mantenimientos, importaciones o auditoría). Solicite a un administrador que la desactive.',
+            ], 'userDeletion');
+        }
+
         Auth::logout();
 
         $user->delete();
