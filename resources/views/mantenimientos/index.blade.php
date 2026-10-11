@@ -55,6 +55,9 @@
                             <th class="hidden md:table-cell">Descripción</th>
                             <th class="hidden md:table-cell">Registrado por</th>
                             <th class="text-center">Evidencias</th>
+                            @if (auth()->user()->puedeEscribir())
+                                <th class="text-right">Acciones</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -79,6 +82,21 @@
                                         <span class="text-slate-400">—</span>
                                     @endif
                                 </td>
+                                @if (auth()->user()->puedeEscribir())
+                                    <td>
+                                        <div class="flex items-center justify-end gap-1">
+                                            <a href="{{ route('mantenimientos.edit', $mantenimiento) }}" class="btn btn-ghost btn-sm" title="Editar">
+                                                <x-icon name="pencil" :size="16" />
+                                            </a>
+                                            <x-delete-form :action="route('mantenimientos.destroy', $mantenimiento)"
+                                                           title="Eliminar mantenimiento"
+                                                           message="¿Eliminar este mantenimiento? Esta acción no se puede deshacer."
+                                                           aria-label="Eliminar mantenimiento">
+                                                <x-icon name="trash" :size="16" />
+                                            </x-delete-form>
+                                        </div>
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>

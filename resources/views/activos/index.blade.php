@@ -59,12 +59,32 @@
     </form>
 
     {{-- Listado --}}
-    <div class="card">
+    <div class="card"
+         x-data="{
+             vista: localStorage.getItem('activos_vista') || 'tabla',
+             setVista(valor) { this.vista = valor; localStorage.setItem('activos_vista', valor); },
+         }">
         <div class="card-header">
             <h3 class="card-title">
                 Resultados
                 <span class="ms-1 font-normal text-slate-400">({{ $activos->total() }})</span>
             </h3>
+
+            @unless ($activos->isEmpty())
+                <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group"
+                     aria-label="Forma de visualización">
+                    <button type="button" @click="setVista('tabla')" :aria-pressed="vista === 'tabla'"
+                            :class="vista === 'tabla' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                            class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition">
+                        <x-icon name="list" :size="16" /> Tabla
+                    </button>
+                    <button type="button" @click="setVista('tarjetas')" :aria-pressed="vista === 'tarjetas'"
+                            :class="vista === 'tarjetas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                            class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition">
+                        <x-icon name="grid" :size="16" /> Tarjetas
+                    </button>
+                </div>
+            @endunless
         </div>
 
         @if ($activos->isEmpty())
@@ -79,7 +99,8 @@
                 </x-slot>
             </x-empty-state>
         @else
-            <div class="table-wrap">
+            {{-- Vista de tabla --}}
+            <div x-show="vista === 'tabla'" x-cloak class="table-wrap">
                 <table class="table">
                     <thead>
                         <tr>
@@ -111,12 +132,28 @@
                                     <a href="{{ route('activos.show', $activo) }}" class="link">Ver</a>
                                     @if (auth()->user()->puedeEscribir())
                                         <a href="{{ route('activos.edit', $activo) }}" class="link ms-3">Editar</a>
+                                        <x-delete-form :action="route('activos.destroy', $activo)"
+                                                       title="Eliminar equipo"
+                                                       :message="'¿Eliminar «' . $activo->Nombre_de_activo . '» (' . $activo->Etiqueta_activo . ')? Se borrarán también su compra, mantenimientos y auditoría. Esta acción no se puede deshacer.'"
+                                                       class="ms-2"
+                                                       aria-label="Eliminar equipo">
+                                            <x-icon name="trash" :size="16" />
+                                        </x-delete-form>
                                     @endif
                                 </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Vista de tarjetas --}}
+            <div x-show="vista === 'tarjetas'" x-cloak class="p-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    @foreach ($activos as $activo)
+                        <x-activo-card :activo="$activo" />
+                    @endforeach
+                </div>
             </div>
 
             <div class="border-t border-slate-200 px-4 py-3">

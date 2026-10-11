@@ -43,15 +43,7 @@ class MantenimientoService
             ]);
 
             foreach ($archivos as $archivo) {
-                $ruta = $archivo->store(self::DIRECTORIO, self::DISCO);
-
-                EvidenciaMantenimiento::create([
-                    'fk_mantenimiento' => $mantenimiento->id,
-                    'Ruta_archivo' => $ruta,
-                    'Nombre_original' => basename($archivo->getClientOriginalName()),
-                    'Tipo_mime' => $archivo->getMimeType(),
-                    'Tamano_bytes' => $archivo->getSize(),
-                ]);
+                $this->guardarEvidencia($mantenimiento, $archivo);
             }
 
             $this->historial->registrar(
@@ -63,6 +55,94 @@ class MantenimientoService
 
             return $mantenimiento->load('evidencias');
         });
+    }
+
+    /**
+     * Actualiza un mantenimiento existente, elimina las evidencias marcadas,
+     * agrega las nuevas y deja traza en el historial del activo.
+     *
+     * @param  array{Tipo: string, Descripcion: string, Fecha_mantenimiento: string, evidencias_eliminar?: array<int, int|string>}  $datos
+     * @param  array<int, UploadedFile>  $archivos
+     */
+    public function actualizar(Mantenimiento $mantenimiento, array $datos, int $usuarioId, array $archivos = []): Mantenimiento
+    {
+        return DB::transaction(function () use ($mantenimiento, $datos, $usuarioId, $archivos) {
+            $mantenimiento->update([
+                'Tipo' => $datos['Tipo'],
+                'Descripcion' => $datos['Descripcion'],
+                'Fecha_mantenimiento' => $datos['Fecha_mantenimiento'],
+            ]);
+
+            $this->eliminarEvidencias($mantenimiento, $datos['evidencias_eliminar'] ?? []);
+
+            foreach ($archivos as $archivo) {
+                $this->guardarEvidencia($mantenimiento, $archivo);
+            }
+
+            $this->historial->registrar(
+                $mantenimiento->fk_activo,
+                'Mantenimiento',
+                "Mantenimiento {$datos['Tipo']} actualizado: {$datos['Descripcion']}",
+                usuarioId: $usuarioId,
+            );
+
+            return $mantenimiento->load('evidencias');
+        });
+    }
+
+    /**
+     * Elimina un mantenimiento, sus evidencias del disco y deja traza en el
+     * historial del activo.
+     */
+    public function eliminar(Mantenimiento $mantenimiento, int $usuarioId): void
+    {
+        DB::transaction(function () use ($mantenimiento, $usuarioId) {
+            $activoId = $mantenimiento->fk_activo;
+            $resumen = "Mantenimiento {$mantenimiento->Tipo} del "
+                .($mantenimiento->Fecha_mantenimiento?->format('d/m/Y') ?? '—')
+                ." eliminado: {$mantenimiento->Descripcion}";
+
+            $this->eliminarEvidencias($mantenimiento, $mantenimiento->evidencias()->pluck('id')->all());
+
+            $mantenimiento->delete();
+
+            $this->historial->registrar(
+                $activoId,
+                'Mantenimiento',
+                $resumen,
+                usuarioId: $usuarioId,
+            );
+        });
+    }
+
+    private function guardarEvidencia(Mantenimiento $mantenimiento, UploadedFile $archivo): void
+    {
+        $ruta = $archivo->store(self::DIRECTORIO, self::DISCO);
+
+        EvidenciaMantenimiento::create([
+            'fk_mantenimiento' => $mantenimiento->id,
+            'Ruta_archivo' => $ruta,
+            'Nombre_original' => basename($archivo->getClientOriginalName()),
+            'Tipo_mime' => $archivo->getMimeType(),
+            'Tamano_bytes' => $archivo->getSize(),
+        ]);
+    }
+
+    /**
+     * @param  array<int, int|string>  $ids
+     */
+    private function eliminarEvidencias(Mantenimiento $mantenimiento, array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        $evidencias = $mantenimiento->evidencias()->whereIn('id', $ids)->get();
+
+        foreach ($evidencias as $evidencia) {
+            Storage::disk(self::DISCO)->delete($evidencia->Ruta_archivo);
+            $evidencia->delete();
+        }
     }
 
     public function listarPorActivo(Activo $activo): Collection

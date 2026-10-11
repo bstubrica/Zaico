@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 class ActivoService
@@ -248,5 +249,34 @@ class ActivoService
                     ->orWhereRaw('lower("Serial") = lower(?)', [$codigo]);
             })
             ->first();
+    }
+
+    /**
+     * Elimina físicamente un equipo. Las dependencias (compra, mantenimientos,
+     * evidencias y auditoría) se borran en cascada por la base de datos; los
+     * archivos de evidencia se retiran del disco antes del borrado.
+     *
+     * Se bloquea cuando el equipo tiene asignaciones registradas: la clave
+     * foránea restringe el borrado para conservar el historial de préstamos.
+     */
+    public function eliminar(Activo $activo): void
+    {
+        abort_if(
+            $activo->asignaciones()->exists(),
+            409,
+            'El equipo tiene asignaciones registradas (historial de préstamos). No se puede eliminar; considere registrarlo como desincorporado.'
+        );
+
+        DB::transaction(function () use ($activo) {
+            $mantenimientos = $activo->mantenimientos()->with('evidencias')->get();
+
+            foreach ($mantenimientos as $mantenimiento) {
+                foreach ($mantenimiento->evidencias as $evidencia) {
+                    Storage::disk('local')->delete($evidencia->Ruta_archivo);
+                }
+            }
+
+            $activo->delete();
+        });
     }
 }
