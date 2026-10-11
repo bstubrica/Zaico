@@ -1,0 +1,85 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zaico/app:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      RUN_MIGRATIONS: "true"
+    ports:
+      - "8000:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - storage:/var/www/html/storage
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/up') === false);"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  scheduler:
+    image: zaico/app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      RUN_MIGRATIONS: "false"
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - storage:/var/www/html/storage
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-Zaico}
+      POSTGRES_USER: ${DB_USERNAME:-zaico}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+      TZ: UTC
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-zaico} -d ${DB_DATABASE:-Zaico}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backup:
+    image: zaico/app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["backup"]
+    env_file: .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      RUN_MIGRATIONS: "false"
+    entrypoint: ["/bin/bash", "/var/www/html/docker/backup.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - backups:/backups
+
+volumes:
+  storage:
+  dbdata:
+  backups:

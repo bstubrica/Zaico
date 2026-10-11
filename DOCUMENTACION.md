@@ -915,15 +915,17 @@ Utilidades de producción: `php artisan config:cache route:cache view:cache`.
 
 ## 20. Roadmap (fases futuras)
 
-Más allá del MVP (fases 0–5), el plan contempla:
+Más allá del MVP (fases 0–5), el plan contemplaba las siguientes fases, ya implementadas:
 
-- **Fase 6:** Exportación de reportes (CSV/Excel) desde la UI.
-- **Fase 7:** Escáner de códigos/etiquetas (búsqueda rápida por etiqueta o serial).
-- **Fase 8:** Notificaciones de activos en reparación prolongada o garantía por vencer
-  (Laravel Notifications/Queues).
-- **Fase 9:** Conexión directa de Power BI a PostgreSQL (vista `vw_inventario` opcional).
-- **Fase 10:** Sincronización periódica con el reporte de Snipec IT (job programado).
-- **Fase 11:** Despliegue en producción (nginx + php-fpm + Docker) con backups automáticos.
+- [x] **Fase 6:** Exportación de reportes (CSV) desde la UI (`ReporteService`, `reportes.*`).
+- [x] **Fase 7:** Búsqueda rápida por etiqueta/serial (`activos.buscar`) con lector USB y cámara.
+- [x] **Fase 8:** Alertas de reparación prolongada y garantía por vencer (tabla `ALERTAS`,
+  comando `inventario:alertas`, notificaciones de BD).
+- [x] **Fase 9:** Vista de solo lectura `vw_inventario` para Power BI (migración).
+- [x] **Fase 10:** Sincronización periódica con Snipec IT (comando `inventario:sincronizar`).
+- [x] **Fase 11:** Despliegue en producción (Docker: php-fpm + nginx + supervisor) con backups.
+
+> Verificación local contra PostgreSQL 18 real: migraciones y suite completa (71 tests) en verde.
 
 ---
 

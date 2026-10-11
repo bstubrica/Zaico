@@ -1792,12 +1792,27 @@ public function historialImportaciones();
 
 ## 🚀 Próximos Pasos (más allá del plan)
 
-- **Fase 6:** Exportación de reportes (CSV/Excel) desde la UI
-- **Fase 7:** Escáner de códigos/etiquetas (búsqueda rápida por etiqueta o serial)
-- **Fase 8:** Notificaciones de activos en reparación prolongada o garantía por vencer (Laravel Notifications/Queues)
-- **Fase 9:** Conexión directa de Power BI a PostgreSQL (vista `vw_inventario` opcional)
-- **Fase 10:** Sincronización periódica con el reporte de Snipec IT (reemplazo del archivo fuente; job programado)
-- **Fase 11:** Despliegue en producción (nginx + php-fpm + Docker, o Laravel Forge/Vapor) y backups automáticos
+- [x] **Fase 6 — Exportación de reportes (CSV) desde la UI.** `ReporteService::exportar()`
+  (BOM UTF-8, delimitador `;`, streaming con `lazy(500)`), `ReporteController`
+  (`reportes.activos|personal|historial|mantenimientos`) y botones "Exportar CSV" en los listados.
+- [x] **Fase 7 — Búsqueda rápida por etiqueta/serial.** `activos.buscar` +
+  `ActivoService::buscarPorCodigo()` (exacta, insensible a mayúsculas/espacios) con soporte de
+  lector USB y escáner de cámara (`BarcodeDetector`).
+- [x] **Fase 8 — Alertas y notificaciones.** Tabla `ALERTAS` + `AlertaService` (reparación
+  prolongada y garantía por vencer, umbrales `ZAICO_REPARACION_DIAS`/`ZAICO_GARANTIA_DIAS`),
+  comando `inventario:alertas` programado, notificaciones de BD y campanita en el topbar.
+- [x] **Fase 9 — Power BI.** Vista de solo lectura `vw_inventario` (activo + estado + asignación
+  activa + persona + compra) creada por migración.
+- [x] **Fase 10 — Sincronización Snipec IT.** Comando `inventario:sincronizar` (toma el CSV más
+  reciente de `ZAICO_SNIPEC_DIR`, importa en commit y archiva en `procesados/`).
+- [x] **Fase 11 — Despliegue.** `Dockerfile` multi-stage (assets + Composer + php-fpm/nginx/
+  supervisor), `docker-compose.yml` (app, scheduler, PostgreSQL, backup), configs `docker/` y
+  `docker/backup.sh` con retención.
+
+> **Verificación local:** migraciones y suite completa (`php artisan test`, 71 tests) ejecutadas
+> contra PostgreSQL 18 real. Se corrigieron identificadores en mayúsculas sin comillar en SQL
+> crudo (`Etiqueta_activo`, `Serial`, `Nombre`, `Apellido`, `Tipo`) y la resolución de usuario por
+> email en `inventario:sincronizar`.
 
 ---
 

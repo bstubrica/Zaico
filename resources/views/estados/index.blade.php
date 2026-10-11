@@ -1,44 +1,51 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Estados de catálogo</h2>
+        <x-page-header title="Estados de catálogo" subtitle="Catálogo de estados de los activos" icon="tag" />
     </x-slot>
 
-    <div class="py-6">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white shadow-sm sm:rounded-lg">
-                @if ($estados->isEmpty())
-                    <div class="p-8 text-center text-sm text-gray-500">
-                        El catálogo de estados está vacío. Ejecute <code class="text-xs bg-gray-100 px-1 rounded">php artisan db:seed --class=EstadoSeeder</code>.
-                    </div>
-                @else
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+    <div class="mx-auto max-w-5xl">
+        <div class="card">
+            @if ($estados->isEmpty())
+                <x-empty-state title="El catálogo de estados está vacío"
+                               description="Ejecute php artisan db:seed --class=EstadoSeeder para cargarlo." icon="tag" />
+            @else
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Grupo</th>
+                                <th class="text-center">Deployed</th>
+                                <th class="text-center">Deployable</th>
+                                <th class="text-center">Activos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($estados as $estado)
                                 <tr>
-                                    <th class="px-6 py-3">Nombre</th>
-                                    <th class="px-6 py-3">Grupo</th>
-                                    <th class="px-6 py-3 text-center">Deployed</th>
-                                    <th class="px-6 py-3 text-center">Deployable</th>
-                                    <th class="px-6 py-3 text-center">Activos</th>
+                                    <td class="font-medium text-slate-900">{{ $estado->Nombre }}</td>
+                                    <td><x-status-badge :grupo="$estado->Grupo" /></td>
+                                    <td class="text-center">
+                                        @if ($estado->Deployed)
+                                            <x-icon name="check-circle" :size="18" class="mx-auto text-emerald-500" />
+                                        @else
+                                            <span class="text-slate-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        @if ($estado->Deployable)
+                                            <x-icon name="check-circle" :size="18" class="mx-auto text-emerald-500" />
+                                        @else
+                                            <span class="text-slate-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center text-slate-500">{{ $estado->activos_count ?? $estado->activos()->count() }}</td>
                                 </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @foreach ($estados as $estado)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-3 font-medium text-gray-900">{{ $estado->Nombre }}</td>
-                                        <td class="px-6 py-3">
-                                            <x-status-badge :grupo="$estado->Grupo" />
-                                        </td>
-                                        <td class="px-6 py-3 text-center">{{ $estado->Deployed ? 'Sí' : 'No' }}</td>
-                                        <td class="px-6 py-3 text-center">{{ $estado->Deployable ? 'Sí' : 'No' }}</td>
-                                        <td class="px-6 py-3 text-center text-gray-500">{{ $estado->activos_count ?? $estado->activos()->count() }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            </div>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
     </div>
 </x-app-layout>
