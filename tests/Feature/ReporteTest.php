@@ -45,6 +45,23 @@ class ReporteTest extends TestCase
         $this->assertStringContainsString('SN-123', $contenido);
     }
 
+    public function test_neutraliza_inyeccion_de_formulas_en_csv(): void
+    {
+        Activo::create([
+            'Nombre_de_activo' => '=cmd|\' /c calc\'!A0',
+            'Etiqueta_activo' => 'TBINY0001',
+            'Estado' => 'Disponible',
+        ]);
+
+        $respuesta = $this->actingAs($this->admin)->get(route('reportes.activos'));
+
+        $respuesta->assertOk();
+        $contenido = $respuesta->streamedContent();
+
+        $this->assertStringContainsString("'=cmd", $contenido);
+        $this->assertStringNotContainsString(';=cmd', $contenido);
+    }
+
     public function test_exportar_personal_genera_csv(): void
     {
         Personal::create([

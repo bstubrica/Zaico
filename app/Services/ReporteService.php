@@ -25,10 +25,10 @@ class ReporteService
             $salida = fopen('php://output', 'w');
 
             fwrite($salida, "\xEF\xBB\xBF");
-            fputcsv($salida, $cabeceras, self::DELIMITADOR);
+            fputcsv($salida, array_map($this->sanearCelda(...), $cabeceras), self::DELIMITADOR);
 
             foreach ($consulta->lazy(500) as $registro) {
-                fputcsv($salida, $mapear($registro), self::DELIMITADOR);
+                fputcsv($salida, array_map($this->sanearCelda(...), $mapear($registro)), self::DELIMITADOR);
             }
 
             fclose($salida);
@@ -36,5 +36,25 @@ class ReporteService
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Cache-Control' => 'no-store, no-cache',
         ]);
+    }
+
+    /**
+     * Neutraliza la inyección de fórmulas (CSV injection): Excel/LibreOffice
+     * ejecutan celdas que empiezan por `=`, `+`, `-`, `@`, tabulador o CR.
+     * Se antepone un apóstrofo (forzando texto) salvo en valores numéricos.
+     */
+    private function sanearCelda(mixed $valor): mixed
+    {
+        if ($valor === null || is_int($valor) || is_float($valor)) {
+            return $valor;
+        }
+
+        $texto = (string) $valor;
+
+        if ($texto !== '' && ! is_numeric($texto) && preg_match('/^[=+\-@\t\r]/', $texto) === 1) {
+            return "'".$texto;
+        }
+
+        return $texto;
     }
 }

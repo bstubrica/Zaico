@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Asignacion;
 use App\Models\Personal;
+use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -11,6 +12,8 @@ use RuntimeException;
 
 class PersonalService
 {
+    use PaginacionAcotada;
+
     /**
      * Consulta base del listado de personal con filtros (sin paginar).
      *
@@ -40,7 +43,7 @@ class PersonalService
     public function listar(array $filtros): LengthAwarePaginator
     {
         return $this->consultaListado($filtros)
-            ->paginate($filtros['tamano'] ?? 50)
+            ->paginate($this->tamanoPagina($filtros['tamano'] ?? null))
             ->withQueryString();
     }
 

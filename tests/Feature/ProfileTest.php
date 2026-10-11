@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Activo;
+use App\Models\Mantenimiento;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -92,6 +94,38 @@ class ProfileTest extends TestCase
 
         $response
             ->assertSessionHasErrorsIn('userDeletion', 'password')
+            ->assertRedirect('/profile');
+
+        $this->assertNotNull($user->fresh());
+    }
+
+    public function test_no_puede_eliminar_su_cuenta_si_tiene_registros_asociados(): void
+    {
+        $user = User::factory()->create(['role' => 'Admin']);
+
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop Dell',
+            'Etiqueta_activo' => 'TBDEL0001',
+            'Estado' => 'Disponible',
+        ]);
+
+        Mantenimiento::create([
+            'fk_activo' => $activo->id,
+            'Tipo' => 'Preventivo',
+            'Descripcion' => 'Limpieza',
+            'Fecha_mantenimiento' => '2026-10-02',
+            'fk_usuario' => $user->id,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->from('/profile')
+            ->delete('/profile', [
+                'password' => 'password',
+            ]);
+
+        $response
+            ->assertSessionHasErrorsIn('userDeletion', 'userDeletion')
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());

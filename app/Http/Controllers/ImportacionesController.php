@@ -58,6 +58,7 @@ class ImportacionesController extends Controller
         }
 
         session()->forget('importacion_pendiente');
+        Storage::disk('local')->delete($ruta);
 
         return redirect()
             ->route('importaciones.show', $log)

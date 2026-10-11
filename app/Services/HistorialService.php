@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Asignacion;
 use App\Models\HistorialEvento;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 
 class HistorialService
 {
@@ -52,16 +51,5 @@ class HistorialService
             'fk_usuario' => $usuarioId,
             'Fecha' => now(),
         ]);
-    }
-
-    /**
-     * @return Collection<int, HistorialEvento>
-     */
-    public function eventosDeActivo(int $activoId): Collection
-    {
-        return HistorialEvento::where('fk_activo', $activoId)
-            ->with('usuario:id,name')
-            ->orderByDesc('Fecha')
-            ->get();
     }
 }

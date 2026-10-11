@@ -73,24 +73,37 @@ class AlertaService
     {
         $dias = (int) config('zaico.alertas.reparacion_dias', 15);
         $limite = now()->subDays($dias)->startOfDay();
+
+        $activos = Activo::query()->where('Estado', 'Reparacion')->get();
+
+        if ($activos->isEmpty()) {
+            return [];
+        }
+
+        // Última entrada al estado por activo, en una sola consulta.
+        $ultimoCambio = HistorialEvento::query()
+            ->whereIn('fk_activo', $activos->pluck('id'))
+            ->where('Tipo_evento', 'CambioEstado')
+            ->selectRaw('fk_activo, MAX("Fecha") AS ultima')
+            ->groupBy('fk_activo')
+            ->pluck('ultima', 'fk_activo');
+
         $alertas = [];
 
-        Activo::query()
-            ->where('Estado', 'Reparacion')
-            ->each(function (Activo $activo) use (&$alertas, $limite): void {
-                $referencia = $this->fechaEntradaEstado($activo);
+        foreach ($activos as $activo) {
+            $referencia = $this->fechaEntradaEstado($activo, $ultimoCambio->get($activo->id));
 
-                if ($referencia === null || $referencia->greaterThan($limite)) {
-                    return;
-                }
+            if ($referencia === null || $referencia->greaterThan($limite)) {
+                continue;
+            }
 
-                $alertas[Alerta::TIPO_REPARACION.':'.$activo->id] = [
-                    'Tipo' => Alerta::TIPO_REPARACION,
-                    'fk_activo' => $activo->id,
-                    'Mensaje' => "«{$activo->Etiqueta_activo}» lleva en reparación desde el {$referencia->format('d/m/Y')}.",
-                    'Fecha_referencia' => $referencia->toDateString(),
-                ];
-            });
+            $alertas[Alerta::TIPO_REPARACION.':'.$activo->id] = [
+                'Tipo' => Alerta::TIPO_REPARACION,
+                'fk_activo' => $activo->id,
+                'Mensaje' => "«{$activo->Etiqueta_activo}» lleva en reparación desde el {$referencia->format('d/m/Y')}.",
+                'Fecha_referencia' => $referencia->toDateString(),
+            ];
+        }
 
         return $alertas;
     }
@@ -132,13 +145,19 @@ class AlertaService
 
     private function resolverObsoletas(array $clavesVigentes): int
     {
-        return Alerta::query()
+        $ids = Alerta::query()
             ->whereIn('Tipo', [Alerta::TIPO_REPARACION, Alerta::TIPO_GARANTIA])
             ->where('Estado', 'Activa')
-            ->get()
-            ->filter(fn (Alerta $alerta) => ! in_array($alerta->Tipo.':'.$alerta->fk_activo, $clavesVigentes, true))
-            ->each(fn (Alerta $alerta) => $alerta->update(['Estado' => 'Resuelta']))
-            ->count();
+            ->get(['id', 'Tipo', 'fk_activo'])
+            ->reject(fn (Alerta $alerta) => in_array($alerta->Tipo.':'.$alerta->fk_activo, $clavesVigentes, true))
+            ->pluck('id')
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return Alerta::query()->whereIn('id', $ids->all())->update(['Estado' => 'Resuelta']);
     }
 
     private function notificar(Collection $nuevas): void
@@ -157,15 +176,10 @@ class AlertaService
         }
     }
 
-    private function fechaEntradaEstado(Activo $activo): ?Carbon
+    private function fechaEntradaEstado(Activo $activo, ?string $ultimoCambio = null): ?Carbon
     {
-        $fecha = HistorialEvento::query()
-            ->where('fk_activo', $activo->id)
-            ->where('Tipo_evento', 'CambioEstado')
-            ->max('Fecha');
-
-        if ($fecha !== null) {
-            return Carbon::parse($fecha);
+        if ($ultimoCambio !== null) {
+            return Carbon::parse($ultimoCambio);
         }
 
         return $activo->Actualizado_el ?? $activo->Creado_el;

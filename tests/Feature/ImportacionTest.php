@@ -6,6 +6,7 @@ use App\Models\ImportacionLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -95,6 +96,50 @@ class ImportacionTest extends TestCase
         ]);
     }
 
+    /**
+     * CSV con filas válidas y únicas, útil para medir el coste de planificar N filas.
+     */
+    private function csvMasivo(int $filas): string
+    {
+        $registros = [];
+        for ($i = 1; $i <= $filas; $i++) {
+            $registros[] = [
+                'Nombre de Activo' => "Equipo {$i}",
+                'Etiqueta de Activo' => sprintf('TBMAS%04d', $i),
+                'Serial' => sprintf('SER%04d', $i),
+                'Localización' => 'Oficina Sistemas',
+                'Estado' => 'Disponible (deployable)',
+            ];
+        }
+
+        return $this->csvFilas($registros);
+    }
+
+    public function test_la_planificacion_no_genera_consultas_por_fila(): void
+    {
+        Storage::fake('local');
+
+        DB::enableQueryLog();
+
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('pocas.csv', $this->csvMasivo(5)),
+            'modo' => 'dryrun',
+        ])->assertSessionHasNoErrors();
+
+        $consultasPocas = count(DB::getQueryLog());
+        DB::flushQueryLog();
+
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('muchas.csv', $this->csvMasivo(50)),
+            'modo' => 'dryrun',
+        ])->assertSessionHasNoErrors();
+
+        $consultasMuchas = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertSame($consultasPocas, $consultasMuchas);
+    }
+
     public function test_dry_run_no_persiste_activos(): void
     {
         Storage::fake('local');
@@ -112,6 +157,18 @@ class ImportacionTest extends TestCase
         $logId = ImportacionLog::latest('id')->value('id');
         $this->assertDatabaseHas('IMPORTACIONES_DETALLE', ['fk_importacion' => $logId, 'Accion' => 'Error']);
         $this->assertNotNull(session('importacion_pendiente'));
+    }
+
+    public function test_commit_directo_no_deja_csv_temporal(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('reporte.csv', $this->csvDePrueba()),
+            'modo' => 'commit',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame([], Storage::disk('local')->allFiles('tmp/importaciones'));
     }
 
     public function test_commit_importa_y_confirmar_es_idempotente(): void

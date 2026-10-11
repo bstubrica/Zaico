@@ -6,14 +6,18 @@ use App\Models\Activo;
 use App\Models\Asignacion;
 use App\Models\EstadoActivo;
 use App\Models\Personal;
+use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ActivoService
 {
+    use PaginacionAcotada;
+
     public function __construct(private readonly HistorialService $historial) {}
 
     /**
@@ -53,7 +57,7 @@ class ActivoService
     public function listar(array $filtros): LengthAwarePaginator
     {
         return $this->consultaListado($filtros)
-            ->paginate($filtros['tamano'] ?? 50)
+            ->paginate($this->tamanoPagina($filtros['tamano'] ?? null))
             ->withQueryString();
     }
 
@@ -128,7 +132,12 @@ class ActivoService
             throw new RuntimeException('El activo ya tiene una asignación activa. Devuélvalo primero.');
         }
 
-        if ($activo->estadoCatalogo?->Grupo === 'Desincorporado') {
+        // El grupo vive denormalizado en `Estado`; `fk_estado` puede faltar en
+        // activos creados sin detalle de catálogo, así que no basta con mirar
+        // la relación para bloquear la asignación de un desincorporado.
+        $grupoActual = $activo->estadoCatalogo?->Grupo ?? $activo->Estado;
+
+        if ($grupoActual === 'Desincorporado') {
             throw new RuntimeException('No se puede asignar un activo desincorporado.');
         }
 
@@ -139,14 +148,24 @@ class ActivoService
         }
 
         return DB::transaction(function () use ($activo, $datos, $usuarioId, $personal) {
-            Asignacion::create([
-                'fk_Activo' => $activo->id,
-                'fk_Personal' => $personal->id,
-                'fk_usuario' => $usuarioId,
-                'Fecha_asignacion' => $datos['Fecha_asignacion'],
-                'Observaciones' => $datos['Observaciones'] ?? null,
-                'Estado' => 'Activa',
-            ]);
+            try {
+                Asignacion::create([
+                    'fk_Activo' => $activo->id,
+                    'fk_Personal' => $personal->id,
+                    'fk_usuario' => $usuarioId,
+                    'Fecha_asignacion' => $datos['Fecha_asignacion'],
+                    'Observaciones' => $datos['Observaciones'] ?? null,
+                    'Estado' => 'Activa',
+                ]);
+            } catch (QueryException $e) {
+                // Índice único parcial `asignaciones_activa_unica`: otra
+                // solicitud concurrente ya creó una asignación activa.
+                if (($e->errorInfo[0] ?? $e->getCode()) === '23505') {
+                    throw new RuntimeException('El activo ya tiene una asignación activa. Devuélvalo primero.');
+                }
+
+                throw $e;
+            }
 
             $estadoAsignado = EstadoActivo::where('Nombre', 'like', 'Asignado%')->first();
 

@@ -9,6 +9,7 @@ use App\Models\HistorialEvento;
 use App\Models\User;
 use App\Notifications\AlertaInventario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -154,6 +155,28 @@ class AlertaTest extends TestCase
 
         $this->actingAs($auditor)->get(route('alertas.index'))->assertForbidden();
         $this->actingAs($auditor)->post(route('alertas.revisar'))->assertForbidden();
+    }
+
+    public function test_no_consulta_el_ultimo_cambio_por_activo(): void
+    {
+        Notification::fake();
+        User::factory()->create(['role' => 'Admin']);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->activoEnReparacion(30);
+        }
+
+        DB::enableQueryLog();
+        $this->artisan('inventario:alertas')->assertSuccessful();
+        $consultas = collect(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $agregados = $consultas
+            ->filter(fn (array $consulta) => str_contains($consulta['query'], 'HISTORIAL_EVENTOS')
+                && str_contains($consulta['query'], 'MAX('))
+            ->count();
+
+        $this->assertSame(1, $agregados);
     }
 
     public function test_marcar_notificaciones_como_leidas(): void

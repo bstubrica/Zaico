@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Escritura limitada a Admin / SoporteTecnico
-    Route::middleware('role:Admin,SoporteTecnico')->group(function () {
+    // Escritura limitada a Admin / SoporteTecnico y con rate limit propio
+    Route::middleware(['role:Admin,SoporteTecnico', 'throttle:escritura'])->group(function () {
         Route::get('activos/nuevo', [ActivosController::class, 'create'])->name('activos.create');
         Route::post('activos', [ActivosController::class, 'store'])->name('activos.store');
         Route::get('activos/{activo}/editar', [ActivosController::class, 'edit'])->name('activos.edit');
@@ -33,8 +33,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Importación CSV: visible solo para Admin / SoporteTecnico
         Route::get('importaciones', [ImportacionesController::class, 'index'])->name('importaciones.index');
-        Route::post('importaciones', [ImportacionesController::class, 'store'])->name('importaciones.store');
-        Route::post('importaciones/confirmar', [ImportacionesController::class, 'confirmar'])->name('importaciones.confirmar');
+        Route::post('importaciones', [ImportacionesController::class, 'store'])
+            ->middleware('throttle:importacion')
+            ->name('importaciones.store');
+        Route::post('importaciones/confirmar', [ImportacionesController::class, 'confirmar'])
+            ->middleware('throttle:importacion')
+            ->name('importaciones.confirmar');
         Route::get('importaciones/{importacion}', [ImportacionesController::class, 'show'])
             ->whereNumber('importacion')
             ->name('importaciones.show');
@@ -46,13 +50,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Notificaciones: cualquier usuario autenticado
     Route::post('notificaciones/leidas', [NotificacionesController::class, 'marcarLeidas'])
+        ->middleware('throttle:escritura')
         ->name('notificaciones.leidas');
 
     // Exportación de reportes CSV: cualquier usuario autenticado
-    Route::get('reportes/activos', [ReporteController::class, 'activos'])->name('reportes.activos');
-    Route::get('reportes/personal', [ReporteController::class, 'personal'])->name('reportes.personal');
-    Route::get('reportes/historial', [ReporteController::class, 'historial'])->name('reportes.historial');
-    Route::get('reportes/mantenimientos', [ReporteController::class, 'mantenimientos'])->name('reportes.mantenimientos');
+    Route::middleware('throttle:consulta')->prefix('reportes')->name('reportes.')->group(function () {
+        Route::get('activos', [ReporteController::class, 'activos'])->name('activos');
+        Route::get('personal', [ReporteController::class, 'personal'])->name('personal');
+        Route::get('historial', [ReporteController::class, 'historial'])->name('historial');
+        Route::get('mantenimientos', [ReporteController::class, 'mantenimientos'])->name('mantenimientos');
+    });
 
     // Consulta: cualquier usuario autenticado
     Route::get('activos', [ActivosController::class, 'index'])->name('activos.index');
@@ -60,7 +67,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('activos/{activo}', [ActivosController::class, 'show'])->name('activos.show');
     Route::get('activos/{activo}/mantenimientos', [MantenimientosController::class, 'porActivo'])
         ->name('activos.mantenimientos');
-    Route::get('api/activos', [ActivosController::class, 'apiIndex'])->name('api.activos');
+    Route::get('api/activos', [ActivosController::class, 'apiIndex'])
+        ->middleware('throttle:consulta')
+        ->name('api.activos');
     Route::get('estados', [EstadosController::class, 'index'])->name('estados.index');
     Route::get('mantenimientos', [MantenimientosController::class, 'index'])->name('mantenimientos.index');
     Route::get('mantenimientos/evidencias/{evidencia}', [MantenimientosController::class, 'evidencia'])
@@ -70,12 +79,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Auditoría: solo Admin / Auditor
     Route::get('activos/{activo}/eventos', [ActivosController::class, 'eventos'])
-        ->middleware('role:Admin,Auditor')
+        ->middleware(['role:Admin,Auditor', 'throttle:consulta'])
         ->name('activos.eventos');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->middleware('throttle:escritura')
+        ->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
+        ->middleware('throttle:escritura')
+        ->name('profile.destroy');
 });
 
 require __DIR__.'/auth.php';
