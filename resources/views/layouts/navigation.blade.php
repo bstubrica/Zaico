@@ -13,6 +13,7 @@
                 ['ruta' => 'activos.buscar', 'patron' => 'activos.buscar', 'icono' => 'search', 'texto' => 'Búsqueda rápida'],
                 ['ruta' => 'personal.index', 'patron' => 'personal.*', 'icono' => 'users', 'texto' => 'Personal'],
                 ['ruta' => 'estados.index', 'patron' => 'estados.*', 'icono' => 'tag', 'texto' => 'Estados'],
+                ['ruta' => 'compras.index', 'patron' => 'compras.*', 'icono' => 'currency', 'texto' => 'Compras'],
             ],
         ],
         [
@@ -60,6 +61,19 @@
                 </div>
             </div>
         @endforeach
+
+        @if (auth()->user()->isAdmin())
+            <div>
+                <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Administración</p>
+                <div class="space-y-1">
+                    <a href="{{ route('usuarios.index') }}"
+                       class="sidebar-link {{ request()->routeIs('usuarios.*') ? 'sidebar-link-active' : '' }}">
+                        <x-icon name="users" :size="20" />
+                        <span>Usuarios</span>
+                    </a>
+                </div>
+            </div>
+        @endif
 
         @if (auth()->user()->puedeEscribir())
             @php $noLeidas = auth()->user()->unreadNotifications->count(); @endphp

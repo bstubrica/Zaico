@@ -16,6 +16,13 @@
                     <a href="{{ route('activos.edit', $activo) }}" class="btn btn-primary">
                         <x-icon name="pencil" :size="18" /> Editar
                     </a>
+                    <x-delete-form :action="route('activos.destroy', $activo)"
+                                   title="Eliminar equipo"
+                                   :message="'¿Eliminar «' . $activo->Nombre_de_activo . '» (' . $activo->Etiqueta_activo . ')? Se borrarán también su compra, mantenimientos, evidencias y auditoría. Esta acción no se puede deshacer.'"
+                                   button-class="btn btn-ghost btn-sm text-rose-600"
+                                   aria-label="Eliminar equipo">
+                        <x-icon name="trash" :size="16" />
+                    </x-delete-form>
                 @endif
             </x-slot>
         </x-page-header>
@@ -48,6 +55,7 @@
                             ['id' => 'datos', 'label' => 'Datos', 'icon' => 'document'],
                             ['id' => 'asignaciones', 'label' => 'Asignaciones', 'icon' => 'users'],
                             ['id' => 'mantenimientos', 'label' => 'Mantenimientos', 'icon' => 'wrench'],
+                            ['id' => 'compra', 'label' => 'Compra', 'icon' => 'currency'],
                         ];
                     @endphp
                     @foreach ($tabs as $t)
@@ -216,6 +224,110 @@
 
                         <button type="submit" class="btn btn-primary mt-4 w-full">
                             <x-icon name="check-circle" :size="18" /> Guardar mantenimiento
+                        </button>
+                    </form>
+                @endif
+            </div>
+
+            {{-- Compra --}}
+            <div x-show="tab === 'compra'" x-cloak class="card-body">
+                @if ($activo->compra)
+                    <dl class="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                        <div>
+                            <dt class="text-slate-500">Fecha de compra</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->compra->Fecha_Compra?->format('d/m/Y') ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Proveedor</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->compra->Proveedor ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Número de requisición</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->compra->Numero_Requisicion ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Número de factura</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->compra->Numero_factura ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Costo de compra</dt>
+                            <dd class="font-medium text-slate-900">
+                                {{ $activo->compra->Costo_compra !== null ? '$ '.number_format((float) $activo->compra->Costo_compra, 2) : '—' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Garantía</dt>
+                            <dd class="font-medium text-slate-900">
+                                {{ trim(($activo->compra->Tiempo_garantia ?? '').($activo->compra->Garantia ? ' · '.$activo->compra->Garantia : '')) ?: '—' }}
+                            </dd>
+                        </div>
+                    </dl>
+                    @if (auth()->user()->puedeEscribir())
+                        <div class="mt-4 flex justify-end">
+                            <x-delete-form :action="route('activos.compra.destroy', $activo)"
+                                           title="Eliminar compra"
+                                           message="¿Eliminar la compra de este equipo? Esta acción no se puede deshacer."
+                                           button-class="btn btn-ghost btn-sm text-rose-600"
+                                           aria-label="Eliminar compra">
+                                <x-icon name="trash" :size="16" /> Eliminar compra
+                            </x-delete-form>
+                        </div>
+                    @endif
+                @else
+                    <p class="text-sm text-slate-500">Este equipo no tiene una compra registrada.</p>
+                @endif
+
+                @if (auth()->user()->puedeEscribir())
+                    <form method="POST" action="{{ route('activos.compra.store', $activo) }}"
+                          class="mt-5 border-t border-slate-200 pt-5">
+                        @csrf
+                        <h4 class="mb-3 text-sm font-semibold text-slate-800">
+                            {{ $activo->compra ? 'Editar compra' : 'Registrar compra' }}
+                        </h4>
+
+                        <div class="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <x-input-label for="Fecha_Compra" value="Fecha de compra *" />
+                                <input type="date" id="Fecha_Compra" name="Fecha_Compra" required
+                                       value="{{ old('Fecha_Compra', $activo->compra?->Fecha_Compra?->format('Y-m-d') ?? now()->toDateString()) }}"
+                                       class="form-control mt-1">
+                            </div>
+                            <div>
+                                <x-input-label for="Proveedor" value="Proveedor *" />
+                                <input type="text" id="Proveedor" name="Proveedor" required maxlength="150"
+                                       value="{{ old('Proveedor', $activo->compra?->Proveedor) }}" class="form-control mt-1">
+                            </div>
+                            <div>
+                                <x-input-label for="Numero_Requisicion" value="N.º requisición" />
+                                <input type="text" id="Numero_Requisicion" name="Numero_Requisicion" maxlength="50"
+                                       value="{{ old('Numero_Requisicion', $activo->compra?->Numero_Requisicion) }}" class="form-control mt-1">
+                            </div>
+                            <div>
+                                <x-input-label for="Numero_factura" value="N.º factura" />
+                                <input type="text" id="Numero_factura" name="Numero_factura" maxlength="50"
+                                       value="{{ old('Numero_factura', $activo->compra?->Numero_factura) }}" class="form-control mt-1">
+                            </div>
+                            <div>
+                                <x-input-label for="Costo_compra" value="Costo de compra ($)" />
+                                <input type="number" id="Costo_compra" name="Costo_compra" min="0" step="0.01"
+                                       value="{{ old('Costo_compra', $activo->compra?->Costo_compra) }}" class="form-control mt-1">
+                            </div>
+                            <div>
+                                <x-input-label for="Tiempo_garantia" value="Tiempo de garantía" />
+                                <input type="text" id="Tiempo_garantia" name="Tiempo_garantia" maxlength="50"
+                                       value="{{ old('Tiempo_garantia', $activo->compra?->Tiempo_garantia) }}"
+                                       placeholder="Ej.: 12 meses" class="form-control mt-1">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-input-label for="Garantia" value="Garantía" />
+                                <input type="text" id="Garantia" name="Garantia" maxlength="50"
+                                       value="{{ old('Garantia', $activo->compra?->Garantia) }}"
+                                       placeholder="Detalle de la garantía" class="form-control mt-1">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-full">
+                            <x-icon name="check-circle" :size="18" /> {{ $activo->compra ? 'Actualizar compra' : 'Guardar compra' }}
                         </button>
                     </form>
                 @endif

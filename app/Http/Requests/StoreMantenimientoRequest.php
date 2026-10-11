@@ -23,6 +23,8 @@ class StoreMantenimientoRequest extends FormRequest
             'Fecha_mantenimiento' => ['required', 'date'],
             'evidencias' => ['sometimes', 'array'],
             'evidencias.*' => ['file', 'mimes:jpg,jpeg,png,pdf,mp4', 'max:20480'],
+            'evidencias_eliminar' => ['sometimes', 'array'],
+            'evidencias_eliminar.*' => ['integer'],
         ];
     }
 

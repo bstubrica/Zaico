@@ -133,6 +133,15 @@ class ActivosController extends Controller
         return back()->with('success', 'Estado actualizado.');
     }
 
+    public function destroy(Activo $activo): RedirectResponse
+    {
+        $this->activos->eliminar($activo);
+
+        return redirect()
+            ->route('activos.index')
+            ->with('success', 'Equipo eliminado correctamente.');
+    }
+
     public function eventos(Activo $activo): JsonResponse
     {
         return response()->json(

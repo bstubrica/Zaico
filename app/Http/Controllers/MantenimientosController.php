@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMantenimientoRequest;
 use App\Models\Activo;
 use App\Models\EvidenciaMantenimiento;
+use App\Models\Mantenimiento;
 use App\Services\MantenimientoService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -39,6 +41,38 @@ class MantenimientosController extends Controller
         );
 
         return back()->with('success', 'Mantenimiento registrado correctamente.');
+    }
+
+    public function edit(Mantenimiento $mantenimiento): View
+    {
+        $mantenimiento->load(['activo', 'evidencias']);
+
+        return view('mantenimientos.edit', compact('mantenimiento'));
+    }
+
+    public function update(StoreMantenimientoRequest $request, Mantenimiento $mantenimiento): RedirectResponse
+    {
+        $this->mantenimientos->actualizar(
+            $mantenimiento,
+            $request->validated(),
+            $request->user()->id,
+            $request->file('evidencias', []),
+        );
+
+        return redirect()
+            ->route('activos.show', $mantenimiento->fk_activo)
+            ->with('success', 'Mantenimiento actualizado correctamente.');
+    }
+
+    public function destroy(Mantenimiento $mantenimiento): RedirectResponse
+    {
+        $activoId = $mantenimiento->fk_activo;
+
+        $this->mantenimientos->eliminar($mantenimiento, request()->user()->id);
+
+        return redirect()
+            ->route('activos.show', $activoId)
+            ->with('success', 'Mantenimiento eliminado correctamente.');
     }
 
     public function evidencia(EvidenciaMantenimiento $evidencia)

@@ -46,14 +46,13 @@
 
                 @if (auth()->user()->puedeEscribir() && $personal->Estado === 'Activo')
                     <div class="border-t border-slate-200 pt-4">
-                        <form method="POST" action="{{ route('personal.destroy', $personal) }}"
-                              onsubmit="return confirm('¿Dar de baja a {{ $personal->NombreCompleto }}?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger w-full">
-                                <x-icon name="inbox" :size="18" /> Dar de baja
-                            </button>
-                        </form>
+                        <x-delete-form :action="route('personal.destroy', $personal)"
+                                       title="Dar de baja a {{ $personal->NombreCompleto }}"
+                                       message="¿Dar de baja a {{ $personal->NombreCompleto }}? La baja es lógica: el historial se conserva. Esta acción no se puede deshacer automáticamente."
+                                       confirm="Dar de baja"
+                                       button-class="btn btn-danger w-full">
+                            <x-icon name="inbox" :size="18" /> Dar de baja
+                        </x-delete-form>
                         <p class="mt-2 text-xs text-slate-400">La baja es lógica: el historial se conserva.</p>
                     </div>
                 @endif

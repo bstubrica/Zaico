@@ -23,6 +23,19 @@
                                     {{ $mantenimiento->Fecha_mantenimiento?->format('d/m/Y') }}
                                     · {{ $mantenimiento->usuario?->name ?? '—' }}
                                 </span>
+                                @if (auth()->user()->puedeEscribir())
+                                    <div class="ms-auto flex items-center gap-1">
+                                        <a href="{{ route('mantenimientos.edit', $mantenimiento) }}" class="btn btn-ghost btn-sm" title="Editar">
+                                            <x-icon name="pencil" :size="16" />
+                                        </a>
+                                        <x-delete-form :action="route('mantenimientos.destroy', $mantenimiento)"
+                                                       title="Eliminar mantenimiento"
+                                                       message="¿Eliminar este mantenimiento? Esta acción no se puede deshacer."
+                                                       aria-label="Eliminar mantenimiento">
+                                            <x-icon name="trash" :size="16" />
+                                        </x-delete-form>
+                                    </div>
+                                @endif
                             </div>
                             <p class="mt-2 whitespace-pre-line text-sm text-slate-700">{{ $mantenimiento->Descripcion }}</p>
 

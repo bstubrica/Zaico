@@ -5,12 +5,15 @@ namespace Tests\Feature;
 use App\Models\Activo;
 use App\Models\Asignacion;
 use App\Models\EstadoActivo;
+use App\Models\EvidenciaMantenimiento;
 use App\Models\HistorialEvento;
+use App\Models\Mantenimiento;
 use App\Models\Personal;
 use App\Models\User;
 use Database\Seeders\EstadoSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ActivoCRUDTest extends TestCase
@@ -166,6 +169,26 @@ class ActivoCRUDTest extends TestCase
         $auditor = User::factory()->create(['role' => 'Auditor']);
 
         $this->actingAs($auditor)->get('/activos')->assertOk();
+    }
+
+    public function test_el_listado_incluye_la_vista_de_tarjetas(): void
+    {
+        Activo::create([
+            'Nombre_de_activo' => 'Laptop Tarjeta',
+            'Etiqueta_activo' => 'TBCARD0001',
+            'Categoria' => 'Laptop',
+            'Ubicacion' => 'Oficina Central',
+            'Estado' => 'Disponible',
+        ]);
+
+        $respuesta = $this->actingAs($this->admin)->get('/activos');
+
+        $respuesta->assertOk();
+        $respuesta->assertSee('Forma de visualización');
+        $respuesta->assertSee('Tarjetas');
+        $respuesta->assertSee('Ver ficha');
+        $respuesta->assertSee('Laptop Tarjeta');
+        $respuesta->assertSee('TBCARD0001');
     }
 
     public function test_admin_puede_asignar_y_devolver_activo(): void
@@ -337,5 +360,113 @@ class ActivoCRUDTest extends TestCase
             ->getJson(route('api.activos', ['tamano' => 999999]));
 
         $respuesta->assertOk()->assertJsonPath('per_page', 100);
+    }
+
+    public function test_admin_puede_eliminar_equipo_sin_asignaciones(): void
+    {
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop HP',
+            'Etiqueta_activo' => 'TBDEL0001',
+            'Estado' => 'Disponible',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->delete(route('activos.destroy', $activo))
+            ->assertRedirect(route('activos.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('ACTIVOS', ['id' => $activo->id]);
+    }
+
+    public function test_eliminar_equipo_borra_mantenimientos_y_evidencias_del_disco(): void
+    {
+        Storage::fake('local');
+
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop Dell',
+            'Etiqueta_activo' => 'TBDEL0002',
+            'Estado' => 'Disponible',
+        ]);
+        $mantenimiento = Mantenimiento::create([
+            'fk_activo' => $activo->id,
+            'Tipo' => 'Preventivo',
+            'Descripcion' => 'Limpieza interna',
+            'Fecha_mantenimiento' => '2026-10-01',
+            'fk_usuario' => $this->admin->id,
+            'Creado_el' => now(),
+        ]);
+        $archivo = 'uploads/mantenimientos/reporte.pdf';
+        Storage::disk('local')->put($archivo, 'contenido');
+        EvidenciaMantenimiento::create([
+            'fk_mantenimiento' => $mantenimiento->id,
+            'Ruta_archivo' => $archivo,
+            'Nombre_original' => 'reporte.pdf',
+            'Tipo_mime' => 'application/pdf',
+            'Tamano_bytes' => 1234,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->delete(route('activos.destroy', $activo))
+            ->assertRedirect(route('activos.index'));
+
+        $this->assertDatabaseMissing('ACTIVOS', ['id' => $activo->id]);
+        $this->assertDatabaseMissing('MANTENIMIENTOS', ['id' => $mantenimiento->id]);
+        $this->assertDatabaseMissing('EVIDENCIAS_MANTENIMIENTO', ['fk_mantenimiento' => $mantenimiento->id]);
+        $this->assertTrue(Storage::disk('local')->missing($archivo));
+    }
+
+    public function test_no_se_puede_eliminar_equipo_con_asignaciones_registradas(): void
+    {
+        $persona = Personal::create([
+            'Nombre' => 'Luis',
+            'Apellido' => 'Martinez',
+            'Nombre_usuario' => 'lmartinez',
+            'Estado' => 'Activo',
+        ]);
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop HP',
+            'Etiqueta_activo' => 'TBDEL0003',
+            'Estado' => 'Disponible',
+        ]);
+
+        $this->actingAs($this->admin)->post("/activos/{$activo->id}/asignacion", [
+            'fk_Personal' => $persona->id,
+            'Fecha_asignacion' => '2026-10-08',
+        ])->assertSessionHasNoErrors();
+
+        $this->actingAs($this->admin)
+            ->delete(route('activos.destroy', $activo))
+            ->assertStatus(409);
+
+        $this->assertDatabaseHas('ACTIVOS', ['id' => $activo->id]);
+    }
+
+    public function test_auditor_no_puede_eliminar_equipo(): void
+    {
+        $auditor = User::factory()->create(['role' => 'Auditor']);
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Monitor LG',
+            'Etiqueta_activo' => 'TBDEL0004',
+            'Estado' => 'Disponible',
+        ]);
+
+        $this->actingAs($auditor)
+            ->delete(route('activos.destroy', $activo))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('ACTIVOS', ['id' => $activo->id]);
+    }
+
+    public function test_eliminar_equipo_requiere_sesion(): void
+    {
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Teclado Logitech',
+            'Etiqueta_activo' => 'TBDEL0005',
+            'Estado' => 'Disponible',
+        ]);
+
+        $this->delete(route('activos.destroy', $activo))->assertRedirect(route('login'));
+
+        $this->assertDatabaseHas('ACTIVOS', ['id' => $activo->id]);
     }
 }
