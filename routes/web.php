@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivosController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EstadosController;
@@ -111,6 +112,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])
         ->middleware('throttle:escritura')
         ->name('profile.destroy');
+
+    // Administración: solo Admin. Depuración total de datos de inventario.
+    Route::middleware('role:Admin')->prefix('administracion')->name('admin.')->group(function () {
+        Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::post('depurar', [AdminController::class, 'depurar'])
+            ->middleware('throttle:depuracion')
+            ->name('depurar');
+    });
 });
 
 require __DIR__.'/auth.php';

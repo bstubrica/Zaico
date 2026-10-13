@@ -51,4 +51,28 @@ return [
         'usuario' => env('ZAICO_SNIPEC_USUARIO'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Depuración total del inventario (Administración)
+    |--------------------------------------------------------------------------
+    |
+    | Módulo de emergencia que borra físicamente los datos de inventario
+    | (equipos, personal, movimientos, mantenimientos, importaciones, alertas
+    | y notificaciones), conservando usuarios, catálogo de estados y la
+    | estructura de la base de datos.
+    |
+    | La contraseña se guarda como hash (bcrypt) generado con:
+    |   php artisan tinker --execute 'echo Hash::make("tu-contraseña");'
+    |
+    | Por seguridad la operación se bloquea en producción salvo que se habilite
+    | explícitamente con ZAICO_DEPURACION_HABILITADO=true.
+    |
+    */
+
+    'depuracion' => [
+        'password_hash' => env('ZAICO_DEPURACION_PASSWORD_HASH'),
+        'frase' => env('ZAICO_DEPURACION_FRASE', 'BORRAR TODO EL INVENTARIO'),
+        'habilitado_en_produccion' => (bool) env('ZAICO_DEPURACION_HABILITADO', false),
+    ],
+
 ];

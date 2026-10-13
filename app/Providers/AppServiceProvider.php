@@ -33,5 +33,9 @@ class AppServiceProvider extends ServiceProvider
         // Consultas de lectura intensivas (exportaciones, API, auditoría).
         RateLimiter::for('consulta', fn (Request $request) => Limit::perMinute(120)
             ->by($request->user()?->id ?: $request->ip()));
+
+        // Operación destructiva e irreversible: margen muy estrecho.
+        RateLimiter::for('depuracion', fn (Request $request) => Limit::perMinute(3)
+            ->by($request->user()?->id ?: $request->ip()));
     }
 }

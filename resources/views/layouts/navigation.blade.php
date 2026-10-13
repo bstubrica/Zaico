@@ -90,6 +90,19 @@
                 </div>
             </div>
         @endif
+
+        @if (auth()->user()->isAdmin())
+            <div>
+                <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Sistema</p>
+                <div class="space-y-1">
+                    <a href="{{ route('admin.index') }}"
+                       class="sidebar-link {{ request()->routeIs('admin.*') ? 'sidebar-link-active' : '' }}">
+                        <x-icon name="shield" :size="20" />
+                        <span>Administración</span>
+                    </a>
+                </div>
+            </div>
+        @endif
     </nav>
 
     <!-- Usuario -->
