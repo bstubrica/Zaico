@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Activo;
 use App\Models\EvidenciaMantenimiento;
 use App\Models\Mantenimiento;
+use App\Services\Concerns\BusquedaAproximada;
 use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 
 class MantenimientoService
 {
+    use BusquedaAproximada;
     use PaginacionAcotada;
 
     private const DIRECTORIO = 'uploads/mantenimientos';
@@ -81,17 +83,25 @@ class MantenimientoService
      */
     public function consultaGlobal(array $filtros): Builder
     {
-        return Mantenimiento::query()
-            ->with(['activo:id,Nombre_de_activo,Etiqueta_activo', 'usuario:id,name', 'evidencias'])
-            ->when($filtros['desde'] ?? null,
-                fn ($query, $desde) => $query->whereDate('Fecha_mantenimiento', '>=', $desde))
-            ->when($filtros['hasta'] ?? null,
-                fn ($query, $hasta) => $query->whereDate('Fecha_mantenimiento', '<=', $hasta))
-            ->when($filtros['activo'] ?? null, function ($query, $activo) {
-                $query->whereHas('activo', fn ($where) => $where
-                    ->where('Nombre_de_activo', 'ilike', "%{$activo}%")
-                    ->orWhere('Etiqueta_activo', 'ilike', "%{$activo}%"));
-            })
+        $query = Mantenimiento::query()
+            ->with(['activo:id,Nombre_de_activo,Etiqueta_activo', 'usuario:id,name', 'evidencias']);
+
+        $this->aplicarRangoFechas(
+            $query,
+            'Fecha_mantenimiento',
+            $filtros['desde'] ?? null,
+            $filtros['hasta'] ?? null,
+        );
+
+        $query->when($filtros['activo'] ?? null, function ($query, $activo) {
+            $query->whereHas('activo', fn ($where) => $this->aplicarBusqueda(
+                $where,
+                ['Nombre_de_activo', 'Etiqueta_activo'],
+                $activo,
+            ));
+        });
+
+        return $query
             ->orderByDesc('Fecha_mantenimiento')
             ->orderByDesc('id');
     }

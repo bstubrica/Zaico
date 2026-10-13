@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Models\Asignacion;
 use App\Models\HistorialEvento;
+use App\Services\Concerns\BusquedaAproximada;
 use Illuminate\Database\Eloquent\Builder;
 
 class HistorialService
 {
+    use BusquedaAproximada;
+
     /**
      * Consulta base del historial de asignaciones con filtros (sin paginar).
      *
@@ -16,14 +19,23 @@ class HistorialService
      */
     public function consultaAsignaciones(array $filtros): Builder
     {
-        return Asignacion::query()
-            ->with(['activo:id,Nombre_de_activo,Etiqueta_activo,Estado', 'personal:id,Nombre,Apellido', 'usuario:id,name'])
-            ->when($filtros['desde'] ?? null,
-                fn ($query, $desde) => $query->whereDate('Fecha_asignacion', '>=', $desde))
-            ->when($filtros['hasta'] ?? null,
-                fn ($query, $hasta) => $query->whereDate('Fecha_asignacion', '<=', $hasta))
-            ->when($filtros['personal_id'] ?? null,
-                fn ($query, $personalId) => $query->where('fk_Personal', $personalId))
+        $query = Asignacion::query()
+            ->with(['activo:id,Nombre_de_activo,Etiqueta_activo,Estado', 'personal:id,Nombre,Apellido', 'usuario:id,name']);
+
+        $this->aplicarRangoFechas(
+            $query,
+            'Fecha_asignacion',
+            $filtros['desde'] ?? null,
+            $filtros['hasta'] ?? null,
+        );
+
+        $query->when($filtros['personal_id'] ?? null, function ($query, $personalId) {
+            if (is_numeric($personalId) && (int) $personalId > 0) {
+                $query->where('fk_Personal', (int) $personalId);
+            }
+        });
+
+        return $query
             ->orderByDesc('Fecha_asignacion')
             ->orderByDesc('id');
     }

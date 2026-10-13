@@ -82,7 +82,11 @@ class SincronizarSnipec extends Command
     {
         $referencia = $referencia ?: config('zaico.sincronizacion.usuario');
 
-        if ($referencia !== null) {
+        if (is_string($referencia)) {
+            $referencia = trim($referencia);
+        }
+
+        if ($referencia !== null && $referencia !== '') {
             $columna = ctype_digit((string) $referencia) ? 'id' : 'email';
 
             return User::query()->where($columna, $referencia)->first();

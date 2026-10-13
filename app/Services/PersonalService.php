@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Asignacion;
 use App\Models\Personal;
+use App\Services\Concerns\BusquedaAproximada;
 use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ use RuntimeException;
 
 class PersonalService
 {
+    use BusquedaAproximada;
     use PaginacionAcotada;
 
     /**
@@ -24,13 +26,11 @@ class PersonalService
     {
         return Personal::query()
             ->withCount(['asignaciones as asignaciones_activas' => fn ($query) => $query->activas()])
-            ->when($filtros['termino'] ?? null, function ($query, $termino) {
-                $query->where(fn ($where) => $where
-                    ->where('Nombre', 'ilike', "%{$termino}%")
-                    ->orWhere('Apellido', 'ilike', "%{$termino}%")
-                    ->orWhere('Nombre_usuario', 'ilike', "%{$termino}%")
-                    ->orWhere('Cargo', 'ilike', "%{$termino}%"));
-            })
+            ->when($filtros['termino'] ?? null, fn ($query, $termino) => $this->aplicarBusqueda(
+                $query,
+                ['Nombre', 'Apellido', 'Nombre_usuario', 'Cargo'],
+                $termino,
+            ))
             ->when($filtros['estado'] ?? null,
                 fn ($query, $estado) => $query->where('Estado', $estado))
             ->orderBy('Apellido')

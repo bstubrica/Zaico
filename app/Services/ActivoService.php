@@ -6,6 +6,7 @@ use App\Models\Activo;
 use App\Models\Asignacion;
 use App\Models\EstadoActivo;
 use App\Models\Personal;
+use App\Services\Concerns\BusquedaAproximada;
 use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,6 +17,7 @@ use RuntimeException;
 
 class ActivoService
 {
+    use BusquedaAproximada;
     use PaginacionAcotada;
 
     public function __construct(private readonly HistorialService $historial) {}
@@ -30,22 +32,34 @@ class ActivoService
     {
         return Activo::query()
             ->with(['estadoCatalogo', 'asignacionActiva.personal'])
-            ->when($filtros['termino'] ?? null, function ($query, $termino) {
-                $query->where(fn ($where) => $where
-                    ->where('Nombre_de_activo', 'ilike', "%{$termino}%")
-                    ->orWhere('Serial', 'ilike', "%{$termino}%")
-                    ->orWhere('Etiqueta_activo', 'ilike', "%{$termino}%")
-                    ->orWhere('Modelo', 'ilike', "%{$termino}%"));
-            })
+            ->when($filtros['termino'] ?? null, fn ($query, $termino) => $this->aplicarBusqueda(
+                $query,
+                ['Nombre_de_activo', 'Serial', 'Etiqueta_activo', 'Modelo'],
+                $termino,
+            ))
             ->when($filtros['categoria'] ?? null,
                 fn ($query, $categoria) => $query->where('Categoria', $categoria))
             ->when($filtros['estado'] ?? null, function ($query, $estado) {
-                $query->whereHas('estadoCatalogo', fn ($where) => $where->where('Nombre', $estado)->orWhere('Grupo', $estado));
+                // El grupo vive denormalizado en `Estado`; `fk_estado` puede
+                // faltar en activos importados, así que se considera también.
+                $query->where(function ($sub) use ($estado) {
+                    $sub->where('Estado', $estado)
+                        ->orWhereHas('estadoCatalogo', fn ($where) => $where
+                            ->where('Nombre', $estado)
+                            ->orWhere('Grupo', $estado));
+                });
             })
-            ->when($filtros['ubicacion'] ?? null,
-                fn ($query, $ubicacion) => $query->where('Ubicacion', 'ilike', "%{$ubicacion}%"))
+            ->when($filtros['ubicacion'] ?? null, fn ($query, $ubicacion) => $this->aplicarBusqueda(
+                $query,
+                ['Ubicacion'],
+                $ubicacion,
+            ))
             ->when($filtros['asignado_a'] ?? null, function ($query, $asignadoA) {
-                $query->whereHas('asignacionActiva.personal', fn ($where) => $where->whereRaw('trim("Nombre" || \' \' || "Apellido") ilike ?', ["%{$asignadoA}%"]));
+                $query->whereHas('asignacionActiva.personal', fn ($where) => $this->aplicarBusqueda(
+                    $where,
+                    [DB::raw("trim(\"Nombre\" || ' ' || \"Apellido\")")],
+                    $asignadoA,
+                ));
             })
             ->orderBy('Nombre_de_activo')
             ->orderBy('id');
