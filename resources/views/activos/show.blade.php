@@ -62,7 +62,7 @@
                         <button type="button" role="tab" @click="tab = 'auditoria'; cargarEventos()"
                                 :class="tab === 'auditoria' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800'"
                                 class="-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition">
-                            <x-icon name="shield" :size="18" /> Auditoría
+                            <x-icon name="shield" :size="18" /> Historial de movimientos
                         </button>
                     @endif
                 </nav>
