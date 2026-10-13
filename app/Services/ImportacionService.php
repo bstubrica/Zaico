@@ -9,6 +9,7 @@ use App\Models\EstadoActivo;
 use App\Models\ImportacionDetalle;
 use App\Models\ImportacionLog;
 use App\Models\Personal;
+use App\Services\Concerns\LimiteLote;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,8 @@ use Throwable;
  */
 class ImportacionService
 {
+    use LimiteLote;
+
     private const LOTE = 500;
 
     /** @var array<int, string> Columnas críticas que deben existir en la cabecera. */
@@ -66,9 +69,11 @@ class ImportacionService
             $numero = 0;
             while (($registro = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
                 $numero++;
-                if (count($registro) < 3) {
+
+                if ($this->filaVacia($registro) || count($registro) < 3) {
                     continue;
                 }
+
                 $fila = [];
                 foreach ($mapa as $titulo => $indice) {
                     $fila[$titulo] = isset($registro[$indice]) ? (string) $registro[$indice] : '';
@@ -240,8 +245,8 @@ class ImportacionService
      * @param  Collection<string, int>  $personasPorUsuario
      * @param  Collection<string, Activo>  $activosPorEtiqueta
      * @param  array<string, array<int, string>>  $serialesPorEtiqueta
-     * @param  array<string, true>  $etiquetasVistas
-     * @param  array<string, true>  $serialesVistos
+     * @param  array<string, int>  $etiquetasVistas
+     * @param  array<string, int>  $serialesVistos
      * @return array<string, mixed>
      */
     private function planearFila(int $numero, array $fila, Collection $estados, Collection $personasPorUsuario, Collection $activosPorEtiqueta, array $serialesPorEtiqueta, array &$etiquetasVistas, array &$serialesVistos): array
@@ -265,7 +270,7 @@ class ImportacionService
         }
 
         if (isset($etiquetasVistas[$etiqueta])) {
-            $plan['mensaje'] = 'Etiqueta repetida en el archivo; se conserva el registro ya importado.';
+            $plan['mensaje'] = "Etiqueta repetida en el archivo (ya vista en la fila {$etiquetasVistas[$etiqueta]}); se conserva el registro ya importado.";
 
             return $plan;
         }
@@ -277,6 +282,10 @@ class ImportacionService
         if ($estadoNombre === '') {
             return $this->error($plan, 'Estado vacío.');
         }
+
+        $tipo = trim($fila['tipo'] ?? '');
+        $username = trim($fila['username'] ?? '');
+        $asignado = trim($fila['asignado'] ?? '');
 
         $estado = $estados->get($estadoNombre);
         $estadoNuevo = $estado === null;
@@ -297,6 +306,13 @@ class ImportacionService
             $observaciones[] = $notas;
         }
 
+        // Cuando el activo no está asignado a una persona (Tipo location o vacío),
+        // el valor de `Asignado` es un área de ubicación y sirve de respaldo.
+        $ubicacion = trim($fila['localizacion'] ?? '');
+        if ($ubicacion === '' && $tipo !== 'user' && $asignado !== '') {
+            $ubicacion = $asignado;
+        }
+
         $attrs = array_filter([
             'Nombre_de_activo' => $nombre,
             'Etiqueta_activo' => $etiqueta,
@@ -304,8 +320,8 @@ class ImportacionService
             'Modelo' => $modelo !== '' ? $modelo : null,
             'Categoria' => ($c = trim($fila['categoria'] ?? '')) !== '' ? $c : null,
             'Fabricante' => ($f = trim($fila['fabricante'] ?? '')) !== '' ? $f : null,
-            'Ubicacion' => ($u = trim($fila['localizacion'] ?? '')) !== '' ? $u : null,
-            'Ubicacion_Predeterminada' => ($up = trim($fila['ubicacion predeterminada'] ?? '')) !== '' ? $up : null,
+            'Ubicacion' => $this->normalizarUbicacion($ubicacion),
+            'Ubicacion_Predeterminada' => $this->normalizarUbicacion(trim($fila['ubicacion predeterminada'] ?? '')),
             'Observaciones' => $observaciones !== [] ? implode("\n", $observaciones) : null,
         ], fn ($valor) => $valor !== null);
 
@@ -327,9 +343,9 @@ class ImportacionService
                 $avisoSerial = 'El serial ya existe en otro activo; se conserva el existente.';
             } elseif (isset($serialesVistos[$serial])) {
                 unset($attrs['Serial']);
-                $avisoSerial = 'Serial repetido en el archivo; se deja vacío y se conserva el primer registro.';
+                $avisoSerial = "Serial repetido en el archivo (ya visto en la fila {$serialesVistos[$serial]}); se deja vacío y se conserva el primer registro.";
             } else {
-                $serialesVistos[$serial] = true;
+                $serialesVistos[$serial] = $numero;
             }
         }
 
@@ -375,9 +391,6 @@ class ImportacionService
         }
 
         // PERSONAL + ASIGNACIÓN (solo Tipo = user)
-        $tipo = trim($fila['tipo'] ?? '');
-        $username = trim($fila['username'] ?? '');
-        $asignado = trim($fila['asignado'] ?? '');
         $personaId = null;
         $crearPersona = null;
         $crearAsignacion = false;
@@ -462,7 +475,7 @@ class ImportacionService
         $plan['compra_attrs'] = $compraAttrs;
 
         if ($plan['accion'] !== 'Error') {
-            $etiquetasVistas[$etiqueta] = true;
+            $etiquetasVistas[$etiqueta] = $numero;
         }
 
         return $plan;
@@ -643,6 +656,67 @@ class ImportacionService
             ->paginate(25);
     }
 
+    /**
+     * IDs de todos los registros del historial de importaciones, para la opción
+     * «seleccionar todos los resultados» del listado.
+     *
+     * @return array<int, int>
+     */
+    public function idsDeFiltro(): array
+    {
+        return ImportacionLog::query()->pluck('id')->all();
+    }
+
+    /**
+     * Borra un registro de importación y sus filas de detalle.
+     */
+    public function eliminar(ImportacionLog $log): void
+    {
+        DB::transaction(function () use ($log) {
+            $log->detalles()->delete();
+            $log->delete();
+        });
+    }
+
+    /**
+     * Borra un lote de registros de importación de forma atómica, junto con sus
+     * filas de detalle. Los IDs inexistentes se detallan como omitidos.
+     *
+     * @param  array<int, int>  $ids
+     * @return array{eliminados: int, omitidos: array<int, array{label: string, motivo: string}>}
+     */
+    public function eliminarLote(array $ids): array
+    {
+        $logs = ImportacionLog::query()
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $procesables = [];
+        $omitidos = [];
+
+        foreach ($ids as $id) {
+            $log = $logs->get($id);
+
+            if ($log === null) {
+                $omitidos[] = ['label' => "#{$id}", 'motivo' => 'No se encontró en el historial.'];
+
+                continue;
+            }
+
+            $procesables[] = $log;
+        }
+
+        DB::transaction(function () use ($procesables): void {
+            foreach ($procesables as $log) {
+                $log->detalles()->delete();
+                $log->delete();
+            }
+        });
+
+        return ['eliminados' => count($procesables), 'omitidos' => $omitidos];
+    }
+
     private function error(array $plan, string $mensaje): array
     {
         $plan['accion'] = 'Error';
@@ -651,9 +725,36 @@ class ImportacionService
         return $plan;
     }
 
+    /**
+     * Devuelve `N/A` cuando la ubicación viene vacía para no dejar el campo nulo.
+     */
+    private function normalizarUbicacion(string $valor): string
+    {
+        $valor = trim($valor);
+
+        return $valor === '' ? 'N/A' : $valor;
+    }
+
+    /**
+     * @param  array<int, string|null>  $registro
+     */
+    private function filaVacia(array $registro): bool
+    {
+        foreach ($registro as $celda) {
+            if (trim((string) $celda) !== '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function normalizarTitulo(string $titulo): string
     {
-        $sinAcentos = strtr($titulo, [
+        // Quita el BOM UTF-8 que algunos exportadores anteponen a la cabecera.
+        $sinBom = preg_replace('/^\xEF\xBB\xBF/', '', $titulo) ?? $titulo;
+
+        $sinAcentos = strtr($sinBom, [
             'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n', 'ü' => 'u',
             'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u', 'Ñ' => 'n', 'Ü' => 'u',
         ]);

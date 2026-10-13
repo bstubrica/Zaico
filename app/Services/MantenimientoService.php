@@ -6,6 +6,7 @@ use App\Models\Activo;
 use App\Models\EvidenciaMantenimiento;
 use App\Models\Mantenimiento;
 use App\Services\Concerns\BusquedaAproximada;
+use App\Services\Concerns\LimiteLote;
 use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 class MantenimientoService
 {
     use BusquedaAproximada;
+    use LimiteLote;
     use PaginacionAcotada;
 
     private const DIRECTORIO = 'uploads/mantenimientos';
@@ -117,6 +119,18 @@ class MantenimientoService
     }
 
     /**
+     * IDs de todos los mantenimientos que coinciden con el filtro activo, para
+     * la opción «seleccionar todos los resultados» del listado.
+     *
+     * @param  array{desde?: string|null, hasta?: string|null, activo?: string|null}  $filtros
+     * @return array<int, int>
+     */
+    public function idsDeFiltro(array $filtros): array
+    {
+        return $this->consultaGlobal($filtros)->pluck('id')->all();
+    }
+
+    /**
      * Descarga una evidencia solo a usuarios autenticados.
      */
     public function descargarEvidencia(EvidenciaMantenimiento $evidencia)
@@ -131,5 +145,65 @@ class MantenimientoService
             $evidencia->Ruta_archivo,
             $evidencia->Nombre_original
         );
+    }
+
+    /**
+     * Borra el mantenimiento y sus evidencias (filas y archivos en disco).
+     */
+    public function eliminar(Mantenimiento $mantenimiento): void
+    {
+        DB::transaction(function () use ($mantenimiento) {
+            foreach ($mantenimiento->evidencias()->get() as $evidencia) {
+                Storage::disk(self::DISCO)->delete($evidencia->Ruta_archivo);
+            }
+
+            $mantenimiento->evidencias()->delete();
+            $mantenimiento->delete();
+        });
+    }
+
+    /**
+     * Borra un lote de mantenimientos de forma atómica, junto con sus
+     * evidencias (filas y archivos en disco). Los IDs inexistentes se detallan
+     * como omitidos.
+     *
+     * @param  array<int, int>  $ids
+     * @return array{eliminados: int, omitidos: array<int, array{label: string, motivo: string}>}
+     */
+    public function eliminarLote(array $ids): array
+    {
+        $mantenimientos = Mantenimiento::query()
+            ->with('evidencias')
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $procesables = [];
+        $omitidos = [];
+
+        foreach ($ids as $id) {
+            $mantenimiento = $mantenimientos->get($id);
+
+            if ($mantenimiento === null) {
+                $omitidos[] = ['label' => "#{$id}", 'motivo' => 'No se encontró en el registro.'];
+
+                continue;
+            }
+
+            $procesables[] = $mantenimiento;
+        }
+
+        DB::transaction(function () use ($procesables): void {
+            foreach ($procesables as $mantenimiento) {
+                foreach ($mantenimiento->evidencias as $evidencia) {
+                    Storage::disk(self::DISCO)->delete($evidencia->Ruta_archivo);
+                }
+
+                $mantenimiento->evidencias()->delete();
+                $mantenimiento->delete();
+            }
+        });
+
+        return ['eliminados' => count($procesables), 'omitidos' => $omitidos];
     }
 }

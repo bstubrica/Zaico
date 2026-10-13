@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\EliminarImportacionesRequest;
 use App\Http\Requests\ImportarCsvRequest;
 use App\Models\ImportacionLog;
 use App\Services\ImportacionService;
@@ -99,5 +100,40 @@ class ImportacionesController extends Controller
         $importacion->load(['usuario:id,name', 'detalles']);
 
         return view('importaciones.show', compact('importacion'));
+    }
+
+    public function destroy(ImportacionLog $importacion): RedirectResponse
+    {
+        $this->importaciones->eliminar($importacion);
+
+        return back()->with('success', 'Registro de importación eliminado.');
+    }
+
+    public function destroyMasivo(EliminarImportacionesRequest $request): RedirectResponse
+    {
+        $ids = $request->boolean('todos')
+            ? $this->importaciones->idsDeFiltro()
+            : ($request->validated('ids') ?? []);
+
+        if ($ids === []) {
+            return back()->with('error', 'No hay registros de importación por eliminar.');
+        }
+
+        if (count($ids) > ImportacionService::MAXIMO_LOTE) {
+            return back()->with('error', 'La selección supera el límite de '.ImportacionService::MAXIMO_LOTE.' registros por operación.');
+        }
+
+        $resultado = $this->importaciones->eliminarLote($ids);
+
+        $redirect = back()
+            ->with('success', "Registros de importación eliminados: {$resultado['eliminados']} de ".count($ids).' seleccionados.');
+
+        if ($resultado['omitidos'] !== []) {
+            $redirect
+                ->with('error', 'Algunos registros no se procesaron (ver detalle).')
+                ->with('lote_omitidos', $resultado['omitidos']);
+        }
+
+        return $redirect;
     }
 }

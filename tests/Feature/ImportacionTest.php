@@ -192,6 +192,8 @@ class ImportacionTest extends TestCase
         $this->assertDatabaseHas('PERSONAL', ['Nombre_usuario' => 'Grodriguez', 'Nombre' => 'Glenire']);
         $this->assertDatabaseHas('ASIGNACIONES', ['Estado' => 'Activa', 'Observaciones' => 'Importado desde Snipec IT']);
         $this->assertDatabaseHas('ESTADOS_ACTIVO', ['Nombre' => 'Asignado (deployed)', 'Grupo' => 'Asignado']);
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIMP0001', 'Ubicacion' => 'Oficina Sistemas', 'Ubicacion_Predeterminada' => 'N/A']);
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIMP0002', 'Ubicacion' => 'Oficina Sistemas', 'Ubicacion_Predeterminada' => 'N/A']);
         $this->assertDatabaseHas('HISTORIAL_EVENTOS', ['Tipo_evento' => 'Importacion']);
         $this->assertNull(session('importacion_pendiente'));
 
@@ -240,6 +242,70 @@ class ImportacionTest extends TestCase
             'Etiqueta' => 'TBDUP0001',
             'Accion' => 'SinCambios',
         ]);
+    }
+
+    public function test_ubicacion_vacia_se_guarda_como_na_y_location_usa_el_area_asignada(): void
+    {
+        Storage::fake('local');
+
+        $csv = $this->csvFilas([
+            [
+                'Nombre de Activo' => 'Laptop sin ubicacion',
+                'Etiqueta de Activo' => 'TBUBI0001',
+                'Tipo' => 'user',
+                'Username' => 'jperez',
+                'Asignado' => 'Juan Perez',
+                'Estado' => 'Asignado (deployed)',
+            ],
+            [
+                'Nombre de Activo' => 'Proyector',
+                'Etiqueta de Activo' => 'TBUBI0002',
+                'Asignado' => 'TUBRICA > Edificio I > Sala',
+                'Tipo' => 'location',
+                'Estado' => 'Disponible (deployable)',
+            ],
+        ]);
+
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('ubicaciones.csv', $csv),
+            'modo' => 'commit',
+        ])->assertSessionHasNoErrors();
+
+        // Tipo user con Localización vacía: no usa el nombre de la persona, se guarda N/A.
+        $this->assertDatabaseHas('ACTIVOS', [
+            'Etiqueta_activo' => 'TBUBI0001',
+            'Ubicacion' => 'N/A',
+            'Ubicacion_Predeterminada' => 'N/A',
+        ]);
+
+        // Tipo location con Localización vacía: usa el área de `Asignado`.
+        $this->assertDatabaseHas('ACTIVOS', [
+            'Etiqueta_activo' => 'TBUBI0002',
+            'Ubicacion' => 'TUBRICA > Edificio I > Sala',
+        ]);
+    }
+
+    public function test_parser_tolera_bom_utf8_y_filas_vacias(): void
+    {
+        Storage::fake('local');
+
+        $csv = "\xEF\xBB\xBF".$this->csvFilas([
+            ['Nombre de Activo' => 'Equipo BOM', 'Etiqueta de Activo' => 'TBBOM001', 'Estado' => 'Disponible (deployable)'],
+        ]);
+
+        // Fila con celdas vacías: antes generaba un error; ahora se ignora.
+        $csv .= ",,,\n";
+
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('bom.csv', $csv),
+            'modo' => 'commit',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBBOM001', 'Ubicacion' => 'N/A']);
+
+        $log = ImportacionLog::latest('id')->first();
+        $this->assertSame(1, $log->Insertadas);
+        $this->assertSame(0, $log->Errores);
     }
 
     public function test_csv_con_columnas_invalidas_es_rechazado(): void

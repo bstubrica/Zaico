@@ -55,7 +55,8 @@
         </div>
 
         {{-- Historial --}}
-        <div class="card lg:col-span-2">
+        <div class="card lg:col-span-2"
+             x-data="seleccionLote({ clave: 'sel:importaciones', total: {{ $historial->total() }}, pagina: {{ json_encode($historial->pluck('id')->all()) }}, mensaje: 'Se eliminarán {n} registros de importación junto con su detalle.', mensajeGrande: 'Son {n} registros de importación. Se eliminarán de forma permanente. ¿Continuar?' })">
             <div class="card-header">
                 <h3 class="card-title">Historial de importaciones</h3>
             </div>
@@ -67,6 +68,12 @@
                     <table class="table">
                         <thead>
                             <tr>
+                                <th class="w-10">
+                                    <input type="checkbox" aria-label="Seleccionar todos"
+                                           class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                           :checked="todosVisibles()"
+                                           @change="alternarVisibles($event.target.checked)">
+                                </th>
                                 <th>Fecha</th>
                                 <th>Archivo</th>
                                 <th>Modo</th>
@@ -80,6 +87,12 @@
                         <tbody>
                             @foreach ($historial as $log)
                                 <tr>
+                                    <td class="w-10">
+                                        <input type="checkbox" value="{{ $log->id }}"
+                                               class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                               :checked="estaSeleccionado({{ $log->id }})"
+                                               @change="alternar({{ $log->id }}, $event.target.checked)">
+                                    </td>
                                     <td class="whitespace-nowrap text-slate-500">{{ $log->Fecha?->format('d/m/Y H:i') }}</td>
                                     <td class="font-medium text-slate-900">{{ \Illuminate\Support\Str::limit($log->Nombre_archivo, 32) }}</td>
                                     <td>
@@ -89,8 +102,14 @@
                                     <td class="text-center text-emerald-700">{{ $log->Insertadas }}</td>
                                     <td class="text-center text-sky-700">{{ $log->Actualizadas }}</td>
                                     <td class="text-center {{ $log->Errores > 0 ? 'font-semibold text-rose-700' : 'text-slate-400' }}">{{ $log->Errores }}</td>
-                                    <td class="text-right">
+                                    <td class="text-right whitespace-nowrap">
                                         <a href="{{ route('importaciones.show', $log) }}" class="link">Ver detalle</a>
+                                        <form method="POST" action="{{ route('importaciones.destroy', $log) }}" class="inline"
+                                              onsubmit="return confirm('¿Eliminar este registro de importación y su detalle?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="link ms-3 text-rose-600">Eliminar</button>
+                                        </form>
                                     </td>
                                 </tr>
                             @endforeach
@@ -98,10 +117,20 @@
                     </table>
                 </div>
 
+                <x-seleccion.formulario id="bulk-importaciones" method="POST"
+                                        action="{{ route('importaciones.eliminar-masivo') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger" :disabled="cantidad() === 0">
+                        <x-icon name="trash" :size="18" /> Eliminar seleccionados
+                    </button>
+                </x-seleccion.formulario>
+
                 <div class="border-t border-slate-200 px-4 py-3">
                     {{ $historial->links() }}
                 </div>
             @endif
         </div>
     </div>
+
+    <x-resultado-lote />
 </x-app-layout>

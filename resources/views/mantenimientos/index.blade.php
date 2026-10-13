@@ -33,7 +33,8 @@
         </div>
     </form>
 
-    <div class="card">
+    <div class="card"
+         x-data="seleccionLote({ clave: 'sel:mantenimientos', total: {{ $mantenimientos->total() }}, pagina: {{ json_encode($mantenimientos->pluck('id')->all()) }}, mensaje: 'Se eliminarán {n} mantenimientos junto con sus evidencias y archivos.', mensajeGrande: 'Son {n} mantenimientos y sus evidencias se borrarán de forma permanente. ¿Continuar?' })">
         <div class="card-header">
             <h3 class="card-title">
                 Resultados
@@ -49,17 +50,36 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            @if (auth()->user()->puedeEscribir())
+                                <th class="w-10">
+                                    <input type="checkbox" aria-label="Seleccionar todos"
+                                           class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                           :checked="todosVisibles()"
+                                           @change="alternarVisibles($event.target.checked)">
+                                </th>
+                            @endif
                             <th>Fecha</th>
                             <th>Equipo</th>
                             <th>Tipo</th>
                             <th class="hidden md:table-cell">Descripción</th>
                             <th class="hidden md:table-cell">Registrado por</th>
                             <th class="text-center">Evidencias</th>
+                            @if (auth()->user()->puedeEscribir())
+                                <th class="text-right">Acciones</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($mantenimientos as $mantenimiento)
                             <tr>
+                                @if (auth()->user()->puedeEscribir())
+                                    <td class="w-10">
+                                        <input type="checkbox" value="{{ $mantenimiento->id }}"
+                                               class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                               :checked="estaSeleccionado({{ $mantenimiento->id }})"
+                                               @change="alternar({{ $mantenimiento->id }}, $event.target.checked)">
+                                    </td>
+                                @endif
                                 <td>{{ $mantenimiento->Fecha_mantenimiento?->format('d/m/Y') }}</td>
                                 <td class="font-medium">
                                     <a class="link" href="{{ route('activos.show', $mantenimiento->fk_activo) }}">
@@ -79,15 +99,43 @@
                                         <span class="text-slate-400">—</span>
                                     @endif
                                 </td>
+                                @if (auth()->user()->puedeEscribir())
+                                    <td class="text-right whitespace-nowrap">
+                                        <form method="POST" action="{{ route('mantenimientos.destroy', $mantenimiento) }}"
+                                              class="inline"
+                                              onsubmit="return confirm('¿Eliminar este mantenimiento y sus evidencias?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="link text-rose-600">Eliminar</button>
+                                        </form>
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
 
+            @if (auth()->user()->puedeEscribir())
+                <x-seleccion.formulario id="bulk-mantenimientos" method="POST"
+                                        action="{{ route('mantenimientos.eliminar-masivo') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger" :disabled="cantidad() === 0">
+                        <x-icon name="trash" :size="18" /> Eliminar seleccionados
+                    </button>
+                    @foreach (['desde', 'hasta', 'activo'] as $campo)
+                        @if (filled($filtros[$campo] ?? null))
+                            <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
+                        @endif
+                    @endforeach
+                </x-seleccion.formulario>
+            @endif
+
             <div class="border-t border-slate-200 px-4 py-3">
                 {{ $mantenimientos->links() }}
             </div>
         @endif
     </div>
+
+    <x-resultado-lote />
 </x-app-layout>

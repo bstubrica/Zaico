@@ -7,6 +7,7 @@ use App\Models\Asignacion;
 use App\Models\EstadoActivo;
 use App\Models\Personal;
 use App\Services\Concerns\BusquedaAproximada;
+use App\Services\Concerns\LimiteLote;
 use App\Services\Concerns\PaginacionAcotada;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,7 @@ use RuntimeException;
 class ActivoService
 {
     use BusquedaAproximada;
+    use LimiteLote;
     use PaginacionAcotada;
 
     public function __construct(private readonly HistorialService $historial) {}
@@ -73,6 +75,18 @@ class ActivoService
         return $this->consultaListado($filtros)
             ->paginate($this->tamanoPagina($filtros['tamano'] ?? null))
             ->withQueryString();
+    }
+
+    /**
+     * IDs de todos los activos que coinciden con el filtro activo, para la
+     * opción «seleccionar todos los resultados» del listado.
+     *
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, asignado_a?: string}  $filtros
+     * @return array<int, int>
+     */
+    public function idsDeFiltro(array $filtros): array
+    {
+        return $this->consultaListado($filtros)->pluck('id')->all();
     }
 
     /**
@@ -135,6 +149,93 @@ class ActivoService
 
             return $activo->fresh('estadoCatalogo');
         });
+    }
+
+    /**
+     * Desincorporación (baja lógica): cambia el estado a «Desincorporado» sin
+     * borrar la fila ni su historial.
+     */
+    public function desincorporar(Activo $activo, string $motivo, int $usuarioId): Activo
+    {
+        $grupoActual = $activo->estadoCatalogo?->Grupo ?? $activo->Estado;
+
+        if ($activo->asignacionActiva()->exists()) {
+            throw new RuntimeException('No se puede desincorporar: el activo tiene una asignación activa. Devuélvalo primero.');
+        }
+
+        if ($grupoActual === 'Desincorporado') {
+            throw new RuntimeException('El activo ya está desincorporado.');
+        }
+
+        $estadoDesincorporado = EstadoActivo::where('Grupo', 'Desincorporado')->first();
+
+        if ($estadoDesincorporado === null) {
+            throw new RuntimeException('No hay un estado de desincorporación en el catálogo; consulte al administrador.');
+        }
+
+        return $this->cambiarEstado($activo, $estadoDesincorporado->id, $motivo, $usuarioId);
+    }
+
+    /**
+     * Desincorpora (baja lógica) un lote de activos de forma atómica: o se
+     * desincorporan todos los procesables o no se aplica ninguno. Los que no
+     * cumplen las reglas (asignación activa o ya desincorporados) se excluyen
+     * antes de abrir la transacción y se detallan, para que una omisión
+     * esperada no anule el resto del lote.
+     *
+     * @param  array<int, int>  $ids
+     * @return array{desincorporados: int, omitidos: array<int, array{label: string, motivo: string}>}
+     */
+    public function desincorporarLote(array $ids, string $motivo, int $usuarioId): array
+    {
+        $estadoDesincorporado = EstadoActivo::where('Grupo', 'Desincorporado')->first();
+
+        if ($estadoDesincorporado === null) {
+            throw new RuntimeException('No hay un estado de desincorporación en el catálogo; consulte al administrador.');
+        }
+
+        $activos = Activo::query()
+            ->with(['estadoCatalogo', 'asignacionActiva'])
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $procesables = [];
+        $omitidos = [];
+
+        foreach ($ids as $id) {
+            $activo = $activos->get($id);
+
+            if ($activo === null) {
+                $omitidos[] = ['label' => "#{$id}", 'motivo' => 'No se encontró en el inventario.'];
+
+                continue;
+            }
+
+            if ($activo->asignacionActiva !== null) {
+                $omitidos[] = ['label' => $activo->Etiqueta_activo, 'motivo' => 'Tiene una asignación activa; devuelva el equipo primero.'];
+
+                continue;
+            }
+
+            $grupoActual = $activo->estadoCatalogo?->Grupo ?? $activo->Estado;
+
+            if ($grupoActual === 'Desincorporado') {
+                $omitidos[] = ['label' => $activo->Etiqueta_activo, 'motivo' => 'Ya está desincorporado.'];
+
+                continue;
+            }
+
+            $procesables[] = $activo;
+        }
+
+        DB::transaction(function () use ($procesables, $estadoDesincorporado, $motivo, $usuarioId): void {
+            foreach ($procesables as $activo) {
+                $this->cambiarEstado($activo, $estadoDesincorporado->id, $motivo, $usuarioId);
+            }
+        });
+
+        return ['desincorporados' => count($procesables), 'omitidos' => $omitidos];
     }
 
     /**

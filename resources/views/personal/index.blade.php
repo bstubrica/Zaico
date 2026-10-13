@@ -38,7 +38,8 @@
         </div>
     </form>
 
-    <div class="card">
+    <div class="card"
+         x-data="seleccionLote({ clave: 'sel:personal', total: {{ $personas->total() }}, pagina: {{ json_encode($personas->pluck('id')->all()) }}, mensaje: 'Se darán de baja {n} personas. No podrán recibir equipos.', mensajeGrande: 'Son {n} personas. La baja se aplicará de una sola vez a todas las seleccionadas. ¿Continuar?' })">
         <div class="card-header">
             <h3 class="card-title">
                 Resultados
@@ -62,6 +63,14 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            @if (auth()->user()->puedeEscribir())
+                                <th class="w-10">
+                                    <input type="checkbox" aria-label="Seleccionar todos"
+                                           class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                           :checked="todosVisibles()"
+                                           @change="alternarVisibles($event.target.checked)">
+                                </th>
+                            @endif
                             <th>Nombre completo</th>
                             <th>Usuario</th>
                             <th class="hidden md:table-cell">Cargo</th>
@@ -73,6 +82,14 @@
                     <tbody>
                         @foreach ($personas as $persona)
                             <tr>
+                                @if (auth()->user()->puedeEscribir())
+                                    <td class="w-10">
+                                        <input type="checkbox" value="{{ $persona->id }}"
+                                               class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                               :checked="estaSeleccionado({{ $persona->id }})"
+                                               @change="alternar({{ $persona->id }}, $event.target.checked)">
+                                    </td>
+                                @endif
                                 <td class="font-medium">
                                     <a class="link" href="{{ route('personal.show', $persona) }}">{{ $persona->NombreCompleto }}</a>
                                 </td>
@@ -96,6 +113,12 @@
                                     <a href="{{ route('personal.show', $persona) }}" class="link">Ver</a>
                                     @if (auth()->user()->puedeEscribir())
                                         <a href="{{ route('personal.edit', $persona) }}" class="link ms-3">Editar</a>
+                                        <form method="POST" action="{{ route('personal.destroy', $persona) }}" class="inline"
+                                              onsubmit="return confirm('¿Dar de baja a {{ $persona->NombreCompleto }}?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="link ms-3 text-rose-600">Baja</button>
+                                        </form>
                                     @endif
                                 </td>
                             </tr>
@@ -104,9 +127,26 @@
                 </table>
             </div>
 
+            @if (auth()->user()->puedeEscribir())
+                <x-seleccion.formulario id="bulk-personal" method="POST"
+                                        action="{{ route('personal.baja-masiva') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger" :disabled="cantidad() === 0">
+                        <x-icon name="archive" :size="18" /> Dar de baja
+                    </button>
+                    @foreach (['termino', 'estado'] as $campo)
+                        @if (filled($filtros[$campo] ?? null))
+                            <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
+                        @endif
+                    @endforeach
+                </x-seleccion.formulario>
+            @endif
+
             <div class="border-t border-slate-200 px-4 py-3">
                 {{ $personas->links() }}
             </div>
         @endif
     </div>
+
+    <x-resultado-lote />
 </x-app-layout>

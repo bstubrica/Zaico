@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BajaPersonalRequest;
 use App\Http\Requests\StorePersonalRequest;
 use App\Models\Personal;
 use App\Services\PersonalService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use RuntimeException;
@@ -62,5 +64,34 @@ class PersonalController extends Controller
         }
 
         return redirect()->route('personal.index')->with('success', 'Persona dada de baja.');
+    }
+
+    public function bajaMasiva(BajaPersonalRequest $request): RedirectResponse
+    {
+        $ids = $request->boolean('todos')
+            ? $this->personal->idsDeFiltro($request->only(['termino', 'estado']))
+            : ($request->validated('ids') ?? []);
+
+        if ($ids === []) {
+            return redirect()->route('personal.index')->with('error', 'El filtro activo no coincide con ninguna persona.');
+        }
+
+        if (count($ids) > PersonalService::MAXIMO_LOTE) {
+            return redirect()->route('personal.index')
+                ->with('error', 'La selección supera el límite de '.PersonalService::MAXIMO_LOTE.' personas por operación. Acote el filtro e inténtelo de nuevo.');
+        }
+
+        $resultado = $this->personal->darDeBajaLote($ids);
+
+        $redirect = redirect()->route('personal.index')
+            ->with('success', "Personas dadas de baja: {$resultado['inactivados']} de ".count($ids).' seleccionadas.');
+
+        if ($resultado['omitidos'] !== []) {
+            $redirect
+                ->with('error', 'Algunas personas no se procesaron por reglas de negocio (ver detalle).')
+                ->with('lote_omitidos', $resultado['omitidos']);
+        }
+
+        return $redirect;
     }
 }

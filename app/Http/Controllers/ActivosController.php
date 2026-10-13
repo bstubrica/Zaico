@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AsignarEquipoRequest;
 use App\Http\Requests\CambiarEstadoRequest;
+use App\Http\Requests\DesincorporarActivoRequest;
+use App\Http\Requests\DesincorporarActivosMasivoRequest;
 use App\Http\Requests\DevolverEquipoRequest;
 use App\Http\Requests\StoreActivoRequest;
 use App\Http\Requests\UpdateActivoRequest;
@@ -16,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use RuntimeException;
 
 class ActivosController extends Controller
 {
@@ -103,7 +106,7 @@ class ActivosController extends Controller
     {
         try {
             $this->activos->asignar($activo, $request->validated(), $request->user()->id);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return back()->withErrors(['asignacion' => $e->getMessage()]);
         }
 
@@ -114,7 +117,7 @@ class ActivosController extends Controller
     {
         try {
             $this->activos->devolver($activo, $request->validated(), $request->user()->id);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return back()->withErrors(['devolucion' => $e->getMessage()]);
         }
 
@@ -131,6 +134,49 @@ class ActivosController extends Controller
         );
 
         return back()->with('success', 'Estado actualizado.');
+    }
+
+    public function desincorporar(DesincorporarActivoRequest $request, Activo $activo): RedirectResponse
+    {
+        try {
+            $this->activos->desincorporar($activo, $request->validated('motivo'), $request->user()->id);
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['desincorporar' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Equipo desincorporado.');
+    }
+
+    public function desincorporarMasivo(DesincorporarActivosMasivoRequest $request): RedirectResponse
+    {
+        $ids = $request->boolean('todos')
+            ? $this->activos->idsDeFiltro($request->only(['termino', 'categoria', 'estado', 'ubicacion', 'asignado_a']))
+            : ($request->validated('ids') ?? []);
+
+        if ($ids === []) {
+            return back()->with('error', 'El filtro activo no coincide con ningún equipo.');
+        }
+
+        if (count($ids) > ActivoService::MAXIMO_LOTE) {
+            return back()->with('error', 'La selección supera el límite de '.ActivoService::MAXIMO_LOTE.' equipos por operación. Acote el filtro e inténtelo de nuevo.');
+        }
+
+        try {
+            $resultado = $this->activos->desincorporarLote($ids, $request->validated('motivo'), $request->user()->id);
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['desincorporar' => $e->getMessage()]);
+        }
+
+        $redirect = back()
+            ->with('success', "Equipos desincorporados: {$resultado['desincorporados']} de ".count($ids).' seleccionados.');
+
+        if ($resultado['omitidos'] !== []) {
+            $redirect
+                ->with('error', 'Algunos equipos no se procesaron por reglas de negocio (ver detalle).')
+                ->with('lote_omitidos', $resultado['omitidos']);
+        }
+
+        return $redirect;
     }
 
     public function eventos(Activo $activo): JsonResponse

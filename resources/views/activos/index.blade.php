@@ -59,7 +59,8 @@
     </form>
 
     {{-- Listado --}}
-    <div class="card">
+    <div class="card"
+         x-data="seleccionLote({ clave: 'sel:activos', total: {{ $activos->total() }}, pagina: {{ json_encode($activos->pluck('id')->all()) }}, mensaje: 'Se desincorporarán {n} equipos. El estado cambiará a Desincorporado y quedará registrado en el historial.', mensajeGrande: 'Son {n} equipos. La desincorporación se aplicará de una sola vez a todos los seleccionados. ¿Continuar?' })">
         <div class="card-header">
             <h3 class="card-title">
                 Resultados
@@ -83,6 +84,14 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            @if (auth()->user()->puedeEscribir())
+                                <th class="w-10">
+                                    <input type="checkbox" aria-label="Seleccionar todos"
+                                           class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                           :checked="todosVisibles()"
+                                           @change="alternarVisibles($event.target.checked)">
+                                </th>
+                            @endif
                             <th>Etiqueta</th>
                             <th>Nombre</th>
                             <th class="hidden md:table-cell">Serial</th>
@@ -96,6 +105,14 @@
                     <tbody>
                         @foreach ($activos as $activo)
                             <tr>
+                                @if (auth()->user()->puedeEscribir())
+                                    <td class="w-10">
+                                        <input type="checkbox" value="{{ $activo->id }}"
+                                               class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                               :checked="estaSeleccionado({{ $activo->id }})"
+                                               @change="alternar({{ $activo->id }}, $event.target.checked)">
+                                    </td>
+                                @endif
                                 <td class="font-medium">
                                     <a class="link" href="{{ route('activos.show', $activo) }}">
                                         {{ $activo->Etiqueta_activo }}
@@ -111,6 +128,12 @@
                                     <a href="{{ route('activos.show', $activo) }}" class="link">Ver</a>
                                     @if (auth()->user()->puedeEscribir())
                                         <a href="{{ route('activos.edit', $activo) }}" class="link ms-3">Editar</a>
+                                        @if ($activo->estadoCatalogo?->Grupo !== 'Desincorporado')
+                                            <button type="button" class="link ms-3 text-rose-600"
+                                                    @click="$dispatch('open-modal', 'desincorporar-activo'); $dispatch('set-desincorporar', {{ $activo->id }})">
+                                                Desincorporar
+                                            </button>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>
@@ -119,9 +142,59 @@
                 </table>
             </div>
 
+            @if (auth()->user()->puedeEscribir())
+                <x-seleccion.formulario id="bulk-activos" method="POST"
+                                        action="{{ route('activos.desincorporar-masivo') }}">
+                    @csrf
+                    <div class="min-w-[16rem] flex-1">
+                        <label for="motivo-masivo" class="form-label">
+                            Motivo de la desincorporación *
+                        </label>
+                        <input type="text" id="motivo-masivo" name="motivo" required maxlength="500"
+                               class="form-control" placeholder="Ej.: Obsolescencia, reemplazo por lote…">
+                    </div>
+                    <button type="submit" class="btn btn-danger" :disabled="cantidad() === 0">
+                        <x-icon name="trash" :size="18" /> Desincorporar seleccionados
+                    </button>
+                    @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'asignado_a'] as $campo)
+                        @if (filled($filtros[$campo] ?? null))
+                            <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
+                        @endif
+                    @endforeach
+                </x-seleccion.formulario>
+            @endif
+
             <div class="border-t border-slate-200 px-4 py-3">
                 {{ $activos->links() }}
             </div>
         @endif
     </div>
+
+    <x-resultado-lote />
+
+    @if (auth()->user()->puedeEscribir())
+        <x-modal name="desincorporar-activo" maxWidth="md">
+            <div x-data="{ id: null }" @set-desincorporar.window="id = $event.detail">
+                <form method="POST" :action="'{{ url('activos') }}/' + (id ?? '') + '/desincorporar'" class="p-6">
+                    @csrf
+                    <h2 class="text-lg font-semibold text-slate-900">Desincorporar equipo</h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        El equipo pasará a estado <strong>Desincorporado</strong>. La operación no borra el registro ni su historial.
+                    </p>
+
+                    <x-input-label for="motivo-individual" value="Motivo *" class="mt-4" />
+                    <textarea id="motivo-individual" name="motivo" rows="3" required maxlength="500"
+                              class="form-control mt-1" placeholder="Ej.: Obsolescencia, daño irreparable…"></textarea>
+
+                    <div class="mt-5 flex justify-end gap-2">
+                        <button type="button" class="btn btn-ghost"
+                                @click="$dispatch('close-modal', 'desincorporar-activo')">Cancelar</button>
+                        <button type="submit" class="btn btn-danger" :disabled="id === null">
+                            <x-icon name="trash" :size="18" /> Desincorporar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </x-modal>
+    @endif
 </x-app-layout>

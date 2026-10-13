@@ -28,8 +28,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('activos/{activo}/mantenimientos', [MantenimientosController::class, 'store'])
             ->name('activos.mantenimientos.store');
 
+        // Desincorporación individual y masiva (baja lógica de equipos)
+        Route::post('activos/desincorporar', [ActivosController::class, 'desincorporarMasivo'])
+            ->name('activos.desincorporar-masivo');
+        Route::post('activos/{activo}/desincorporar', [ActivosController::class, 'desincorporar'])
+            ->name('activos.desincorporar');
+
         Route::resource('personal', PersonalController::class)->except(['show']);
         Route::get('personal/{personal}', [PersonalController::class, 'show'])->name('personal.show');
+
+        // Baja masiva de personal (la individual es el destroy del resource)
+        Route::post('personal/baja', [PersonalController::class, 'bajaMasiva'])
+            ->name('personal.baja-masiva');
 
         // Importación CSV: visible solo para Admin / SoporteTecnico
         Route::get('importaciones', [ImportacionesController::class, 'index'])->name('importaciones.index');
@@ -42,6 +52,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('importaciones/{importacion}', [ImportacionesController::class, 'show'])
             ->whereNumber('importacion')
             ->name('importaciones.show');
+        Route::delete('importaciones/{importacion}', [ImportacionesController::class, 'destroy'])
+            ->whereNumber('importacion')
+            ->name('importaciones.destroy');
+        Route::post('importaciones/eliminar', [ImportacionesController::class, 'destroyMasivo'])
+            ->name('importaciones.eliminar-masivo');
+
+        // Borrado de mantenimientos (individual y masivo)
+        Route::delete('mantenimientos/{mantenimiento}', [MantenimientosController::class, 'destroy'])
+            ->whereNumber('mantenimiento')
+            ->name('mantenimientos.destroy');
+        Route::post('mantenimientos/eliminar', [MantenimientosController::class, 'destroyMasivo'])
+            ->name('mantenimientos.eliminar-masivo');
 
         // Alertas de inventario (Fase 8)
         Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
