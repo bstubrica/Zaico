@@ -18,6 +18,20 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    /** Roles válidos del sistema, de mayor a menor privilegio. */
+    public const ROLES = ['Admin', 'SoporteTecnico', 'Auditor'];
+
+    /**
+     * Cuentas habilitadas por defecto (coincide con el valor por defecto de la
+     * columna `activo`). Se fija en el modelo para que las instancias recién
+     * creadas sean coherentes sin recargar desde la base de datos.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'activo' => true,
+    ];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -29,12 +43,18 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => 'string',
+            'activo' => 'boolean',
         ];
     }
 
     public function isAdmin(): bool
     {
         return $this->role === 'Admin';
+    }
+
+    public function estaActivo(): bool
+    {
+        return (bool) $this->activo;
     }
 
     public function puedeEscribir(): bool

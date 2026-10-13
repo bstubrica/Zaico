@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Administración" subtitle="Operaciones avanzadas sobre los datos del sistema" icon="shield" />
+        <x-page-header title="Administración" subtitle="Operaciones avanzadas sobre los datos del sistema" icon="shield">
+            <x-slot name="actions">
+                <a href="{{ route('admin.usuarios.index') }}" class="btn btn-secondary">
+                    <x-icon name="users" :size="18" /> Usuarios del sistema
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="mx-auto max-w-3xl space-y-5">

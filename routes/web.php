@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivosController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminUsuarioController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EstadosController;
@@ -119,6 +120,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('depurar', [AdminController::class, 'depurar'])
             ->middleware('throttle:depuracion')
             ->name('depurar');
+
+        // Gestión de usuarios del sistema (alta, modificación, habilitar/deshabilitar).
+        Route::get('usuarios', [AdminUsuarioController::class, 'index'])->name('usuarios.index');
+        Route::get('usuarios/nuevo', [AdminUsuarioController::class, 'create'])->name('usuarios.create');
+        Route::post('usuarios', [AdminUsuarioController::class, 'store'])
+            ->middleware('throttle:escritura')
+            ->name('usuarios.store');
+        Route::get('usuarios/{usuario}/editar', [AdminUsuarioController::class, 'edit'])->name('usuarios.edit');
+        Route::put('usuarios/{usuario}', [AdminUsuarioController::class, 'update'])
+            ->middleware('throttle:escritura')
+            ->name('usuarios.update');
+        Route::post('usuarios/{usuario}/estado', [AdminUsuarioController::class, 'toggleActivo'])
+            ->middleware('throttle:escritura')
+            ->name('usuarios.toggle');
     });
 });
 

@@ -21,6 +21,21 @@ class LoginRequest extends FormRequest
     }
 
     /**
+     * Normaliza el correo (sin espacios y en minúsculas) antes de validar y
+     * autenticar. La comparación de correo es sensible a mayúsculas según el
+     * motor de base de datos (p. ej. SQLite/PostgreSQL), por lo que normalizar
+     * evita falsos "auth.failed" cuando el usuario escribe con otra capitalización.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('email')) {
+            $this->merge([
+                'email' => Str::lower(trim((string) $this->input('email'))),
+            ]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -42,7 +57,11 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credenciales = $this->only('email', 'password');
+        // Solo las cuentas habilitadas pueden iniciar sesión.
+        $credenciales['activo'] = true;
+
+        if (! Auth::attempt($credenciales, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
