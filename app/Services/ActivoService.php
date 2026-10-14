@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Activo;
 use App\Models\Asignacion;
 use App\Models\EstadoActivo;
+use App\Models\ModeloActivo;
 use App\Models\Personal;
+use App\Models\Ubicacion;
 use App\Services\Concerns\BusquedaAproximada;
 use App\Services\Concerns\LimiteLote;
 use App\Services\Concerns\PaginacionAcotada;
@@ -27,7 +29,7 @@ class ActivoService
     /**
      * Consulta base del listado de activos con filtros (sin paginar).
      *
-     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, asignado_a?: string}  $filtros
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string}  $filtros
      * @return Builder<Activo>
      */
     public function consultaListado(array $filtros): Builder
@@ -56,6 +58,11 @@ class ActivoService
                 ['Ubicacion'],
                 $ubicacion,
             ))
+            ->when($filtros['modelo'] ?? null, fn ($query, $modelo) => $this->aplicarBusqueda(
+                $query,
+                ['Modelo'],
+                $modelo,
+            ))
             ->when($filtros['asignado_a'] ?? null, function ($query, $asignadoA) {
                 $query->whereHas('asignacionActiva.personal', fn ($where) => $this->aplicarBusqueda(
                     $where,
@@ -68,7 +75,7 @@ class ActivoService
     }
 
     /**
-     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, asignado_a?: string, tamano?: int}  $filtros
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string, tamano?: int}  $filtros
      */
     public function listar(array $filtros): LengthAwarePaginator
     {
@@ -81,7 +88,7 @@ class ActivoService
      * IDs de todos los activos que coinciden con el filtro activo, para la
      * opción «seleccionar todos los resultados» del listado.
      *
-     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, asignado_a?: string}  $filtros
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string}  $filtros
      * @return array<int, int>
      */
     public function idsDeFiltro(array $filtros): array
@@ -94,6 +101,8 @@ class ActivoService
      */
     public function crear(array $datos, int $usuarioId): Activo
     {
+        $datos = $this->sincronizarCatalogos($datos);
+
         return DB::transaction(function () use ($datos, $usuarioId) {
             $activo = Activo::create($datos);
 
@@ -113,6 +122,8 @@ class ActivoService
      */
     public function actualizar(Activo $activo, array $datos, int $usuarioId): Activo
     {
+        $datos = $this->sincronizarCatalogos($datos);
+
         return DB::transaction(function () use ($activo, $datos, $usuarioId) {
             $antes = $activo->only(array_keys($datos));
             $activo->update($datos);
@@ -342,6 +353,39 @@ class ActivoService
     public function historialAsignaciones(Activo $activo): Collection
     {
         return $activo->asignaciones()->with('personal')->orderByDesc('Fecha_asignacion')->get();
+    }
+
+    /**
+     * Sincroniza los campos de texto denormalizados (`Ubicacion` y `Modelo`)
+     * con la ubicación y el modelo elegidos del catálogo, que son los que
+     * consumen los reportes y Power BI. Si el catálogo se deja vacío, el texto
+     * también se limpia. Cuando el formulario no envía la clave, no se toca.
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<string, mixed>
+     */
+    private function sincronizarCatalogos(array $datos): array
+    {
+        if (array_key_exists('fk_ubicacion', $datos)) {
+            $datos['fk_ubicacion'] = $this->idOpcional($datos['fk_ubicacion']);
+            $datos['Ubicacion'] = $datos['fk_ubicacion'] === null
+                ? null
+                : Ubicacion::whereKey($datos['fk_ubicacion'])->value('Nombre');
+        }
+
+        if (array_key_exists('fk_modelo', $datos)) {
+            $datos['fk_modelo'] = $this->idOpcional($datos['fk_modelo']);
+            $datos['Modelo'] = $datos['fk_modelo'] === null
+                ? null
+                : ModeloActivo::whereKey($datos['fk_modelo'])->value('Nombre');
+        }
+
+        return $datos;
+    }
+
+    private function idOpcional(mixed $valor): ?int
+    {
+        return ($valor === null || $valor === '' || $valor === '0') ? null : (int) $valor;
     }
 
     /**

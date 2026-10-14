@@ -37,10 +37,16 @@
     </div>
 
     <div>
-        <x-input-label for="Modelo" value="Modelo" />
-        <x-text-input id="Modelo" name="Modelo" type="text" class="mt-1"
-                      :value="old('Modelo', $activo->Modelo)" />
-        <x-input-error :messages="$errors->get('Modelo')" />
+        <x-input-label for="fk_modelo" value="Modelo (catálogo)" />
+        <select id="fk_modelo" name="fk_modelo" class="form-control mt-1">
+            <option value="">— Sin asignar —</option>
+            @foreach ($modelos as $modelo)
+                <option value="{{ $modelo->id }}" @selected((int) old('fk_modelo', $activo->fk_modelo) === $modelo->id)>
+                    {{ $modelo->Nombre }}
+                </option>
+            @endforeach
+        </select>
+        <x-input-error :messages="$errors->get('fk_modelo')" />
     </div>
 
     <div>
@@ -51,10 +57,16 @@
     </div>
 
     <div>
-        <x-input-label for="Ubicacion" value="Ubicación" />
-        <x-text-input id="Ubicacion" name="Ubicacion" type="text" class="mt-1"
-                      :value="old('Ubicacion', $activo->Ubicacion)" />
-        <x-input-error :messages="$errors->get('Ubicacion')" />
+        <x-input-label for="fk_ubicacion" value="Ubicación (catálogo)" />
+        <select id="fk_ubicacion" name="fk_ubicacion" class="form-control mt-1">
+            <option value="">— Sin asignar —</option>
+            @foreach ($ubicaciones as $ubicacion)
+                <option value="{{ $ubicacion->id }}" @selected((int) old('fk_ubicacion', $activo->fk_ubicacion) === $ubicacion->id)>
+                    {{ $ubicacion->Nombre }}
+                </option>
+            @endforeach
+        </select>
+        <x-input-error :messages="$errors->get('fk_ubicacion')" />
     </div>
 
     <div>

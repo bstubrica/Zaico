@@ -29,6 +29,8 @@ class Activo extends Model
         'Direccion_MAC',
         'Imagen_Activo',
         'fk_estado',
+        'fk_ubicacion',
+        'fk_modelo',
     ];
 
     /**
@@ -48,6 +50,16 @@ class Activo extends Model
     public function estadoCatalogo(): BelongsTo
     {
         return $this->belongsTo(EstadoActivo::class, 'fk_estado', 'id');
+    }
+
+    public function ubicacionCatalogo(): BelongsTo
+    {
+        return $this->belongsTo(Ubicacion::class, 'fk_ubicacion', 'id');
+    }
+
+    public function modeloCatalogo(): BelongsTo
+    {
+        return $this->belongsTo(ModeloActivo::class, 'fk_modelo', 'id');
     }
 
     /**

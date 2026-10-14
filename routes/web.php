@@ -9,10 +9,12 @@ use App\Http\Controllers\EstadosController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\ImportacionesController;
 use App\Http\Controllers\MantenimientosController;
+use App\Http\Controllers\ModeloActivoController;
 use App\Http\Controllers\NotificacionesController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\UbicacionController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -38,6 +40,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('personal', PersonalController::class)->except(['show']);
         Route::get('personal/{personal}', [PersonalController::class, 'show'])->name('personal.show');
+
+        // Catálogos de inventario: ubicaciones y modelos de activos.
+        Route::resource('ubicaciones', UbicacionController::class)
+            ->except(['show'])
+            ->parameters(['ubicaciones' => 'ubicacion']);
+        Route::resource('modelos', ModeloActivoController::class)
+            ->except(['show'])
+            ->parameters(['modelos' => 'modelo']);
 
         // Baja masiva de personal (la individual es el destroy del resource)
         Route::post('personal/baja', [PersonalController::class, 'bajaMasiva'])

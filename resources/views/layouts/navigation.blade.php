@@ -13,6 +13,8 @@
                 ['ruta' => 'activos.buscar', 'patron' => 'activos.buscar', 'icono' => 'search', 'texto' => 'Búsqueda rápida'],
                 ['ruta' => 'personal.index', 'patron' => 'personal.*', 'icono' => 'users', 'texto' => 'Personal'],
                 ['ruta' => 'estados.index', 'patron' => 'estados.*', 'icono' => 'tag', 'texto' => 'Estados'],
+                ['ruta' => 'ubicaciones.index', 'patron' => 'ubicaciones.*', 'icono' => 'map-pin', 'texto' => 'Ubicaciones'],
+                ['ruta' => 'modelos.index', 'patron' => 'modelos.*', 'icono' => 'cpu-chip', 'texto' => 'Modelos'],
             ],
         ],
         [

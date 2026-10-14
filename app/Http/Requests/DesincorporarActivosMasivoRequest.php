@@ -32,6 +32,7 @@ class DesincorporarActivosMasivoRequest extends FormRequest
             'categoria' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:255'],
             'ubicacion' => ['nullable', 'string', 'max:255'],
+            'modelo' => ['nullable', 'string', 'max:255'],
             'asignado_a' => ['nullable', 'string', 'max:255'],
             'motivo' => ['required', 'string', 'max:500'],
         ];

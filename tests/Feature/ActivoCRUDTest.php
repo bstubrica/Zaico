@@ -6,7 +6,9 @@ use App\Models\Activo;
 use App\Models\Asignacion;
 use App\Models\EstadoActivo;
 use App\Models\HistorialEvento;
+use App\Models\ModeloActivo;
 use App\Models\Personal;
+use App\Models\Ubicacion;
 use App\Models\User;
 use Database\Seeders\EstadoSeeder;
 use Illuminate\Database\QueryException;
@@ -140,6 +142,66 @@ class ActivoCRUDTest extends TestCase
 
         $respuesta->assertSessionHasNoErrors();
         $this->assertDatabaseHas('ACTIVOS', ['id' => $activo->id, 'Estado' => 'Reparacion', 'fk_estado' => $reparacion->id]);
+    }
+
+    public function test_denormaliza_ubicacion_y_modelo_desde_el_catalogo(): void
+    {
+        $ubicacion = Ubicacion::create(['Nombre' => 'Piso 3', 'Estado' => 'Activo']);
+        $modelo = ModeloActivo::create(['Nombre' => 'Latitude 5520', 'Fabricante' => 'Dell']);
+
+        $this->actingAs($this->admin)->post('/activos', [
+            'Nombre_de_activo' => 'Laptop con catálogo',
+            'Etiqueta_activo' => 'TBCAT0001',
+            'Estado' => 'Disponible',
+            'fk_ubicacion' => $ubicacion->id,
+            'fk_modelo' => $modelo->id,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', [
+            'Etiqueta_activo' => 'TBCAT0001',
+            'fk_ubicacion' => $ubicacion->id,
+            'Ubicacion' => 'Piso 3',
+            'fk_modelo' => $modelo->id,
+            'Modelo' => 'Latitude 5520',
+        ]);
+    }
+
+    public function test_limpiar_el_catalogo_limpia_el_texto_denormalizado(): void
+    {
+        $ubicacion = Ubicacion::create(['Nombre' => 'Piso 3', 'Estado' => 'Activo']);
+
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop',
+            'Etiqueta_activo' => 'TBCAT0002',
+            'Estado' => 'Disponible',
+            'fk_ubicacion' => $ubicacion->id,
+            'Ubicacion' => 'Piso 3',
+        ]);
+
+        $this->actingAs($this->admin)->put("/activos/{$activo->id}", [
+            'Nombre_de_activo' => 'Laptop',
+            'Etiqueta_activo' => 'TBCAT0002',
+            'Estado' => 'Disponible',
+            'fk_ubicacion' => '',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', [
+            'id' => $activo->id,
+            'fk_ubicacion' => null,
+            'Ubicacion' => null,
+        ]);
+    }
+
+    public function test_rechaza_una_ubicacion_de_catalogo_inexistente(): void
+    {
+        $respuesta = $this->actingAs($this->admin)->post('/activos', [
+            'Nombre_de_activo' => 'Laptop',
+            'Etiqueta_activo' => 'TBCAT0003',
+            'Estado' => 'Disponible',
+            'fk_ubicacion' => 999999,
+        ]);
+
+        $respuesta->assertSessionHasErrors('fk_ubicacion');
     }
 
     public function test_rol_no_autorizado_recibe_403(): void

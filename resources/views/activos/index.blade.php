@@ -16,7 +16,7 @@
 
     {{-- Filtros --}}
     <form method="GET" action="{{ route('activos.index') }}" class="card card-body">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
                 <label for="termino" class="form-label">Buscar</label>
                 <input type="text" id="termino" name="termino" value="{{ $filtros['termino'] ?? '' }}"
@@ -49,7 +49,29 @@
                 <input type="text" id="asignado_a" name="asignado_a" value="{{ $filtros['asignado_a'] ?? '' }}"
                        placeholder="Nombre de la persona" class="form-control">
             </div>
-            <div class="flex items-end gap-2">
+            <div>
+                <label for="ubicacion" class="form-label">Ubicación</label>
+                <select id="ubicacion" name="ubicacion" class="form-control">
+                    <option value="">Todas</option>
+                    @foreach ($ubicaciones as $ubicacion)
+                        <option value="{{ $ubicacion->Nombre }}" @selected(($filtros['ubicacion'] ?? '') === $ubicacion->Nombre)>
+                            {{ $ubicacion->Nombre }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="modelo" class="form-label">Modelo</label>
+                <select id="modelo" name="modelo" class="form-control">
+                    <option value="">Todos</option>
+                    @foreach ($modelos as $modelo)
+                        <option value="{{ $modelo->Nombre }}" @selected(($filtros['modelo'] ?? '') === $modelo->Nombre)>
+                            {{ $modelo->Nombre }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="flex items-end gap-2 lg:col-span-2">
                 <button type="submit" class="btn btn-neutral flex-1">
                     <x-icon name="funnel" :size="18" /> Filtrar
                 </button>
@@ -156,7 +178,7 @@
                     <button type="submit" class="btn btn-danger" :disabled="cantidad() === 0">
                         <x-icon name="trash" :size="18" /> Desincorporar seleccionados
                     </button>
-                    @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'asignado_a'] as $campo)
+                    @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a'] as $campo)
                         @if (filled($filtros[$campo] ?? null))
                             <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
                         @endif
