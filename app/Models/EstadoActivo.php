@@ -9,6 +9,9 @@ class EstadoActivo extends Model
 {
     protected $table = 'ESTADOS_ACTIVO';
 
+    /** Grupos válidos del catálogo; es lo que se denormaliza en `ACTIVOS.Estado`. */
+    public const GRUPOS = ['Asignado', 'Disponible', 'Desincorporado', 'Defectuoso', 'Reparacion'];
+
     public $timestamps = false;
 
     protected $fillable = ['Nombre', 'Grupo', 'Deployed', 'Deployable', 'Estado'];

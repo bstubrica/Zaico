@@ -86,6 +86,8 @@ class SmokePantallasTest extends TestCase
             route('activos.mantenimientos', $activo),
             route('historial.index'),
             route('estados.index'),
+            route('estados.create'),
+            route('estados.edit', $estado),
             route('ubicaciones.index'),
             route('ubicaciones.create'),
             route('modelos.index'),

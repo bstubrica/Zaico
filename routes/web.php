@@ -48,6 +48,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('modelos', ModeloActivoController::class)
             ->except(['show'])
             ->parameters(['modelos' => 'modelo']);
+        Route::resource('estados', EstadosController::class)
+            ->except(['index', 'show'])
+            ->parameters(['estados' => 'estado']);
 
         // Baja masiva de personal (la individual es el destroy del resource)
         Route::post('personal/baja', [PersonalController::class, 'bajaMasiva'])

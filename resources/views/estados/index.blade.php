@@ -1,13 +1,29 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Estados de catálogo" subtitle="Catálogo de estados de los activos" icon="tag" />
+        <x-page-header title="Estados de catálogo" subtitle="Catálogo de estados de los activos" icon="tag">
+            <x-slot name="actions">
+                @if (auth()->user()->puedeEscribir())
+                    <a href="{{ route('estados.create') }}" class="btn btn-primary">
+                        <x-icon name="plus" :size="18" /> Registrar estado
+                    </a>
+                @endif
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="mx-auto max-w-5xl">
         <div class="card">
             @if ($estados->isEmpty())
                 <x-empty-state title="El catálogo de estados está vacío"
-                               description="Ejecute php artisan db:seed --class=EstadoSeeder para cargarlo." icon="tag" />
+                               description="Registre estados para describir la situación de los activos." icon="tag">
+                    <x-slot name="action">
+                        @if (auth()->user()->puedeEscribir())
+                            <a href="{{ route('estados.create') }}" class="btn btn-primary">
+                                <x-icon name="plus" :size="18" /> Registrar estado
+                            </a>
+                        @endif
+                    </x-slot>
+                </x-empty-state>
             @else
                 <div class="table-wrap">
                     <table class="table">
@@ -18,6 +34,7 @@
                                 <th class="text-center">Deployed</th>
                                 <th class="text-center">Deployable</th>
                                 <th class="text-center">Activos</th>
+                                <th class="text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -40,6 +57,17 @@
                                         @endif
                                     </td>
                                     <td class="text-center text-slate-500">{{ $estado->activos_count ?? $estado->activos()->count() }}</td>
+                                    <td class="text-right whitespace-nowrap">
+                                        @if (auth()->user()->puedeEscribir())
+                                            <a href="{{ route('estados.edit', $estado) }}" class="link">Editar</a>
+                                            <form method="POST" action="{{ route('estados.destroy', $estado) }}" class="inline"
+                                                  onsubmit="return confirm('¿Eliminar el estado {{ $estado->Nombre }}?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="link ms-3 text-rose-600">Eliminar</button>
+                                            </form>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

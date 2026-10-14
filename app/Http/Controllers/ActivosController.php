@@ -51,7 +51,7 @@ class ActivosController extends Controller
         $activo->load(['estadoCatalogo', 'asignacionActiva.personal', 'mantenimientos.evidencias', 'compra', 'ubicacionCatalogo', 'modeloCatalogo']);
         $historial = $this->activos->historialAsignaciones($activo);
         $personas = Personal::where('Estado', 'Activo')->orderBy('Apellido')->get();
-        $estados = $this->catalogoEstados();
+        $estados = $this->catalogoEstados($activo);
 
         return view('activos.show', compact('activo', 'historial', 'personas', 'estados'));
     }
@@ -95,7 +95,7 @@ class ActivosController extends Controller
 
     public function edit(Activo $activo): View
     {
-        $estados = $this->catalogoEstados();
+        $estados = $this->catalogoEstados($activo);
         $grupos = EstadoActivo::where('Estado', 1)->distinct()->orderBy('Grupo')->pluck('Grupo');
         $ubicaciones = $this->opcionesUbicaciones($activo);
         $modelos = $this->opcionesModelos($activo);
@@ -207,11 +207,26 @@ class ActivosController extends Controller
     }
 
     /**
+     * Catálogo activo de estados. Incluye el estado vinculado al activo aunque
+     * esté inactivo, para no perder el valor al editar.
+     *
      * @return Collection<int, EstadoActivo>
      */
-    private function catalogoEstados()
+    private function catalogoEstados(?Activo $activo = null)
     {
-        return EstadoActivo::where('Estado', 1)->orderBy('Grupo')->orderBy('Nombre')->get();
+        $seleccionado = $activo?->fk_estado;
+
+        return EstadoActivo::query()
+            ->where(function ($query) use ($seleccionado) {
+                $query->where('Estado', 1);
+
+                if ($seleccionado !== null) {
+                    $query->orWhere('id', $seleccionado);
+                }
+            })
+            ->orderBy('Grupo')
+            ->orderBy('Nombre')
+            ->get();
     }
 
     /**
