@@ -15,11 +15,21 @@ siguiendo el patrón **MVC + capa de servicios**.
 ## Características
 
 - **Gestión de activos:** registro, consulta con filtros, edición y catálogo de estados.
+- **Ficha del activo** con **foto del equipo**, **datos de compra** editables y **foto de la
+  factura** (servida por descarga autenticada).
+- **Vistas de tabla o tarjetas** conmutables en Equipos y Personal, con la preferencia
+  recordada en el navegador (`localStorage`).
 - **Asignación y devolución** de equipos al personal, con historial de asignaciones.
-- **Desincorporación** mediante cambio de estado (sin borrado físico) con motivo obligatorio.
+- **Desincorporación** individual y masiva mediante cambio de estado (sin borrado físico)
+  con motivo obligatorio.
 - **Mantenimientos** con evidencias adjuntas (JPG/PNG/PDF/MP4) de descarga autenticada.
+- **Catálogos** de ubicaciones, modelos de activos y estados (CRUD).
+- **Búsqueda rápida** por etiqueta/serial (compatible con lector USB y cámara).
+- **Reportes CSV** (activos, personal, historial y mantenimientos).
+- **Alertas** de reparación prolongada y garantía por vencer, con notificaciones.
 - **Auditoría** completa de cada cambio relevante (`HISTORIAL_EVENTOS`).
 - **Importación CSV** de Snipec IT con previsualización (dry-run), idempotencia y log por fila.
+- **Administración** (depuración de datos y gestión de usuarios) exclusiva de `Admin`.
 - **Control de acceso por roles:** `Admin`, `SoporteTecnico`, `Auditor`.
 - **Dashboard** con estadísticas por grupo de estado y últimos activos registrados.
 
@@ -32,7 +42,7 @@ siguiendo el patrón **MVC + capa de servicios**.
 | Lenguaje | PHP 8.3 |
 | Framework | Laravel 13 |
 | Base de datos | PostgreSQL 18 |
-| Frontend | Blade · Tailwind CSS 4 · Alpine.js |
+| Frontend | Blade · Tailwind CSS 3.4 · Alpine.js |
 | Autenticación | Laravel Breeze (sesiones) |
 | Build | Vite 8 |
 | Pruebas | PHPUnit 12 |
@@ -115,11 +125,11 @@ Creados por `UserSeeder` (solo desarrollo — **cámbialos antes de producción*
 
 ## Roles y permisos
 
-| Rol | Consulta | Escritura (activos/personal/mantenimientos) | Importación CSV | Auditoría |
-|---|:---:|:---:|:---:|:---:|
-| **Admin** | ✅ | ✅ | ✅ | ✅ |
-| **SoporteTecnico** | ✅ | ✅ | ✅ | ❌ |
-| **Auditor** | ✅ | ❌ | ❌ | ✅ |
+| Rol | Consulta | Escritura (activos/personal/mantenimientos) | Importación CSV | Auditoría | Administración |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **SoporteTecnico** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Auditor** | ✅ | ❌ | ❌ | ✅ | ❌ |
 
 Se aplican con el middleware `role:` (alias de `App\Http\Middleware\EnsureRole`) y con
 `authorize()` en los Form Requests.
@@ -147,7 +157,14 @@ vendor/bin/phpunit tests/Feature/ActivoCRUDTest.php
 ```
 
 Las pruebas usan `RefreshDatabase` contra PostgreSQL (`Zaico_test`). Estado actual:
-**44 tests / 138 aserciones en verde**.
+**189 tests / 625 aserciones en verde**.
+
+> En equipos sin PostgreSQL (por ejemplo, CI o entornos locales ligeros) puede forzarse
+> SQLite en memoria:
+>
+> ```powershell
+> $env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact
+> ```
 
 ---
 
@@ -156,23 +173,29 @@ Las pruebas usan `RefreshDatabase` contra PostgreSQL (`Zaico_test`). Estado actu
 ```
 app/
 ├── Http/
-│   ├── Controllers/   # Controladores web (+ Auth/ de Breeze)
+│   ├── Controllers/   # 15 controladores de negocio (+ Auth/ de Breeze)
 │   ├── Middleware/    # EnsureRole
-│   └── Requests/      # Form Requests (validación en español)
-├── Models/            # Modelos Eloquent (tablas en mayúsculas)
-└── Services/          # Lógica de negocio (Activo, Personal, Mantenimiento, Historial, Importación)
+│   └── Requests/      # 21 Form Requests (validación en español)
+├── Models/            # 14 modelos Eloquent (tablas en mayúsculas)
+└── Services/          # 12 servicios de negocio (Activo, Personal, Mantenimiento,
+                       # Historial, Importación, Reporte, Alerta, Usuario, Catálogos…)
 database/
-├── migrations/        # Esquema (nombres exactos para Power BI)
+├── migrations/        # Esquema (nombres exactos para Power BI) + vista vw_inventario
 └── seeders/           # Estados (17), personal, usuarios/roles
-resources/views/       # Vistas Blade + Tailwind
+resources/
+├── css/app.css        # Tailwind + clases de componentes (.card, .btn, .table…)
+├── js/app.js          # Alpine + componentes (selección por lote, vista tabla/tarjeta)
+└── views/             # Vistas Blade + Tailwind
 routes/
 ├── web.php            # Rutas de negocio (auth + role)
 └── auth.php           # Autenticación (Breeze)
 ```
 
 Tablas de negocio (nombres en mayúsculas para compatibilidad con Power BI):
-`ACTIVOS`, `ESTADOS_ACTIVO`, `PERSONAL`, `ASIGNACIONES`, `COMPRAS`, `MANTENIMIENTOS`,
-`EVIDENCIAS_MANTENIMIENTO`, `HISTORIAL_EVENTOS`, `IMPORTACIONES_LOG`, `IMPORTACIONES_DETALLE`.
+`ACTIVOS`, `ESTADOS_ACTIVO`, `UBICACIONES`, `MODELOS_ACTIVO`, `PERSONAL`, `ASIGNACIONES`,
+`COMPRAS`, `MANTENIMIENTOS`, `EVIDENCIAS_MANTENIMIENTO`, `HISTORIAL_EVENTOS`, `ALERTAS`,
+`IMPORTACIONES_LOG`, `IMPORTACIONES_DETALLE`, más las tablas de infraestructura
+(`users`, `notifications`, `cache`, `jobs`) y la vista `vw_inventario`.
 
 ---
 
@@ -191,7 +214,7 @@ npm run build                        # compilar assets para producción
 ## Documentación
 
 - [`DOCUMENTACION.md`](DOCUMENTACION.md) — documentación técnica completa (arquitectura, esquema, rutas, servicios, reglas de negocio, importación y testing).
-- [`plan.md`](plan.md) — plan de desarrollo por fases (0–5 completadas) y roadmap.
+- [`plan.md`](plan.md) — plan de desarrollo por fases (0–11 completadas) y roadmap.
 
 ---
 

@@ -82,14 +82,17 @@
     </form>
 
     {{-- Listado --}}
-    <div class="card"
-         x-data="seleccionLote({ clave: 'sel:activos', total: {{ $activos->total() }}, pagina: {{ json_encode($activos->pluck('id')->all()) }}, mensaje: 'Se desincorporarán {n} equipos. El estado cambiará a Desincorporado y quedará registrado en el historial.', mensajeGrande: 'Son {n} equipos. La desincorporación se aplicará de una sola vez a todos los seleccionados. ¿Continuar?' })">
-        <div class="card-header">
-            <h3 class="card-title">
-                Resultados
-                <span class="ms-1 font-normal text-slate-400">({{ $activos->total() }})</span>
-            </h3>
-        </div>
+    <div class="card" x-data="vistaListado({ clave: 'vista:activos' })">
+        <div x-data="seleccionLote({ clave: 'sel:activos', total: {{ $activos->total() }}, pagina: {{ json_encode($activos->pluck('id')->all()) }}, mensaje: 'Se desincorporarán {n} equipos. El estado cambiará a Desincorporado y quedará registrado en el historial.', mensajeGrande: 'Son {n} equipos. La desincorporación se aplicará de una sola vez a todos los seleccionados. ¿Continuar?' })">
+            <div class="card-header">
+                <h3 class="card-title">
+                    Resultados
+                    <span class="ms-1 font-normal text-slate-400">({{ $activos->total() }})</span>
+                </h3>
+                @unless ($activos->isEmpty())
+                    <x-vista-toggle />
+                @endunless
+            </div>
 
         @if ($activos->isEmpty())
             <x-empty-state title="No hay equipos que coincidan"
@@ -103,7 +106,7 @@
                 </x-slot>
             </x-empty-state>
         @else
-            <div class="table-wrap">
+            <div class="table-wrap" x-show="vista === 'tabla'" x-cloak>
                 <table class="table">
                     <thead>
                         <tr>
@@ -165,6 +168,73 @@
                 </table>
             </div>
 
+            {{-- Vista de tarjetas --}}
+            <div x-show="vista === 'tarjeta'" x-cloak class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                @foreach ($activos as $activo)
+                    <div class="group relative flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-brand-300 hover:shadow-md">
+                        @if (auth()->user()->puedeEscribir())
+                            <label class="absolute right-3 top-3 z-10 inline-flex cursor-pointer items-center justify-center rounded-md bg-white/90 p-1 shadow-sm ring-1 ring-slate-200">
+                                <input type="checkbox" value="{{ $activo->id }}"
+                                       class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                       :checked="estaSeleccionado({{ $activo->id }})"
+                                       @change="alternar({{ $activo->id }}, $event.target.checked)"
+                                       aria-label="Seleccionar {{ $activo->Etiqueta_activo }}">
+                            </label>
+                        @endif
+
+                        <a href="{{ route('activos.show', $activo) }}" class="flex gap-3 p-4">
+                            <span class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 text-slate-400">
+                                @if ($activo->Imagen_Activo)
+                                    <img src="{{ route('activos.imagen', $activo) }}" alt="{{ $activo->Nombre_de_activo }}"
+                                         loading="lazy" class="h-full w-full object-cover">
+                                @else
+                                    <x-icon name="cube" :size="26" />
+                                @endif
+                            </span>
+                            <span class="min-w-0 flex-1 pe-6">
+                                <span class="block truncate text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $activo->Etiqueta_activo }}</span>
+                                <span class="mt-0.5 block truncate font-semibold text-slate-900">{{ $activo->Nombre_de_activo }}</span>
+                                <span class="mt-1.5 block"><x-status-badge :grupo="$activo->estadoCatalogo?->Grupo" /></span>
+                            </span>
+                        </a>
+
+                        <dl class="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 px-4 py-3 text-xs">
+                            <div class="min-w-0">
+                                <dt class="text-slate-400">Categoría</dt>
+                                <dd class="truncate font-medium text-slate-700">{{ $activo->Categoria ?? '—' }}</dd>
+                            </div>
+                            <div class="min-w-0">
+                                <dt class="text-slate-400">Serial</dt>
+                                <dd class="truncate font-medium text-slate-700">{{ $activo->Serial ?? '—' }}</dd>
+                            </div>
+                            <div class="min-w-0">
+                                <dt class="text-slate-400">Ubicación</dt>
+                                <dd class="truncate font-medium text-slate-700">{{ $activo->Ubicacion ?? '—' }}</dd>
+                            </div>
+                            <div class="min-w-0">
+                                <dt class="text-slate-400">Asignado a</dt>
+                                <dd class="truncate font-medium text-slate-700">{{ $activo->AsignadoA ?? '—' }}</dd>
+                            </div>
+                        </dl>
+
+                        <div class="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-3">
+                            <a href="{{ route('activos.show', $activo) }}" class="link text-sm">Ver</a>
+                            @if (auth()->user()->puedeEscribir())
+                                <div class="flex items-center gap-3">
+                                    <a href="{{ route('activos.edit', $activo) }}" class="link text-sm">Editar</a>
+                                    @if ($activo->estadoCatalogo?->Grupo !== 'Desincorporado')
+                                        <button type="button" class="text-sm font-medium text-rose-600 hover:underline"
+                                                @click="$dispatch('open-modal', 'desincorporar-activo'); $dispatch('set-desincorporar', {{ $activo->id }})">
+                                            Desincorporar
+                                        </button>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
             @if (auth()->user()->puedeEscribir())
                 <x-seleccion.formulario id="bulk-activos" method="POST"
                                         action="{{ route('activos.desincorporar-masivo') }}">
@@ -191,6 +261,7 @@
                 {{ $activos->links() }}
             </div>
         @endif
+        </div>
     </div>
 
     <x-resultado-lote />

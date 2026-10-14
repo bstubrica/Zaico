@@ -38,14 +38,17 @@
         </div>
     </form>
 
-    <div class="card"
-         x-data="seleccionLote({ clave: 'sel:personal', total: {{ $personas->total() }}, pagina: {{ json_encode($personas->pluck('id')->all()) }}, mensaje: 'Se darán de baja {n} personas. No podrán recibir equipos.', mensajeGrande: 'Son {n} personas. La baja se aplicará de una sola vez a todas las seleccionadas. ¿Continuar?' })">
-        <div class="card-header">
-            <h3 class="card-title">
-                Resultados
-                <span class="ms-1 font-normal text-slate-400">({{ $personas->total() }})</span>
-            </h3>
-        </div>
+    <div class="card" x-data="vistaListado({ clave: 'vista:personal' })">
+        <div x-data="seleccionLote({ clave: 'sel:personal', total: {{ $personas->total() }}, pagina: {{ json_encode($personas->pluck('id')->all()) }}, mensaje: 'Se darán de baja {n} personas. No podrán recibir equipos.', mensajeGrande: 'Son {n} personas. La baja se aplicará de una sola vez a todas las seleccionadas. ¿Continuar?' })">
+            <div class="card-header">
+                <h3 class="card-title">
+                    Resultados
+                    <span class="ms-1 font-normal text-slate-400">({{ $personas->total() }})</span>
+                </h3>
+                @unless ($personas->isEmpty())
+                    <x-vista-toggle />
+                @endunless
+            </div>
 
         @if ($personas->isEmpty())
             <x-empty-state title="No hay personas registradas"
@@ -59,7 +62,7 @@
                 </x-slot>
             </x-empty-state>
         @else
-            <div class="table-wrap">
+            <div class="table-wrap" x-show="vista === 'tabla'" x-cloak>
                 <table class="table">
                     <thead>
                         <tr>
@@ -127,6 +130,61 @@
                 </table>
             </div>
 
+            {{-- Vista de tarjetas --}}
+            <div x-show="vista === 'tarjeta'" x-cloak class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                @foreach ($personas as $persona)
+                    <div class="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow-md">
+                        @if (auth()->user()->puedeEscribir())
+                            <label class="absolute right-3 top-3 z-10 inline-flex cursor-pointer items-center justify-center rounded-md bg-white/90 p-1 shadow-sm ring-1 ring-slate-200">
+                                <input type="checkbox" value="{{ $persona->id }}"
+                                       class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                       :checked="estaSeleccionado({{ $persona->id }})"
+                                       @change="alternar({{ $persona->id }}, $event.target.checked)"
+                                       aria-label="Seleccionar {{ $persona->NombreCompleto }}">
+                            </label>
+                        @endif
+
+                        <div class="flex items-start gap-3 pe-6">
+                            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
+                                {{ mb_strtoupper(mb_substr($persona->Nombre ?? '', 0, 1).mb_substr($persona->Apellido ?? '', 0, 1)) }}
+                            </span>
+                            <div class="min-w-0">
+                                <a href="{{ route('personal.show', $persona) }}"
+                                   class="block truncate font-semibold text-slate-900 hover:text-brand-700">{{ $persona->NombreCompleto }}</a>
+                                <p class="truncate text-xs text-slate-500">{{ $persona->Nombre_usuario }}</p>
+                                <p class="mt-0.5 truncate text-sm text-slate-600">{{ $persona->Cargo ?? '—' }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            @if ($persona->Estado === 'Activo')
+                                <x-badge color="emerald" :dot="true">Activo</x-badge>
+                            @else
+                                <x-badge color="slate" :dot="true">{{ $persona->Estado }}</x-badge>
+                            @endif
+                            <x-badge :color="$persona->asignaciones_activas > 0 ? 'sky' : 'slate'">
+                                {{ $persona->asignaciones_activas }} equipo(s)
+                            </x-badge>
+                        </div>
+
+                        <div class="mt-4 flex flex-1 items-end justify-between gap-2 border-t border-slate-100 pt-3">
+                            <a href="{{ route('personal.show', $persona) }}" class="link text-sm">Ver</a>
+                            @if (auth()->user()->puedeEscribir())
+                                <div class="flex items-center gap-3">
+                                    <a href="{{ route('personal.edit', $persona) }}" class="link text-sm">Editar</a>
+                                    <form method="POST" action="{{ route('personal.destroy', $persona) }}" class="inline"
+                                          onsubmit="return confirm('¿Dar de baja a {{ $persona->NombreCompleto }}?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-sm font-medium text-rose-600 hover:underline">Baja</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
             @if (auth()->user()->puedeEscribir())
                 <x-seleccion.formulario id="bulk-personal" method="POST"
                                         action="{{ route('personal.baja-masiva') }}">
@@ -146,6 +204,7 @@
                 {{ $personas->links() }}
             </div>
         @endif
+        </div>
     </div>
 
     <x-resultado-lote />

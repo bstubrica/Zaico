@@ -11,11 +11,11 @@
 | Framework | Laravel 13 |
 | Lenguaje | PHP 8.3 |
 | Base de datos | PostgreSQL 18 |
-| Frontend | Blade + Tailwind CSS 4 + Alpine.js (Breeze) |
+| Frontend | Blade + Tailwind CSS 3.4 + Alpine.js (Breeze) |
 | Autenticación | Laravel Breeze (sesiones) |
 | Roles | Admin · SoporteTecnico · Auditor |
-| Estado | Fases 0–5 completadas (MVP operativo) |
-| Suite de pruebas | 44 tests / 138 aserciones (verde) |
+| Estado | Fases 0–11 completadas (MVP + extras operativo) |
+| Suite de pruebas | 189 tests / 625 aserciones (verde) |
 
 ---
 
@@ -49,12 +49,21 @@
 **Zaico** centraliza el ciclo de vida de los activos de TI de la organización:
 
 - **Registro y consulta** de equipos (computadores, monitores, impresoras, periféricos, etc.).
+- **Ficha del activo** con **foto del equipo**, **datos de compra** editables y **foto de la
+  factura** (servida por descarga autenticada).
+- **Vistas de tabla o tarjetas** conmutables en los listados de Equipos y Personal, con la
+  preferencia recordada en el navegador (`localStorage`).
 - **Asignación y devolución** de equipos al personal (con trazabilidad histórica).
-- **Cambio de estado / desincorporación** sin borrado físico.
+- **Cambio de estado / desincorporación** (individual y masiva) sin borrado físico.
 - **Mantenimientos** con evidencias adjuntas (fotos, PDF, video).
+- **Catálogos** de ubicaciones, modelos de activos y estados.
+- **Búsqueda rápida** por etiqueta/serial (lector USB y cámara).
+- **Reportes CSV** y **alertas** (reparación prolongada / garantía por vencer) con
+  notificaciones en la barra superior.
 - **Auditoría** completa de cada cambio relevante sobre un activo.
 - **Importación masiva** del reporte `custom-assets-report` de **Snipec IT** (CSV) con
   previsualización (dry-run) e idempotencia.
+- **Administración** (depuración de datos y gestión de usuarios) exclusiva de `Admin`.
 - **Control de acceso por roles** de extremo a extremo (rutas, controladores y UI).
 
 El sistema migró desde un diseño original ASP.NET Core / Blazor hacia un stack
@@ -83,11 +92,15 @@ El sistema migró desde un diseño original ASP.NET Core / Blazor hacia un stack
 
 | Componente | Versión | Uso |
 |---|---|---|
-| tailwindcss | `^3.1` / `^4.0` (plugin Vite) | Estilos utilitarios |
+| tailwindcss | `^3.4` (3.4.19, vía PostCSS) | Estilos utilitarios |
 | @tailwindcss/forms | `^0.5.2` | Normalización de formularios |
 | alpinejs | `^3.4.2` | Interactividad ligera |
 | vite | `^8.0` | Bundler |
 | laravel-vite-plugin | `^3.1` | Integración Laravel/Vite |
+
+> Tailwind se integra mediante `postcss.config.js` + `tailwind.config.js` (sintaxis v3:
+> `@tailwind base/components/utilities`). El paquete `@tailwindcss/vite` (`^4.0`) está
+> instalado pero **no se usa** en `vite.config.js`.
 
 ### Base de datos
 
@@ -147,19 +160,22 @@ de negocio vive en `app/Services`, no en controladores ni vistas.
 Zaico/
 ├── app/
 │   ├── Http/
-│   │   ├── Controllers/          # 8 controladores de negocio + Profile + Auth/
+│   │   ├── Controllers/          # 15 controladores de negocio + Profile + Auth/
 │   │   ├── Middleware/
 │   │   │   └── EnsureRole.php     # Autorización por rol
-│   │   └── Requests/              # 9 Form Requests (incluye ProfileUpdateRequest)
-│   ├── Models/                    # 11 modelos Eloquent
-│   └── Services/                  # 5 servicios de negocio
+│   │   └── Requests/              # 21 Form Requests (incluye ProfileUpdateRequest)
+│   ├── Models/                    # 14 modelos Eloquent
+│   └── Services/                  # 12 servicios de negocio
 ├── bootstrap/
-│   └── app.php                    # Alias de middleware 'role', routing, exceptions
+│   └── app.php                    # Alias de middleware 'role', rate limiters, routing
 ├── database/
 │   ├── factories/                 # UserFactory, …
-│   ├── migrations/                # 10 migraciones de negocio + 3 base (users/cache/jobs)
+│   ├── migrations/                # 20 migraciones de negocio + 3 base (users/cache/jobs)
 │   └── seeders/                   # EstadoSeeder, PersonalSemillaSeeder, UserSeeder
-├── resources/views/               # Vistas Blade (layouts, components, por dominio)
+├── resources/
+│   ├── css/app.css                # Tailwind + clases de componentes (.card, .btn, .table…)
+│   ├── js/app.js                  # Alpine + componentes (selección por lote, vista)
+│   └── views/                     # Vistas Blade (layouts, components, por dominio)
 ├── routes/
 │   ├── web.php                    # Rutas de negocio
 │   └── auth.php                   # Rutas de autenticación (Breeze)
@@ -256,7 +272,10 @@ users ──< ASIGNACIONES >── ACTIVOS ──< MANTENIMIENTOS ──< EVIDEN
                 │              │
                 │              ├──< HISTORIAL_EVENTOS
                 │              ├──1 COMPRAS
-                │              └──1 ESTADOS_ACTIVO (fk_estado)
+                │              ├──1 ESTADOS_ACTIVO    (fk_estado)
+                │              ├──1 UBICACIONES       (fk_ubicacion)
+                │              ├──1 MODELOS_ACTIVO    (fk_modelo)
+                │              └──< ALERTAS
               PERSONAL
 
 users ──< IMPORTACIONES_LOG ──< IMPORTACIONES_DETALLE
@@ -264,7 +283,7 @@ users ──< IMPORTACIONES_LOG ──< IMPORTACIONES_DETALLE
 
 ### 6.2 Tablas
 
-Ocho tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
+Trece tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 
 #### `users` (extendida)
 
@@ -274,7 +293,8 @@ Ocho tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 | name | varchar | |
 | email | varchar unique | |
 | password | varchar | hashed |
-| **role** | varchar(30) | `Admin` \| `SoporteTecnico` \| `Auditor` (default `SoporteTecnico`) |
+| **role** | varchar(30) | `Admin` \| `SoporteTecnico` \| `Auditor` (default `Auditor`) |
+| **activo** | boolean | `true` = acceso habilitado (baja lógica de cuentas) |
 | remember_token, timestamps | | |
 
 #### `ESTADOS_ACTIVO`
@@ -304,11 +324,35 @@ Ocho tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 | Etiqueta_activo | varchar(100) **unique** | Clave de upsert de importación |
 | Estado | varchar(20) | Grupo de estado |
 | Direccion_MAC | varchar(17) null | |
-| Imagen_Activo | varchar(255) null | |
+| Imagen_Activo | varchar(255) null | Ruta de la foto del equipo (disco `local`) |
 | fk_estado | bigint null → `ESTADOS_ACTIVO` | `nullOnDelete` |
+| fk_ubicacion | bigint null → `UBICACIONES` | `nullOnDelete` (se conserva `Ubicacion` denormalizado) |
+| fk_modelo | bigint null → `MODELOS_ACTIVO` | `nullOnDelete` (se conserva `Modelo` denormalizado) |
 | Creado_el / Actualizado_el | timestamptz | |
 
-Índices: `idx_activos_nombre`, `idx_activos_categoria`, `idx_activos_estado`.
+Índices: `idx_activos_nombre`, `idx_activos_categoria`, `idx_activos_estado`,
+`idx_activos_ubicacion`, `idx_activos_modelo`.
+
+#### `UBICACIONES` (catálogo)
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | bigint PK | |
+| Nombre | varchar(150) **unique** | |
+| Descripcion | text null | |
+| Estado | varchar(20) | `Activo` \| `Inactivo` (baja lógica) |
+| Creado_el / Actualizado_el | timestamptz | |
+
+#### `MODELOS_ACTIVO` (catálogo)
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | bigint PK | |
+| Nombre | varchar(100) **unique** | |
+| Fabricante | varchar(100) null | |
+| Categoria | varchar(100) null | |
+| Estado | varchar(20) | `Activo` \| `Inactivo` (baja lógica) |
+| Creado_el / Actualizado_el | timestamptz | |
 
 #### `PERSONAL`
 
@@ -343,7 +387,7 @@ Ocho tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 | Numero_Requisicion, Numero_factura, Proveedor, Garantia, Tiempo_garantia | varchar null |
 | Fecha_Compra | date null |
 | Costo_compra | decimal(12,2) null |
-| Imagen_Factura | varchar(255) null |
+| Imagen_Factura | varchar(255) null (ruta de la foto de la factura, disco `local`) |
 
 #### `MANTENIMIENTOS`
 
@@ -371,6 +415,22 @@ Ocho tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 
 > Los archivos se almacenan en el disco `public` bajo `uploads/mantenimientos`, y se
 > sirven únicamente mediante **descarga autenticada** (`Storage::download`).
+
+#### `ALERTAS` (Fase 8)
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | bigint PK | |
+| Tipo | varchar(30) | Ej. `ReparacionProlongada`, `GarantiaPorVencer` |
+| fk_activo | bigint → `ACTIVOS` | cascadeOnDelete |
+| Mensaje | varchar(255) | |
+| Fecha_referencia | date null | |
+| Estado | varchar(20) | `Activa` \| `Revisada` |
+| timestamps | | |
+
+Único `(Tipo, fk_activo)`; índice `idx_alertas_estado`. Se generan con el comando
+`inventario:alertas` y se consultan en `/alertas`. Las notificaciones se guardan en la
+tabla estándar de Laravel `notifications`.
 
 #### `HISTORIAL_EVENTOS` (auditoría)
 
@@ -417,11 +477,15 @@ Ocho tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 Los roles se almacenan en `users.role` y se aplican con el middleware `EnsureRole`
 (alias `role:` registrado en `bootstrap/app.php`).
 
-| Rol | Lectura | Escritura activos/personal | Importación CSV | Auditoría (eventos) |
-|---|:---:|:---:|:---:|:---:|
-| **Admin** | ✅ | ✅ | ✅ | ✅ |
-| **SoporteTecnico** | ✅ | ✅ | ✅ | ❌ |
-| **Auditor** | ✅ | ❌ | ❌ | ✅ |
+| Rol | Lectura | Escritura activos/personal | Importación CSV | Auditoría (eventos) | Administración |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **SoporteTecnico** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Auditor** | ✅ | ❌ | ❌ | ✅ | ❌ |
+
+> Los usuarios deshabilitados (`users.activo = false`) no pueden iniciar sesión ni permanecer
+> conectados. Las rutas de escritura aplican además *rate limiters* dedicados
+> (`escritura`, `importacion`, `consulta`, `depuracion`).
 
 **Helpers en `User`:**
 
@@ -443,14 +507,22 @@ Grupos de middleware en `routes/web.php`:
 
 ```php
 Route::middleware(['auth', 'verified'])->group(function () {
-    // ... consulta (cualquier usuario autenticado)
+    // Consulta (cualquier usuario autenticado): activos, personal, historial,
+    // mantenimientos, estados, reportes, notificaciones.
 
-    Route::middleware('role:Admin,SoporteTecnico')->group(function () {
-        // Escritura: activos, personal, mantenimientos, importaciones
+    // Escritura: activos, personal, catálogos e importaciones (+ rate limit)
+    Route::middleware(['role:Admin,SoporteTecnico', 'throttle:escritura'])->group(function () {
+        // ...
     });
 
     // Auditoría: solo Admin / Auditor
-    Route::get('activos/{activo}/eventos', ...)->middleware('role:Admin,Auditor');
+    Route::get('activos/{activo}/eventos', ...)
+        ->middleware(['role:Admin,Auditor', 'throttle:consulta']);
+
+    // Administración: solo Admin (depuración y usuarios del sistema)
+    Route::middleware('role:Admin')->prefix('administracion')->name('admin.')->group(function () {
+        // ...
+    });
 });
 ```
 
@@ -464,34 +536,58 @@ Todas bajo `middleware(['auth', 'verified'])`. Las de escritura requieren tambi�
 |---|---|---|---|---|
 | GET | `/` | `dashboard` | `DashboardController@index` | autenticado |
 | GET | `/activos` | `activos.index` | `ActivosController@index` | autenticado |
-| GET | `/activos/{activo}` | `activos.show` | `ActivosController@show` | autenticado |
+| GET | `/activos/buscar` | `activos.buscar` | `ActivosController@buscar` | autenticado |
 | GET | `/activos/nuevo` | `activos.create` | `ActivosController@create` | Admin/Soporte |
 | POST | `/activos` | `activos.store` | `ActivosController@store` | Admin/Soporte |
+| GET | `/activos/{activo}` | `activos.show` | `ActivosController@show` | autenticado |
 | GET | `/activos/{activo}/editar` | `activos.edit` | `ActivosController@edit` | Admin/Soporte |
 | PUT | `/activos/{activo}` | `activos.update` | `ActivosController@update` | Admin/Soporte |
+| PUT | `/activos/{activo}/compra` | `activos.compra.update` | `ActivosController@guardarCompra` | Admin/Soporte |
+| GET | `/activos/{activo}/imagen` | `activos.imagen` | `ActivosController@imagen` | autenticado |
+| GET | `/activos/{activo}/factura` | `activos.factura` | `ActivosController@imagenFactura` | autenticado |
 | POST | `/activos/{activo}/asignacion` | `activos.asignar` | `ActivosController@asignar` | Admin/Soporte |
 | POST | `/activos/{activo}/devolucion` | `activos.devolver` | `ActivosController@devolver` | Admin/Soporte |
 | PUT | `/activos/{activo}/estado` | `activos.estado` | `ActivosController@cambiarEstado` | Admin/Soporte |
+| POST | `/activos/desincorporar` | `activos.desincorporar-masivo` | `ActivosController@desincorporarMasivo` | Admin/Soporte |
+| POST | `/activos/{activo}/desincorporar` | `activos.desincorporar` | `ActivosController@desincorporar` | Admin/Soporte |
 | GET | `/activos/{activo}/eventos` | `activos.eventos` | `ActivosController@eventos` (JSON) | Admin/Auditor |
 | GET | `/activos/{activo}/mantenimientos` | `activos.mantenimientos` | `MantenimientosController@porActivo` | autenticado |
 | POST | `/activos/{activo}/mantenimientos` | `activos.mantenimientos.store` | `MantenimientosController@store` | Admin/Soporte |
 | GET | `/api/activos` | `api.activos` | `ActivosController@apiIndex` (JSON) | autenticado |
-| GET | `/personal` | `personal.index` | `PersonalController@index` | Admin/Soporte |
-| POST | `/personal` | `personal.store` | `PersonalController@store` | Admin/Soporte |
+| GET | `/personal` | `personal.index` | `PersonalController@index` | autenticado |
 | GET | `/personal/crear` | `personal.create` | `PersonalController@create` | Admin/Soporte |
-| GET | `/personal/{personal}` | `personal.show` | `PersonalController@show` | Admin/Soporte |
+| POST | `/personal` | `personal.store` | `PersonalController@store` | Admin/Soporte |
+| GET | `/personal/{personal}` | `personal.show` | `PersonalController@show` | autenticado |
 | GET | `/personal/{personal}/editar` | `personal.edit` | `PersonalController@edit` | Admin/Soporte |
 | PUT | `/personal/{personal}` | `personal.update` | `PersonalController@update` | Admin/Soporte |
 | DELETE | `/personal/{personal}` | `personal.destroy` | `PersonalController@destroy` (baja lógica) | Admin/Soporte |
+| POST | `/personal/baja` | `personal.baja-masiva` | `PersonalController@bajaMasiva` | Admin/Soporte |
 | GET | `/mantenimientos` | `mantenimientos.index` | `MantenimientosController@index` | autenticado |
 | GET | `/mantenimientos/evidencias/{evidencia}` | `mantenimientos.evidencia` | `MantenimientosController@evidencia` (descarga) | autenticado |
+| DELETE | `/mantenimientos/{mantenimiento}` | `mantenimientos.destroy` | `MantenimientosController@destroy` | Admin/Soporte |
+| POST | `/mantenimientos/eliminar` | `mantenimientos.eliminar-masivo` | `MantenimientosController@destroyMasivo` | Admin/Soporte |
 | GET | `/historial` | `historial.index` | `HistorialController@index` | autenticado |
 | GET | `/estados` | `estados.index` | `EstadosController@index` | autenticado |
+| GET | `/ubicaciones` | `ubicaciones.index` | `UbicacionController@index` | autenticado |
+| GET | `/modelos` | `modelos.index` | `ModeloActivoController@index` | autenticado |
 | GET | `/importaciones` | `importaciones.index` | `ImportacionesController@index` | Admin/Soporte |
 | POST | `/importaciones` | `importaciones.store` | `ImportacionesController@store` | Admin/Soporte |
 | POST | `/importaciones/confirmar` | `importaciones.confirmar` | `ImportacionesController@confirmar` | Admin/Soporte |
 | GET | `/importaciones/{importacion}` | `importaciones.show` | `ImportacionesController@show` | Admin/Soporte |
+| DELETE | `/importaciones/{importacion}` | `importaciones.destroy` | `ImportacionesController@destroy` | Admin/Soporte |
+| POST | `/importaciones/eliminar` | `importaciones.eliminar-masivo` | `ImportacionesController@destroyMasivo` | Admin/Soporte |
+| GET | `/alertas` | `alertas.index` | `AlertaController@index` | Admin/Soporte |
+| POST | `/alertas/revisar` | `alertas.revisar` | `AlertaController@revisar` | Admin/Soporte |
+| GET | `/reportes/activos` | `reportes.activos` | `ReporteController@activos` | autenticado |
+| GET | `/reportes/personal` | `reportes.personal` | `ReporteController@personal` | autenticado |
+| GET | `/reportes/historial` | `reportes.historial` | `ReporteController@historial` | autenticado |
+| GET | `/reportes/mantenimientos` | `reportes.mantenimientos` | `ReporteController@mantenimientos` | autenticado |
+| POST | `/notificaciones/leidas` | `notificaciones.leidas` | `NotificacionesController@marcarLeidas` | autenticado |
 | GET/PATCH/DELETE | `/profile` | `profile.*` | `ProfileController` (Breeze) | autenticado |
+
+**Administración** (`/administracion`, solo `Admin`): `admin.index`, `admin.depurar`,
+`admin.usuarios.index`, `admin.usuarios.create`, `admin.usuarios.store`,
+`admin.usuarios.edit`, `admin.usuarios.update`, `admin.usuarios.toggle`.
 
 **Autenticación** (`routes/auth.php`, Breeze): login, registro, logout, recuperación y
 reseteo de contraseña, verificación de email y confirmación de contraseña.
@@ -503,12 +599,19 @@ reseteo de contraseña, verificación de email y confirmación de contraseña.
 | Controlador | Métodos | Descripción |
 |---|---|---|
 | `DashboardController` | `index` | Estadísticas por grupo de estado + 10 activos recientes |
-| `ActivosController` | `index`, `show`, `create`, `store`, `edit`, `update`, `asignar`, `devolver`, `cambiarEstado`, `eventos`, `apiIndex` | CRUD de activos + asignación/devolución/estado |
-| `PersonalController` | `index`, `create`, `store`, `show`, `edit`, `update`, `destroy` | CRUD de personal (baja lógica) |
-| `MantenimientosController` | `index`, `porActivo`, `store`, `evidencia` | Registro global/por activo + descarga de evidencias |
+| `ActivosController` | `__construct`, `index`, `show`, `buscar`, `create`, `store`, `edit`, `update`, `guardarCompra`, `imagen`, `imagenFactura`, `asignar`, `devolver`, `cambiarEstado`, `desincorporar`, `desincorporarMasivo`, `eventos`, `apiIndex` | CRUD de activos, fotos (equipo y factura), compra editable, asignación/devolución/estado (individual y masivo) |
+| `PersonalController` | `index`, `create`, `store`, `show`, `edit`, `update`, `destroy`, `bajaMasiva` | CRUD de personal (baja lógica, individual y masiva) |
+| `MantenimientosController` | `index`, `porActivo`, `store`, `evidencia`, `destroy`, `destroyMasivo` | Registro + evidencias + eliminación (individual y masiva) |
 | `HistorialController` | `index` | Historial consolidado de asignaciones con filtros |
-| `EstadosController` | `index` | Catálogo de estados con conteo de activos (HTML/JSON) |
-| `ImportacionesController` | `index`, `store`, `confirmar`, `show` | Flujo de importación CSV |
+| `EstadosController` | `index`, `create`, `store`, `edit`, `update` | Catálogo de estados |
+| `UbicacionController` | `index`, `create`, `store`, `edit`, `update` | Catálogo de ubicaciones |
+| `ModeloActivoController` | `index`, `create`, `store`, `edit`, `update` | Catálogo de modelos |
+| `ImportacionesController` | `index`, `store`, `confirmar`, `show`, `destroy`, `destroyMasivo` | Flujo de importación CSV (previsualizar/confirmar, eliminar) |
+| `ReporteController` | `activos`, `personal`, `historial`, `mantenimientos` | Exportación CSV |
+| `AlertaController` | `index`, `revisar` | Alertas de reparación/prolongación/garantía |
+| `AdminController` | `index`, `depurar` | Administración (depuración) |
+| `AdminUsuarioController` | `index`, `create`, `store`, `edit`, `update`, `toggleActivo` | Gestión de usuarios (solo Admin) |
+| `NotificacionesController` | `marcarLeidas` | Notificaciones |
 | `ProfileController` | `edit`, `update`, `destroy` | Perfil del usuario (Breeze) |
 | `Auth/*` | … | Autenticación (Breeze) |
 
@@ -544,13 +647,17 @@ eventosDeActivo(int $activoId): Collection
 
 | Método | Descripción |
 |---|---|
-| `listar(array $filtros)` | Listado paginado con filtros (`termino`, `categoria`, `estado`, `ubicacion`, `asignado_a`) |
-| `crear(array $datos, int $usuarioId)` | Alta en transacción + evento `Creacion` |
-| `actualizar(Activo, array, int)` | Modificación con `Valor_anterior`/`Valor_nuevo` |
+| `consultaListado`, `listar`, `idsDeFiltro` | Filtros, búsqueda y listado paginado (con filtros avanzados) |
+| `crear(array $datos, int $usuarioId, ?UploadedFile $imagen = null)` | Alta en transacción + guarda imagen (`Imagen_Activo`) + evento `Creacion` |
+| `actualizar(Activo, array, int, ?UploadedFile $imagen = null)` | Modificación con imágenes y auditoría (`Valor_anterior`/`Valor_nuevo`) |
 | `cambiarEstado(Activo, int $fkEstado, string $motivo, int)` | Cambio de estado con motivo obligatorio |
+| `desincorporar(Activo, string $motivo, int)`, `desincorporarLote(array $ids, string $motivo, int)` | Desincorporación individual y masiva (baja lógica) |
 | `asignar(Activo, array, int)` | Asigna equipo al personal (valida duplicados y estado) |
 | `devolver(Activo, array, int)` | Registra devolución y libera el activo |
 | `historialAsignaciones(Activo)` | Historial de asignaciones del activo |
+| `guardarCompra(Activo, array $datos, int $usuarioId, ?UploadedFile $imagenFactura = null)` | Crea/actualiza compra + guarda factura |
+| `respuestaImagen(Activo)`, `respuestaImagenFactura(Activo)` | Devuelve respuestas para servir imágenes autenticadas |
+| `buscarPorCodigo(string $codigo)` | Búsqueda rápida por etiqueta/serial |
 
 Detalles de implementación:
 - Búsqueda de texto con `ILIKE` (PostgreSQL) sobre nombre, serial, etiqueta y modelo.
@@ -562,10 +669,11 @@ Detalles de implementación:
 
 | Método | Descripción |
 |---|---|
-| `listar(array $filtros)` | Listado con conteo de asignaciones activas |
+| `consultaListado`, `listar`, `idsDeFiltro` | Listado con conteo de asignaciones activas + filtros |
 | `crear(array)` | Alta de persona |
 | `actualizar(Personal, array)` | Modificación |
 | `darDeBaja(Personal)` | Baja **lógica** (bloquea si tiene equipos activos) |
+| `darDeBajaLote(array $ids)` | Baja masiva (baja lógica) |
 | `equiposAsignados(Personal)` | Equipos con asignación activa |
 
 ### 10.4 `MantenimientoService`
@@ -576,6 +684,7 @@ Detalles de implementación:
 | `listarPorActivo(Activo)` | Mantenimientos de un activo |
 | `listarGlobal(array $filtros)` | Listado global con filtros de fechas y activo |
 | `descargarEvidencia(EvidenciaMantenimiento)` | Descarga autenticada (`Storage::download`) |
+| `eliminar(Mantenimiento, int $usuarioId)`, `eliminarLote(array $ids, int $usuarioId)` | Eliminación individual y masiva |
 
 ### 10.5 `ImportacionService`
 
@@ -590,14 +699,17 @@ gestionando sus marcas de tiempo con hooks (`booted`) o columnas propias.
 
 | Modelo | Tabla | Relaciones destacadas |
 |---|---|---|
-| `User` | `users` | Helpers `isAdmin()`, `puedeEscribir()`; atributos `#[Fillable]`, `#[Hidden]` |
-| `Activo` | `ACTIVOS` | `estadoCatalogo`, `asignaciones`, `asignacionActiva`, `mantenimientos`, `compra`, `eventos`; accesor `asignado_a` |
+| `User` | `users` | Helpers `isAdmin()`, `puedeEscribir()`; atributo `activo` (baja lógica); atributos `#[Fillable]`, `#[Hidden]` |
+| `Activo` | `ACTIVOS` | `estadoCatalogo`, `ubicacionCatalogo`, `modeloCatalogo`, `asignaciones`, `asignacionActiva`, `mantenimientos`, `compra`, `eventos`; accesores `asignado_a`, imagen/factura |
 | `EstadoActivo` | `ESTADOS_ACTIVO` | `activos` |
+| `Ubicacion` | `UBICACIONES` | `activos` |
+| `ModeloActivo` | `MODELOS_ACTIVO` | `activos` |
 | `Personal` | `PERSONAL` | `asignaciones`; accesor `nombre_completo` |
 | `Asignacion` | `ASIGNACIONES` | `activo`, `personal`, `usuario`; scope `activas()` |
 | `Compra` | `COMPRAS` | `activo` |
 | `Mantenimiento` | `MANTENIMIENTOS` | `activo`, `usuario`, `evidencias` |
 | `EvidenciaMantenimiento` | `EVIDENCIAS_MANTENIMIENTO` | `mantenimiento` |
+| `Alerta` | `ALERTAS` | `activo` |
 | `HistorialEvento` | `HISTORIAL_EVENTOS` | `activo`, `usuario` |
 | `ImportacionLog` | `IMPORTACIONES_LOG` | `usuario`, `detalles` |
 | `ImportacionDetalle` | `IMPORTACIONES_DETALLE` | `importacion` (cast `Datos_previos => array`) |
@@ -639,8 +751,9 @@ mensajes y nombres de atributo **en español**.
 
 | Form Request | Uso | Reglas destacadas |
 |---|---|---|
-| `StoreActivoRequest` | Alta de activo | `Nombre_de_activo` `min:3|max:150`; `Etiqueta_activo` `unique:ACTIVOS`; `Serial` `unique|nullable`; `Direccion_MAC` `mac_addr` |
-| `UpdateActivoRequest` | Edición de activo | Igual que Store pero `Rule::unique(...)->ignore($id)` |
+| `StoreActivoRequest` | Alta de activo | `Nombre_de_activo` `min:3|max:150`; `Etiqueta_activo` `unique:ACTIVOS`; `Serial` `unique|nullable`; `Direccion_MAC` `mac_addr`; `imagen` `image|max:10240` |
+| `UpdateActivoRequest` | Edición de activo | Igual que Store pero `Rule::unique(...)->ignore($id)`; `imagen` opcional |
+| `GuardarCompraRequest` | Compra + factura | Campos opcionales; `imagen_factura` `file|mimes:jpg,jpeg,png,webp|max:10240` |
 | `CambiarEstadoRequest` | Cambio de estado | `fk_estado` `exists:ESTADOS_ACTIVO,id`; `motivo` obligatorio `max:500` |
 | `AsignarEquipoRequest` | Asignación | `fk_Personal` `exists:PERSONAL,id`; `Fecha_asignacion` date |
 | `DevolverEquipoRequest` | Devolución | `Fecha_devolucion` date |
@@ -649,12 +762,14 @@ mensajes y nombres de atributo **en español**.
 | `ImportarCsvRequest` | Importación | `archivo` `file|mimes:csv,txt|max:20480` |
 | `ProfileUpdateRequest` | Perfil (Breeze) | email único ignorando el propio |
 
+(Se incluyen además Form Requests para catálogos, desincorporación masiva, eliminaciones, depuración y usuarios.)
+
 ---
 
 ## 13. Interfaz de usuario (vistas)
 
-Construida con **Blade + Tailwind CSS 4 + Alpine.js**. Layout principal con navegación
-responsive, badge de rol y mensajes flash.
+Construida con **Blade + Tailwind CSS 3.4 + Alpine.js**. Layout principal con navegación
+responsive, badge de rol, notificaciones, selección por lote y mensajes flash.
 
 ### 13.1 Vistas por dominio
 
@@ -669,34 +784,34 @@ responsive, badge de rol y mensajes flash.
 | Importaciones | `index` (subida + historial), `show` (detalle por fila) |
 | Layouts / Auth / Profile | `layouts/*`, `auth/*`, `profile/*` (Breeze) |
 
-### 13.2 Componentes Blade propios y de Breeze
+| Layouts / Auth / Profile | `layouts/*`, `auth/*`, `profile/*` (Breeze) |
+| Catálogos | `ubicaciones`, `modelos`, `estados` (index/create/edit) |
+| Reportes / Alertas / Admin | `reportes/*`, `alertas/index`, `admin/*` |
 
-- **Propios:** `status-badge` (badge por grupo de estado), `modal`, entre otros.
+### 13.2 Funcionalidades de UI destacadas
+
+- **Vista tabla / tarjetas**: conmutador en Activos y Personal, persistencia en `localStorage` (`vista:activos`, `vista:personal`), componente Alpine `vistaListado` + componente Blade `vista-toggle`.
+- **Selección por lote**: checkboxes + acciones masivas (desincorporación de equipos, baja de personal, eliminación de importaciones/mantenimientos) con modal de confirmación.
+- **Fotos y facturas**: previsualización, subida y visualización autenticada (controladores `imagen`/`imagenFactura`).
+- **Búsqueda rápida**: barra en activos con soporte para lector USB/cámara.
+
+### 13.3 Componentes Blade propios y de Breeze
+
+- **Propios:** `status-badge` (badge por grupo de estado), `vista-toggle`, `icon`, `page-header`, `empty-state`, `seleccion/*`, `resultado-lote`, `modal`, entre otros.
 - **Breeze:** `dropdown`, `nav-link`, `responsive-nav-link`, `primary-button`,
   `text-input`, `input-error`, `input-label`, etc.
 
 **Ejemplo — `components/status-badge.blade.php`:**
+[...] 
 
-```blade
-@php
-    $colores = [
-        'Asignado'       => 'bg-blue-100 text-blue-800',
-        'Disponible'     => 'bg-green-100 text-green-800',
-        'Reparacion'     => 'bg-amber-100 text-amber-800',
-        'Defectuoso'     => 'bg-amber-100 text-amber-800',
-        'Desincorporado' => 'bg-red-100 text-red-800',
-    ];
-@endphp
-<span class="{{ $colores[$grupo] ?? 'bg-gray-100 text-gray-600' }} ...">{{ $grupo }}</span>
-```
-
-### 13.3 Estados de UI cubiertos
+### 13.4 Estados de UI cubiertos
 
 - **Vacío:** mensajes `@empty` / "no hay registros".
 - **Error de validación:** resumen de errores en el layout + `x-input-error`.
 - **Éxito:** mensajes flash (`session('success')`).
 - **Responsive:** navegación de escritorio y móvil; control de acceso por rol en la UI
-  (p. ej. el enlace "Importación CSV" solo aparece si `puedeEscribir()`).
+  (p. ej. enlaces de escritura/importación solo aparecen si `puedeEscribir()`).
+- **Acceso denegado/deshabilitado:** cuentas con `activo=false` no pueden autenticarse; middleware de roles devuelve 403 cuando corresponde.
 
 ---
 
@@ -831,27 +946,48 @@ Importación verificada del reporte real (1.167 filas):
    activo (grupo `Disponible`).
 6. **Cambio de estado** exige **motivo** y queda auditado con valor anterior/nuevo.
 7. **Baja de personal** bloqueada si la persona tiene equipos asignados activos.
-8. **Auditoría automática** de cada cambio relevante en `HISTORIAL_EVENTOS`.
-9. **Descarga de evidencias siempre autenticada** (nunca se sirve el directorio público
-   directamente).
+8. **Baja lógica**: desincorporación de activos, baja de personal, deshabilitación de
+   usuarios (`activo=false`) — nunca borrado físico.
+9. **Auditoría automática** de cada cambio relevante en `HISTORIAL_EVENTOS`.
+10. **Descarga de evidencias siempre autenticada** (imágenes de equipo/factura y evidencias
+    de mantenimientos servidas mediante descarga autenticada).
+11. **Acceso a imágenes**: `Imagen_Activo` y `Imagen_Factura` se almacenan en disco `local`
+    y se sirven vía `activos.imagen` / `activos.factura` con `auth`.
 
 ---
 
 ## 17. Pruebas automatizadas
 
-- **Framework:** PHPUnit 12 con `RefreshDatabase` contra PostgreSQL (`Zaico_test`).
+- **Framework:** PHPUnit 12 con `RefreshDatabase`. Por defecto usa PostgreSQL (`Zaico_test`);
+  para entornos ligeros puede forzarse SQLite en memoria mediante variables de entorno
+  (`$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'`).
 - **Salida:** `laravel/pao` (JSON de resultados).
-- **Estado actual:** **44 tests / 138 aserciones — todos en verde.**
+- **Estado actual:** **189 tests / 625 aserciones — todos en verde.**
 
 | Archivo | Cobertura |
 |---|---|
-| `ActivoCRUDTest` (8) | Alta, etiqueta duplicada, 403 por rol, login redirect, auditor lista, asignar+devolver, doble asignación, eventos solo Admin/Auditor |
-| `ImportacionTest` (6) | Dry-run no persiste, commit idempotente, duplicados en el archivo, cabecera inválida, archivo no-CSV, auditor 403 |
-| `MantenimientoTest` (4) | Alta con evidencia, archivo inválido rechazado, auditor 403, listado requiere sesión |
-| `DashboardTest` (1) | Estadísticas por grupo autenticado |
-| `ProfileTest` (5) | Perfil: ver, actualizar, verificación de email, eliminar cuenta |
-| `Auth/*` (17) | Login, registro, verificación de email, reseteo y confirmación de contraseña |
-| `ExampleTest`, `Unit/ExampleTest` (2) | Invitado redirigido a login |
+| `ActivoCompraImagenTest` (18) | Fotos de activo/factura, subida/validación, sustitución y acceso |
+| `ActivoCRUDTest` (24) | CRUD, estados, asignación/devolución, 403, eventos |
+| `AdminDepuracionTest` (8) | Depuración (solo Admin) |
+| `AdminUsuarioTest` (16) | Gestión de usuarios (habilitar/deshabilitar, roles) |
+| `AlertaTest` (9) | Alertas de garantía/reparación prolongada |
+| `BusquedaFiltrosTest` (7) | Filtros en activos/personal |
+| `BusquedaRapidaTest` (6) | Búsqueda por etiqueta/serial |
+| `DashboardTest` (1) | Estadísticas |
+| `EliminacionRegistrosTest` (16) | Eliminación masiva/bajas |
+| `EstadoCRUDTest` (10) | Catálogo de estados |
+| `ImportacionTest` (10) | Dry-run/commit/idempotencia |
+| `MantenimientoTest` (7) | Mantenimientos + evidencias |
+| `ModeloActivoCRUDTest` (7) | Catálogo de modelos |
+| `ProfileTest` (6) | Perfil (Breeze) |
+| `ReporteTest` (7) | Exportación CSV |
+| `SincronizacionSnipecTest` (4) | Sincronización Snipec IT |
+| `SmokePantallasTest` (1) | Render de pantallas críticas |
+| `UbicacionCRUDTest` (7) | Catálogo de ubicaciones |
+| `UserSecurityTest` (2) | Seguridad de usuarios |
+| `VistaInventarioTest` (2) | Vista `vw_inventario` |
+| `Auth/*` (19) | Login, registro, verificación, reseteo, confirmación |
+| `ExampleTest` (1) + `Unit/ExampleTest` (1) | Smoke tests |
 
 **Ejecución:**
 
@@ -925,7 +1061,8 @@ Más allá del MVP (fases 0–5), el plan contemplaba las siguientes fases, ya i
 - [x] **Fase 10:** Sincronización periódica con Snipec IT (comando `inventario:sincronizar`).
 - [x] **Fase 11:** Despliegue en producción (Docker: php-fpm + nginx + supervisor) con backups.
 
-> Verificación local contra PostgreSQL 18 real: migraciones y suite completa (71 tests) en verde.
+> Verificación local contra PostgreSQL 18 real: migraciones y suite completa (189 tests /
+> 625 aserciones) en verde.
 
 ---
 
@@ -942,4 +1079,4 @@ Más allá del MVP (fases 0–5), el plan contemplaba las siguientes fases, ya i
 
 ---
 
-*Documentación generada a partir del código fuente del proyecto. Última actualización: 2026-10-08.*
+*Documentación generada a partir del código fuente del proyecto. Última actualización: 2026-10-14.*
