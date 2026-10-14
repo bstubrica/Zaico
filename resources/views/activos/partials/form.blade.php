@@ -1,4 +1,17 @@
-@php($activo = $activo ?? new \App\Models\Activo())
+@php
+    $activo = $activo ?? new \App\Models\Activo();
+
+    $ubicacionPredet = old('Ubicacion_Predeterminada', $activo->Ubicacion_Predeterminada);
+    $opcionesUbicacionPredet = $ubicaciones->map(fn ($ubicacion) => [
+        'value' => $ubicacion->Nombre,
+        'label' => $ubicacion->Nombre,
+        'meta' => $ubicacion->Descripcion ?? '',
+    ])->values()->all();
+
+    if (filled($ubicacionPredet) && ! in_array($ubicacionPredet, array_column($opcionesUbicacionPredet, 'value'), true)) {
+        $opcionesUbicacionPredet[] = ['value' => $ubicacionPredet, 'label' => $ubicacionPredet, 'meta' => 'Valor actual'];
+    }
+@endphp
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
     <div class="md:col-span-2">
@@ -38,14 +51,16 @@
 
     <div>
         <x-input-label for="fk_modelo" value="Modelo (catálogo)" />
-        <select id="fk_modelo" name="fk_modelo" class="form-control mt-1">
-            <option value="">— Sin asignar —</option>
-            @foreach ($modelos as $modelo)
-                <option value="{{ $modelo->id }}" @selected((int) old('fk_modelo', $activo->fk_modelo) === $modelo->id)>
-                    {{ $modelo->Nombre }}
-                </option>
-            @endforeach
-        </select>
+        <x-search-select
+            name="fk_modelo"
+            class="mt-1"
+            placeholder="Escriba para buscar…"
+            :selected="$activo->fk_modelo"
+            :options="$modelos->map(fn ($modelo) => [
+                'value' => $modelo->id,
+                'label' => $modelo->Nombre,
+                'meta' => $modelo->Fabricante ?? '',
+            ])->values()->all()" />
         <x-input-error :messages="$errors->get('fk_modelo')" />
     </div>
 
@@ -58,21 +73,27 @@
 
     <div>
         <x-input-label for="fk_ubicacion" value="Ubicación (catálogo)" />
-        <select id="fk_ubicacion" name="fk_ubicacion" class="form-control mt-1">
-            <option value="">— Sin asignar —</option>
-            @foreach ($ubicaciones as $ubicacion)
-                <option value="{{ $ubicacion->id }}" @selected((int) old('fk_ubicacion', $activo->fk_ubicacion) === $ubicacion->id)>
-                    {{ $ubicacion->Nombre }}
-                </option>
-            @endforeach
-        </select>
+        <x-search-select
+            name="fk_ubicacion"
+            class="mt-1"
+            placeholder="Escriba para buscar…"
+            :selected="$activo->fk_ubicacion"
+            :options="$ubicaciones->map(fn ($ubicacion) => [
+                'value' => $ubicacion->id,
+                'label' => $ubicacion->Nombre,
+                'meta' => $ubicacion->Descripcion ?? '',
+            ])->values()->all()" />
         <x-input-error :messages="$errors->get('fk_ubicacion')" />
     </div>
 
     <div>
         <x-input-label for="Ubicacion_Predeterminada" value="Ubicación predeterminada" />
-        <x-text-input id="Ubicacion_Predeterminada" name="Ubicacion_Predeterminada" type="text" class="mt-1"
-                      :value="old('Ubicacion_Predeterminada', $activo->Ubicacion_Predeterminada)" />
+        <x-search-select
+            name="Ubicacion_Predeterminada"
+            class="mt-1"
+            placeholder="Escriba para buscar…"
+            :selected="$ubicacionPredet"
+            :options="$opcionesUbicacionPredet" />
         <x-input-error :messages="$errors->get('Ubicacion_Predeterminada')" />
     </div>
 
@@ -88,14 +109,16 @@
 
     <div>
         <x-input-label for="fk_estado" value="Estado de catálogo (detalle)" />
-        <select id="fk_estado" name="fk_estado" class="form-control mt-1">
-            <option value="">— Sin detalle —</option>
-            @foreach ($estados as $estado)
-                <option value="{{ $estado->id }}" @selected((int) old('fk_estado', $activo->fk_estado) === $estado->id)>
-                    {{ $estado->Grupo }} · {{ $estado->Nombre }}
-                </option>
-            @endforeach
-        </select>
+        <x-search-select
+            name="fk_estado"
+            class="mt-1"
+            placeholder="Escriba para buscar…"
+            :selected="$activo->fk_estado"
+            :options="$estados->map(fn ($estado) => [
+                'value' => $estado->id,
+                'label' => $estado->Nombre,
+                'meta' => $estado->Grupo,
+            ])->values()->all()" />
         <x-input-error :messages="$errors->get('fk_estado')" />
     </div>
 

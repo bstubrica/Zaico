@@ -296,12 +296,17 @@
                             <form method="POST" action="{{ route('activos.asignar', $activo) }}">
                                 @csrf
                                 <x-input-label for="fk_Personal" value="Asignar a *" />
-                                <select id="fk_Personal" name="fk_Personal" required class="form-control mt-1">
-                                    <option value="">Seleccione una persona…</option>
-                                    @foreach ($personas as $persona)
-                                        <option value="{{ $persona->id }}">{{ $persona->NombreCompleto }} ({{ $persona->Cargo ?? $persona->Nombre_usuario }})</option>
-                                    @endforeach
-                                </select>
+                                <x-search-select
+                                    name="fk_Personal"
+                                    class="mt-1"
+                                    placeholder="Escriba el nombre…"
+                                    :required="true"
+                                    :options="$personas->map(fn ($persona) => [
+                                        'value' => $persona->id,
+                                        'label' => $persona->NombreCompleto,
+                                        'meta' => $persona->Cargo ?? $persona->Nombre_usuario,
+                                    ])->values()->all()" />
+                                <x-input-error :messages="$errors->get('fk_Personal')" />
 
                                 <x-input-label for="Fecha_asignacion" value="Fecha de asignación *" class="mt-3" />
                                 <input type="date" id="Fecha_asignacion" name="Fecha_asignacion" required
@@ -325,13 +330,18 @@
                         @method('PUT')
 
                         <x-input-label for="fk_estado" value="Nuevo estado *" />
-                        <select id="fk_estado" name="fk_estado" required class="form-control mt-1">
-                            @foreach ($estados as $estado)
-                                <option value="{{ $estado->id }}" @selected($activo->fk_estado === $estado->id)>
-                                    {{ $estado->Grupo }} · {{ $estado->Nombre }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <x-search-select
+                            name="fk_estado"
+                            class="mt-1"
+                            placeholder="Escriba para buscar…"
+                            :required="true"
+                            :selected="$activo->fk_estado"
+                            :options="$estados->map(fn ($estado) => [
+                                'value' => $estado->id,
+                                'label' => $estado->Nombre,
+                                'meta' => $estado->Grupo,
+                            ])->values()->all()" />
+                        <x-input-error :messages="$errors->get('fk_estado')" />
 
                         <x-input-label for="motivo" value="Motivo *" class="mt-3" />
                         <textarea id="motivo" name="motivo" rows="2" required class="form-control mt-1"

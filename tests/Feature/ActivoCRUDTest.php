@@ -230,6 +230,58 @@ class ActivoCRUDTest extends TestCase
         $this->actingAs($auditor)->get('/activos')->assertOk();
     }
 
+    public function test_formulario_de_activo_usa_buscadores_en_catalogos(): void
+    {
+        $ubicacion = Ubicacion::create(['Nombre' => 'Piso 3', 'Estado' => 'Activo']);
+        ModeloActivo::create(['Nombre' => 'Latitude 5520', 'Fabricante' => 'Dell']);
+
+        $this->actingAs($this->admin)->get(route('activos.create'))
+            ->assertOk()
+            ->assertSee('selectorBuscable', false)
+            ->assertSee('name="fk_modelo"', false)
+            ->assertSee('name="fk_ubicacion"', false)
+            ->assertSee('name="fk_estado"', false)
+            ->assertSee('name="Ubicacion_Predeterminada"', false)
+            ->assertSee('Piso 3');
+    }
+
+    public function test_ubicacion_predeterminada_incluye_valor_heredado_fuera_del_catalogo(): void
+    {
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Equipo legado',
+            'Etiqueta_activo' => 'TBPRED0001',
+            'Estado' => 'Disponible',
+            'Ubicacion_Predeterminada' => 'N/A',
+        ]);
+
+        $this->actingAs($this->admin)->get(route('activos.edit', $activo))
+            ->assertOk()
+            ->assertSee('name="Ubicacion_Predeterminada"', false)
+            ->assertSee('Valor actual');
+    }
+
+    public function test_panel_de_asignacion_muestra_buscador_de_personas(): void
+    {
+        Personal::create([
+            'Nombre' => 'Lucia',
+            'Apellido' => 'Gomez',
+            'Nombre_usuario' => 'lgomez',
+            'Cargo' => 'Analista',
+            'Estado' => 'Activo',
+        ]);
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop Dell',
+            'Etiqueta_activo' => 'TBBUSC0001',
+            'Estado' => 'Disponible',
+        ]);
+
+        $this->actingAs($this->admin)->get("/activos/{$activo->id}")
+            ->assertOk()
+            ->assertSee('selectorBuscable', false)
+            ->assertSee('fk_Personal', false)
+            ->assertSee('Lucia Gomez');
+    }
+
     public function test_admin_puede_asignar_y_devolver_activo(): void
     {
         $persona = Personal::create([

@@ -51,25 +51,26 @@
             </div>
             <div>
                 <label for="ubicacion" class="form-label">Ubicación</label>
-                <select id="ubicacion" name="ubicacion" class="form-control">
-                    <option value="">Todas</option>
-                    @foreach ($ubicaciones as $ubicacion)
-                        <option value="{{ $ubicacion->Nombre }}" @selected(($filtros['ubicacion'] ?? '') === $ubicacion->Nombre)>
-                            {{ $ubicacion->Nombre }}
-                        </option>
-                    @endforeach
-                </select>
+                <x-search-select
+                    name="ubicacion"
+                    placeholder="Todas"
+                    :selected="$filtros['ubicacion'] ?? ''"
+                    :options="$ubicaciones->map(fn ($ubicacion) => [
+                        'value' => $ubicacion->Nombre,
+                        'label' => $ubicacion->Nombre,
+                    ])->values()->all()" />
             </div>
             <div>
                 <label for="modelo" class="form-label">Modelo</label>
-                <select id="modelo" name="modelo" class="form-control">
-                    <option value="">Todos</option>
-                    @foreach ($modelos as $modelo)
-                        <option value="{{ $modelo->Nombre }}" @selected(($filtros['modelo'] ?? '') === $modelo->Nombre)>
-                            {{ $modelo->Nombre }}
-                        </option>
-                    @endforeach
-                </select>
+                <x-search-select
+                    name="modelo"
+                    placeholder="Todos"
+                    :selected="$filtros['modelo'] ?? ''"
+                    :options="$modelos->map(fn ($modelo) => [
+                        'value' => $modelo->Nombre,
+                        'label' => $modelo->Nombre,
+                        'meta' => $modelo->Fabricante ?? '',
+                    ])->values()->all()" />
             </div>
             <div class="flex items-end gap-2 lg:col-span-2">
                 <button type="submit" class="btn btn-neutral flex-1">

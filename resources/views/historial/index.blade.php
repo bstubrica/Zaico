@@ -21,14 +21,15 @@
             </div>
             <div>
                 <label for="personal_id" class="form-label">Persona</label>
-                <select id="personal_id" name="personal_id" class="form-control">
-                    <option value="">Todas</option>
-                    @foreach ($personas as $persona)
-                        <option value="{{ $persona->id }}" @selected((int) ($filtros['personal_id'] ?? 0) === $persona->id)>
-                            {{ $persona->NombreCompleto }}
-                        </option>
-                    @endforeach
-                </select>
+                <x-search-select
+                    name="personal_id"
+                    placeholder="Todas"
+                    :selected="$filtros['personal_id'] ?? ''"
+                    :options="$personas->map(fn ($persona) => [
+                        'value' => $persona->id,
+                        'label' => $persona->NombreCompleto,
+                        'meta' => $persona->Cargo ?? '',
+                    ])->values()->all()" />
             </div>
             <div class="flex items-end gap-2">
                 <button type="submit" class="btn btn-neutral flex-1">
