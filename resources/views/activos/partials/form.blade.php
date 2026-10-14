@@ -127,4 +127,15 @@
         <textarea id="Observaciones" name="Observaciones" rows="3" class="form-control mt-1">{{ old('Observaciones', $activo->Observaciones) }}</textarea>
         <x-input-error :messages="$errors->get('Observaciones')" />
     </div>
+
+    <div class="md:col-span-2">
+        <x-input-label for="imagen" value="Imagen del activo (JPG, PNG o WEBP · máx. 10 MB)" />
+        @if ($activo->Imagen_Activo)
+            <img src="{{ route('activos.imagen', $activo) }}" alt="Imagen del activo"
+                 class="mt-2 h-32 w-auto rounded-md border border-slate-200 object-cover">
+        @endif
+        <input type="file" id="imagen" name="imagen" accept=".jpg,.jpeg,.png,.webp"
+               class="mt-1 block w-full text-sm text-slate-600 file:me-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+        <x-input-error :messages="$errors->get('imagen')" />
+    </div>
 </div>

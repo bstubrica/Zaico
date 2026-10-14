@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Activo;
 use App\Models\Asignacion;
+use App\Models\Compra;
 use App\Models\EstadoActivo;
 use App\Models\ModeloActivo;
 use App\Models\Personal;
@@ -15,7 +16,9 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 class ActivoService
@@ -23,6 +26,17 @@ class ActivoService
     use BusquedaAproximada;
     use LimiteLote;
     use PaginacionAcotada;
+
+    private const DIRECTORIO_IMAGENES = 'uploads/activos';
+
+    private const DIRECTORIO_FACTURAS = 'uploads/facturas';
+
+    /**
+     * Disco privado: las imágenes del activo y de las facturas solo se sirven
+     * a través del controlador autenticado, nunca como archivos estáticos
+     * públicos.
+     */
+    private const DISCO = 'local';
 
     public function __construct(private readonly HistorialService $historial) {}
 
@@ -99,12 +113,14 @@ class ActivoService
     /**
      * @param  array<string, mixed>  $datos
      */
-    public function crear(array $datos, int $usuarioId): Activo
+    public function crear(array $datos, int $usuarioId, ?UploadedFile $imagen = null): Activo
     {
         $datos = $this->sincronizarCatalogos($datos);
 
-        return DB::transaction(function () use ($datos, $usuarioId) {
+        return DB::transaction(function () use ($datos, $usuarioId, $imagen) {
             $activo = Activo::create($datos);
+
+            $this->guardarImagen($activo, $imagen);
 
             $this->historial->registrar(
                 $activo->id,
@@ -120,11 +136,11 @@ class ActivoService
     /**
      * @param  array<string, mixed>  $datos
      */
-    public function actualizar(Activo $activo, array $datos, int $usuarioId): Activo
+    public function actualizar(Activo $activo, array $datos, int $usuarioId, ?UploadedFile $imagen = null): Activo
     {
         $datos = $this->sincronizarCatalogos($datos);
 
-        return DB::transaction(function () use ($activo, $datos, $usuarioId) {
+        return DB::transaction(function () use ($activo, $datos, $usuarioId, $imagen) {
             $antes = $activo->only(array_keys($datos));
             $activo->update($datos);
 
@@ -136,6 +152,17 @@ class ActivoService
                 nuevo: json_encode($activo->only(array_keys($datos)), JSON_UNESCAPED_UNICODE),
                 usuarioId: $usuarioId,
             );
+
+            if ($imagen !== null) {
+                $this->guardarImagen($activo, $imagen);
+
+                $this->historial->registrar(
+                    $activo->id,
+                    'Modificacion',
+                    'Imagen del activo actualizada',
+                    usuarioId: $usuarioId,
+                );
+            }
 
             return $activo->fresh('estadoCatalogo');
         });
@@ -353,6 +380,99 @@ class ActivoService
     public function historialAsignaciones(Activo $activo): Collection
     {
         return $activo->asignaciones()->with('personal')->orderByDesc('Fecha_asignacion')->get();
+    }
+
+    /**
+     * Crea o actualiza los datos de compra (relación 1:1) del activo.
+     *
+     * @param  array<string, mixed>  $datos
+     */
+    public function guardarCompra(Activo $activo, array $datos, int $usuarioId, ?UploadedFile $factura = null): Compra
+    {
+        return DB::transaction(function () use ($activo, $datos, $usuarioId, $factura) {
+            $compra = $activo->compra()->updateOrCreate([], $datos);
+
+            $this->guardarImagenFactura($compra, $factura);
+
+            $this->historial->registrar(
+                $activo->id,
+                'Modificacion',
+                'Datos de compra actualizados',
+                usuarioId: $usuarioId,
+            );
+
+            return $compra;
+        });
+    }
+
+    /**
+     * Sirve la imagen del activo desde el disco privado a usuarios
+     * autenticados.
+     */
+    public function respuestaImagen(Activo $activo)
+    {
+        abort_unless(
+            $activo->Imagen_Activo !== null
+                && Storage::disk(self::DISCO)->exists($activo->Imagen_Activo),
+            404,
+            'El activo no tiene una imagen adjunta.'
+        );
+
+        return Storage::disk(self::DISCO)->response($activo->Imagen_Activo);
+    }
+
+    /**
+     * Sirve la fotografía de la factura de compra desde el disco privado a
+     * usuarios autenticados.
+     */
+    public function respuestaImagenFactura(Activo $activo)
+    {
+        abort_unless(
+            $activo->compra?->Imagen_Factura !== null
+                && Storage::disk(self::DISCO)->exists($activo->compra->Imagen_Factura),
+            404,
+            'La compra no tiene una fotografía de factura adjunta.'
+        );
+
+        return Storage::disk(self::DISCO)->response($activo->compra->Imagen_Factura);
+    }
+
+    /**
+     * Guarda la imagen del activo en el disco privado, reemplazando y
+     * eliminando la anterior si existía.
+     */
+    private function guardarImagen(Activo $activo, ?UploadedFile $imagen): void
+    {
+        if ($imagen === null) {
+            return;
+        }
+
+        if ($activo->Imagen_Activo !== null) {
+            Storage::disk(self::DISCO)->delete($activo->Imagen_Activo);
+        }
+
+        $activo->update([
+            'Imagen_Activo' => $imagen->store(self::DIRECTORIO_IMAGENES, self::DISCO),
+        ]);
+    }
+
+    /**
+     * Guarda la fotografía de la factura en el disco privado, reemplazando y
+     * eliminando la anterior si existía.
+     */
+    private function guardarImagenFactura(Compra $compra, ?UploadedFile $factura): void
+    {
+        if ($factura === null) {
+            return;
+        }
+
+        if ($compra->Imagen_Factura !== null) {
+            Storage::disk(self::DISCO)->delete($compra->Imagen_Factura);
+        }
+
+        $compra->update([
+            'Imagen_Factura' => $factura->store(self::DIRECTORIO_FACTURAS, self::DISCO),
+        ]);
     }
 
     /**

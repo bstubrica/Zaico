@@ -1,5 +1,6 @@
 @php
     $puedeVerAuditoria = auth()->user()->isAdmin() || auth()->user()->role === 'Auditor';
+    $compra = $activo->compra;
 @endphp
 
 <x-app-layout>
@@ -46,6 +47,7 @@
                     @php
                         $tabs = [
                             ['id' => 'datos', 'label' => 'Datos', 'icon' => 'document'],
+                            ['id' => 'compra', 'label' => 'Compra', 'icon' => 'currency'],
                             ['id' => 'asignaciones', 'label' => 'Asignaciones', 'icon' => 'users'],
                             ['id' => 'mantenimientos', 'label' => 'Mantenimientos', 'icon' => 'wrench'],
                         ];
@@ -70,6 +72,10 @@
 
             {{-- Datos --}}
             <div x-show="tab === 'datos'" x-cloak class="card-body">
+                @if ($activo->Imagen_Activo)
+                    <img src="{{ route('activos.imagen', $activo) }}" alt="{{ $activo->Nombre_de_activo }}"
+                         class="mb-5 max-h-64 w-auto rounded-lg border border-slate-200 object-contain">
+                @endif
                 <dl class="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
                     <div>
                         <dt class="text-slate-500">Etiqueta</dt>
@@ -113,6 +119,124 @@
                         Registrado el {{ $activo->Creado_el?->format('d/m/Y H:i') }}
                     </div>
                 </dl>
+            </div>
+
+            {{-- Compra --}}
+            <div x-show="tab === 'compra'" x-cloak class="card-body">
+                @if ($compra)
+                    <dl class="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                        <div>
+                            <dt class="text-slate-500">N.º de requisición / orden de compra</dt>
+                            <dd class="font-medium text-slate-900">{{ $compra->Numero_Requisicion ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">N.º de factura</dt>
+                            <dd class="font-medium text-slate-900">{{ $compra->Numero_factura ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Proveedor</dt>
+                            <dd class="font-medium text-slate-900">{{ $compra->Proveedor ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Fecha de compra</dt>
+                            <dd class="font-medium text-slate-900">{{ $compra->Fecha_Compra?->format('d/m/Y') ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Costo</dt>
+                            <dd class="font-medium text-slate-900">
+                                {{ $compra->Costo_compra !== null ? number_format((float) $compra->Costo_compra, 2) : '—' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Tiempo de garantía</dt>
+                            <dd class="font-medium text-slate-900">{{ $compra->Tiempo_garantia ?? '—' }}</dd>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <dt class="text-slate-500">Garantía (detalle)</dt>
+                            <dd class="font-medium text-slate-900">{{ $compra->Garantia ?? '—' }}</dd>
+                        </div>
+                    </dl>
+                @else
+                    <p class="text-sm text-slate-500">Sin datos de compra registrados.</p>
+                @endif
+
+                @if ($compra?->Imagen_Factura)
+                    <div class="mt-4">
+                        <p class="text-sm text-slate-500">Fotografía de la factura</p>
+                        <a href="{{ route('activos.factura', $activo) }}" target="_blank" rel="noopener">
+                            <img src="{{ route('activos.factura', $activo) }}" alt="Factura de compra"
+                                 class="mt-2 h-48 w-auto rounded-md border border-slate-200 object-contain">
+                        </a>
+                    </div>
+                @endif
+
+                @if (auth()->user()->puedeEscribir())
+                    <form method="POST" action="{{ route('activos.compra.update', $activo) }}"
+                          enctype="multipart/form-data"
+                          class="mt-5 border-t border-slate-200 pt-5">
+                        @csrf
+                        @method('PUT')
+                        <h4 class="mb-3 text-sm font-semibold text-slate-800">
+                            {{ $compra ? 'Editar datos de compra' : 'Registrar datos de compra' }}
+                        </h4>
+
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <x-input-label for="Numero_Requisicion" value="N.º de requisición / orden de compra" />
+                                <x-text-input id="Numero_Requisicion" name="Numero_Requisicion" type="text" class="mt-1 w-full"
+                                              :value="old('Numero_Requisicion', $compra?->Numero_Requisicion)" />
+                                <x-input-error :messages="$errors->get('Numero_Requisicion')" />
+                            </div>
+                            <div>
+                                <x-input-label for="Numero_factura" value="N.º de factura" />
+                                <x-text-input id="Numero_factura" name="Numero_factura" type="text" class="mt-1 w-full"
+                                              :value="old('Numero_factura', $compra?->Numero_factura)" />
+                                <x-input-error :messages="$errors->get('Numero_factura')" />
+                            </div>
+                            <div>
+                                <x-input-label for="Proveedor" value="Proveedor" />
+                                <x-text-input id="Proveedor" name="Proveedor" type="text" class="mt-1 w-full"
+                                              :value="old('Proveedor', $compra?->Proveedor)" />
+                                <x-input-error :messages="$errors->get('Proveedor')" />
+                            </div>
+                            <div>
+                                <x-input-label for="Fecha_Compra" value="Fecha de compra" />
+                                <input type="date" id="Fecha_Compra" name="Fecha_Compra" class="form-control mt-1"
+                                       value="{{ old('Fecha_Compra', $compra?->Fecha_Compra?->format('Y-m-d')) }}">
+                                <x-input-error :messages="$errors->get('Fecha_Compra')" />
+                            </div>
+                            <div>
+                                <x-input-label for="Costo_compra" value="Costo" />
+                                <x-text-input id="Costo_compra" name="Costo_compra" type="number" step="0.01" min="0" class="mt-1 w-full"
+                                              :value="old('Costo_compra', $compra?->Costo_compra)" />
+                                <x-input-error :messages="$errors->get('Costo_compra')" />
+                            </div>
+                            <div>
+                                <x-input-label for="Tiempo_garantia" value="Tiempo de garantía" />
+                                <x-text-input id="Tiempo_garantia" name="Tiempo_garantia" type="text" class="mt-1 w-full"
+                                              placeholder="Ej.: 12 meses"
+                                              :value="old('Tiempo_garantia', $compra?->Tiempo_garantia)" />
+                                <x-input-error :messages="$errors->get('Tiempo_garantia')" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-input-label for="Garantia" value="Garantía (detalle)" />
+                                <x-text-input id="Garantia" name="Garantia" type="text" class="mt-1 w-full"
+                                              :value="old('Garantia', $compra?->Garantia)" />
+                                <x-input-error :messages="$errors->get('Garantia')" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-input-label for="imagen_factura" value="Foto de la factura (JPG, PNG o WEBP · máx. 10 MB)" />
+                                <input type="file" id="imagen_factura" name="imagen_factura" accept=".jpg,.jpeg,.png,.webp"
+                                       class="mt-1 block w-full text-sm text-slate-600 file:me-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+                                <x-input-error :messages="$errors->get('imagen_factura')" />
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary mt-4 w-full">
+                            <x-icon name="check-circle" :size="18" /> Guardar datos de compra
+                        </button>
+                    </form>
+                @endif
             </div>
 
             {{-- Asignaciones --}}

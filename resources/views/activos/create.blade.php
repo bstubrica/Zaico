@@ -9,7 +9,7 @@
         </x-page-header>
     </x-slot>
 
-    <form method="POST" action="{{ route('activos.store') }}" class="mx-auto max-w-3xl">
+    <form method="POST" action="{{ route('activos.store') }}" enctype="multipart/form-data" class="mx-auto max-w-3xl">
         @csrf
 
         <div class="card">

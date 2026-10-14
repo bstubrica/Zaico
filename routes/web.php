@@ -29,6 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('activos/{activo}/asignacion', [ActivosController::class, 'asignar'])->name('activos.asignar');
         Route::post('activos/{activo}/devolucion', [ActivosController::class, 'devolver'])->name('activos.devolver');
         Route::put('activos/{activo}/estado', [ActivosController::class, 'cambiarEstado'])->name('activos.estado');
+        Route::put('activos/{activo}/compra', [ActivosController::class, 'guardarCompra'])->name('activos.compra.update');
         Route::post('activos/{activo}/mantenimientos', [MantenimientosController::class, 'store'])
             ->name('activos.mantenimientos.store');
 
@@ -102,6 +103,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('activos', [ActivosController::class, 'index'])->name('activos.index');
     Route::get('activos/buscar', [ActivosController::class, 'buscar'])->name('activos.buscar');
     Route::get('activos/{activo}', [ActivosController::class, 'show'])->name('activos.show');
+    Route::get('activos/{activo}/imagen', [ActivosController::class, 'imagen'])->name('activos.imagen');
+    Route::get('activos/{activo}/factura', [ActivosController::class, 'imagenFactura'])->name('activos.factura');
     Route::get('activos/{activo}/mantenimientos', [MantenimientosController::class, 'porActivo'])
         ->name('activos.mantenimientos');
     Route::get('api/activos', [ActivosController::class, 'apiIndex'])

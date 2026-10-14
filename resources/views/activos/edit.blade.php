@@ -9,7 +9,7 @@
         </x-page-header>
     </x-slot>
 
-    <form method="POST" action="{{ route('activos.update', $activo) }}" class="mx-auto max-w-3xl">
+    <form method="POST" action="{{ route('activos.update', $activo) }}" enctype="multipart/form-data" class="mx-auto max-w-3xl">
         @csrf
         @method('PUT')
 

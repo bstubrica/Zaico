@@ -7,6 +7,7 @@ use App\Http\Requests\CambiarEstadoRequest;
 use App\Http\Requests\DesincorporarActivoRequest;
 use App\Http\Requests\DesincorporarActivosMasivoRequest;
 use App\Http\Requests\DevolverEquipoRequest;
+use App\Http\Requests\GuardarCompraRequest;
 use App\Http\Requests\StoreActivoRequest;
 use App\Http\Requests\UpdateActivoRequest;
 use App\Models\Activo;
@@ -88,9 +89,13 @@ class ActivosController extends Controller
 
     public function store(StoreActivoRequest $request)
     {
-        $this->activos->crear($request->validated(), $request->user()->id);
+        $this->activos->crear(
+            $request->safe()->except('imagen'),
+            $request->user()->id,
+            $request->file('imagen'),
+        );
 
-        return redirect()->route('activos.index')->with('success', 'Activo registrado correctamente.');
+        return redirect()->route('activos.index')->with('success', 'Activo registrado.');
     }
 
     public function edit(Activo $activo): View
@@ -105,9 +110,36 @@ class ActivosController extends Controller
 
     public function update(UpdateActivoRequest $request, Activo $activo)
     {
-        $this->activos->actualizar($activo, $request->validated(), $request->user()->id);
+        $this->activos->actualizar(
+            $activo,
+            $request->safe()->except('imagen'),
+            $request->user()->id,
+            $request->file('imagen'),
+        );
 
         return redirect()->route('activos.show', $activo)->with('success', 'Activo actualizado.');
+    }
+
+    public function guardarCompra(GuardarCompraRequest $request, Activo $activo): RedirectResponse
+    {
+        $this->activos->guardarCompra(
+            $activo,
+            $request->safe()->except('imagen_factura'),
+            $request->user()->id,
+            $request->file('imagen_factura'),
+        );
+
+        return back()->with('success', 'Datos de compra guardados.');
+    }
+
+    public function imagen(Activo $activo)
+    {
+        return $this->activos->respuestaImagen($activo);
+    }
+
+    public function imagenFactura(Activo $activo)
+    {
+        return $this->activos->respuestaImagenFactura($activo);
     }
 
     public function asignar(AsignarEquipoRequest $request, Activo $activo)

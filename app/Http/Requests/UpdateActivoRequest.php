@@ -45,6 +45,7 @@ class UpdateActivoRequest extends FormRequest
                 'nullable',
                 Rule::exists('ESTADOS_ACTIVO', 'id')->where('Grupo', $grupo),
             ],
+            'imagen' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ];
     }
 
@@ -64,6 +65,9 @@ class UpdateActivoRequest extends FormRequest
             'Estado.required' => 'El estado es obligatorio',
             'Estado.exists' => 'El grupo de estado seleccionado no es válido',
             'fk_estado.exists' => 'El detalle de estado no corresponde al grupo seleccionado',
+            'imagen.file' => 'La imagen debe ser un archivo',
+            'imagen.mimes' => 'La imagen debe ser JPG, PNG o WEBP',
+            'imagen.max' => 'La imagen no puede exceder 10 MB',
         ];
     }
 
@@ -80,6 +84,7 @@ class UpdateActivoRequest extends FormRequest
             'fk_modelo' => 'modelo',
             'Direccion_MAC' => 'dirección MAC',
             'fk_estado' => 'estado de catálogo',
+            'imagen' => 'imagen del activo',
         ];
     }
 }
