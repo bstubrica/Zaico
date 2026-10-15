@@ -68,7 +68,7 @@
     }
 
     .btn-warning {
-        @apply bg-amber-500 text-white shadow-sm hover:bg-amber-400 focus-visible:ring-amber-400;
+        @apply bg-amber-500 text-amber-950 shadow-sm hover:bg-amber-400 focus-visible:ring-amber-400;
     }
 
     .btn-neutral {
@@ -99,7 +99,7 @@
 
     /* Navegación lateral */
     .sidebar-link {
-        @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white;
+        @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70;
     }
 
     .sidebar-link-active {
@@ -129,6 +129,6 @@
 
     /* Enlaces */
     .link {
-        @apply font-medium text-brand-600 hover:text-brand-500 hover:underline;
+        @apply rounded font-medium text-brand-600 hover:text-brand-500 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
     }
 }

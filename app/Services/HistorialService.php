@@ -4,12 +4,27 @@ namespace App\Services;
 
 use App\Models\Asignacion;
 use App\Models\HistorialEvento;
+use App\Models\Personal;
 use App\Services\Concerns\BusquedaAproximada;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class HistorialService
 {
     use BusquedaAproximada;
+
+    /**
+     * Personas para el selector de filtros. Se cargan solo las columnas que la
+     * vista necesita, para no hidratar filas completas de la tabla.
+     *
+     * @return Collection<int, Personal>
+     */
+    public function catalogoPersonal(): Collection
+    {
+        return Personal::query()
+            ->orderBy('Apellido')
+            ->get(['id', 'Nombre', 'Apellido', 'Cargo', 'Nombre_usuario']);
+    }
 
     /**
      * Consulta base del historial de asignaciones con filtros (sin paginar).

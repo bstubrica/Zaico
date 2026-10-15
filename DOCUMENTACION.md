@@ -331,7 +331,8 @@ Trece tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 | Creado_el / Actualizado_el | timestamptz | |
 
 Índices: `idx_activos_nombre`, `idx_activos_categoria`, `idx_activos_estado`,
-`idx_activos_ubicacion`, `idx_activos_modelo`.
+`idx_activos_ubicacion`, `idx_activos_modelo`, `idx_activos_estado_valor`
+(columna `Estado`, añadido en la corrección de auditoría 2026-10-15).
 
 #### `UBICACIONES` (catálogo)
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -17,6 +18,26 @@ use RuntimeException;
 class UsuarioService
 {
     public const MENSAJE_ULTIMO_ADMIN = 'Debe existir al menos un administrador activo.';
+
+    /**
+     * Listado de usuarios del sistema con filtros básicos.
+     *
+     * @param  array{termino?: string|null, rol?: string|null, estado?: string|null}  $filtros
+     */
+    public function listar(array $filtros, int $tamano = 15): LengthAwarePaginator
+    {
+        return User::query()
+            ->when($filtros['termino'] ?? null, fn ($query, $termino) => $query->where(
+                fn ($where) => $where
+                    ->where('name', 'like', "%{$termino}%")
+                    ->orWhere('email', 'like', "%{$termino}%"),
+            ))
+            ->when($filtros['rol'] ?? null, fn ($query, $rol) => $query->where('role', $rol))
+            ->when($filtros['estado'] ?? null, fn ($query, $estado) => $query->where('activo', $estado === 'habilitado'))
+            ->orderBy('name')
+            ->paginate($tamano)
+            ->withQueryString();
+    }
 
     /**
      * @param  array{name: string, email: string, role: string, password: string, activo?: bool}  $datos

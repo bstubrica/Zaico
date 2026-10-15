@@ -9,6 +9,17 @@
                 "artisan",
                 "boost:mcp"
             ]
+        },
+        "postgres": {
+            "type": "local",
+            "enabled": true,
+            "command": [
+                "npx",
+                "-y",
+                "@microsoft/postgres-mcp",
+                "run",
+                "--no-telemetry"
+            ]
         }
     }
 }

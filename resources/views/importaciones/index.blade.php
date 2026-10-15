@@ -69,10 +69,7 @@
                         <thead>
                             <tr>
                                 <th class="w-10">
-                                    <input type="checkbox" aria-label="Seleccionar todos"
-                                           class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                           :checked="todosVisibles()"
-                                           @change="alternarVisibles($event.target.checked)">
+                                    <x-sel-todos />
                                 </th>
                                 <th>Fecha</th>
                                 <th>Archivo</th>
@@ -88,10 +85,7 @@
                             @foreach ($historial as $log)
                                 <tr>
                                     <td class="w-10">
-                                        <input type="checkbox" value="{{ $log->id }}"
-                                               class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                               :checked="estaSeleccionado({{ $log->id }})"
-                                               @change="alternar({{ $log->id }}, $event.target.checked)">
+                                        <x-sel-fila :valor="$log->id" :etiqueta="$log->Nombre_archivo" />
                                     </td>
                                     <td class="whitespace-nowrap text-slate-500">{{ $log->Fecha?->format('d/m/Y H:i') }}</td>
                                     <td class="font-medium text-slate-900">{{ \Illuminate\Support\Str::limit($log->Nombre_archivo, 32) }}</td>

@@ -11,12 +11,8 @@ use App\Http\Requests\GuardarCompraRequest;
 use App\Http\Requests\StoreActivoRequest;
 use App\Http\Requests\UpdateActivoRequest;
 use App\Models\Activo;
-use App\Models\EstadoActivo;
-use App\Models\ModeloActivo;
 use App\Models\Personal;
-use App\Models\Ubicacion;
 use App\Services\ActivoService;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,10 +35,10 @@ class ActivosController extends Controller
         $filtros['tamano'] = 50;
         $activos = $this->activos->listar($filtros);
 
-        $grupos = EstadoActivo::where('Estado', 1)->distinct()->orderBy('Grupo')->pluck('Grupo');
-        $categorias = Activo::whereNotNull('Categoria')->distinct()->orderBy('Categoria')->pluck('Categoria');
-        $ubicaciones = $this->opcionesUbicaciones();
-        $modelos = $this->opcionesModelos();
+        $grupos = $this->activos->gruposEstado();
+        $categorias = $this->activos->categorias();
+        $ubicaciones = $this->activos->opcionesUbicaciones();
+        $modelos = $this->activos->opcionesModelos();
 
         return view('activos.index', compact('activos', 'filtros', 'grupos', 'categorias', 'ubicaciones', 'modelos'));
     }
@@ -51,8 +47,11 @@ class ActivosController extends Controller
     {
         $activo->load(['estadoCatalogo', 'asignacionActiva.personal', 'mantenimientos.evidencias', 'compra', 'ubicacionCatalogo', 'modeloCatalogo']);
         $historial = $this->activos->historialAsignaciones($activo);
-        $personas = Personal::where('Estado', 'Activo')->orderBy('Apellido')->get();
-        $estados = $this->catalogoEstados($activo);
+        $personas = Personal::query()
+            ->where('Estado', 'Activo')
+            ->orderBy('Apellido')
+            ->get(['id', 'Nombre', 'Apellido', 'Cargo', 'Nombre_usuario']);
+        $estados = $this->activos->catalogoEstados($activo);
 
         return view('activos.show', compact('activo', 'historial', 'personas', 'estados'));
     }
@@ -79,10 +78,10 @@ class ActivosController extends Controller
 
     public function create(): View
     {
-        $estados = $this->catalogoEstados();
-        $grupos = EstadoActivo::where('Estado', 1)->distinct()->orderBy('Grupo')->pluck('Grupo');
-        $ubicaciones = $this->opcionesUbicaciones();
-        $modelos = $this->opcionesModelos();
+        $estados = $this->activos->catalogoEstados();
+        $grupos = $this->activos->gruposEstado();
+        $ubicaciones = $this->activos->opcionesUbicaciones();
+        $modelos = $this->activos->opcionesModelos();
 
         return view('activos.create', compact('estados', 'grupos', 'ubicaciones', 'modelos'));
     }
@@ -100,10 +99,10 @@ class ActivosController extends Controller
 
     public function edit(Activo $activo): View
     {
-        $estados = $this->catalogoEstados($activo);
-        $grupos = EstadoActivo::where('Estado', 1)->distinct()->orderBy('Grupo')->pluck('Grupo');
-        $ubicaciones = $this->opcionesUbicaciones($activo);
-        $modelos = $this->opcionesModelos($activo);
+        $estados = $this->activos->catalogoEstados($activo);
+        $grupos = $this->activos->gruposEstado();
+        $ubicaciones = $this->activos->opcionesUbicaciones($activo);
+        $modelos = $this->activos->opcionesModelos($activo);
 
         return view('activos.edit', compact('activo', 'estados', 'grupos', 'ubicaciones', 'modelos'));
     }
@@ -236,72 +235,5 @@ class ActivosController extends Controller
         $filtros['tamano'] = (int) $request->input('tamano', 50);
 
         return response()->json($this->activos->listar($filtros));
-    }
-
-    /**
-     * Catálogo activo de estados. Incluye el estado vinculado al activo aunque
-     * esté inactivo, para no perder el valor al editar.
-     *
-     * @return Collection<int, EstadoActivo>
-     */
-    private function catalogoEstados(?Activo $activo = null)
-    {
-        $seleccionado = $activo?->fk_estado;
-
-        return EstadoActivo::query()
-            ->where(function ($query) use ($seleccionado) {
-                $query->where('Estado', 1);
-
-                if ($seleccionado !== null) {
-                    $query->orWhere('id', $seleccionado);
-                }
-            })
-            ->orderBy('Grupo')
-            ->orderBy('Nombre')
-            ->get();
-    }
-
-    /**
-     * Incluye la ubicación vinculada al activo aunque esté inactiva, para no
-     * perder el valor al editar.
-     *
-     * @return Collection<int, Ubicacion>
-     */
-    private function opcionesUbicaciones(?Activo $activo = null)
-    {
-        $seleccionada = $activo?->fk_ubicacion;
-
-        return Ubicacion::query()
-            ->where(function ($query) use ($seleccionada) {
-                $query->where('Estado', 'Activo');
-
-                if ($seleccionada !== null) {
-                    $query->orWhere('id', $seleccionada);
-                }
-            })
-            ->orderBy('Nombre')
-            ->get();
-    }
-
-    /**
-     * Incluye el modelo vinculado al activo aunque esté inactivo, para no
-     * perder el valor al editar.
-     *
-     * @return Collection<int, ModeloActivo>
-     */
-    private function opcionesModelos(?Activo $activo = null)
-    {
-        $seleccionado = $activo?->fk_modelo;
-
-        return ModeloActivo::query()
-            ->where(function ($query) use ($seleccionado) {
-                $query->where('Estado', 'Activo');
-
-                if ($seleccionado !== null) {
-                    $query->orWhere('id', $seleccionado);
-                }
-            })
-            ->orderBy('Nombre')
-            ->get();
     }
 }

@@ -26,17 +26,7 @@ class AdminUsuarioController extends Controller
             'estado' => $request->string('estado')->value() ?: null,
         ];
 
-        $usuarios = User::query()
-            ->when($filtros['termino'], fn ($query, $termino) => $query->where(
-                fn ($where) => $where
-                    ->where('name', 'like', "%{$termino}%")
-                    ->orWhere('email', 'like', "%{$termino}%"),
-            ))
-            ->when($filtros['rol'], fn ($query, $rol) => $query->where('role', $rol))
-            ->when($filtros['estado'], fn ($query, $estado) => $query->where('activo', $estado === 'habilitado'))
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+        $usuarios = $this->usuarios->listar($filtros);
 
         return view('admin.usuarios.index', [
             'usuarios' => $usuarios,

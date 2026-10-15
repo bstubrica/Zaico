@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -102,12 +103,114 @@ class ActivoService
      * IDs de todos los activos que coinciden con el filtro activo, para la
      * opción «seleccionar todos los resultados» del listado.
      *
+     * Se limita a `MAXIMO_LOTE + 1` filas: basta para detectar en el
+     * controlador que la selección excede el tope, sin materializar en memoria
+     * el universo completo de coincidencias.
+     *
      * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string}  $filtros
      * @return array<int, int>
      */
     public function idsDeFiltro(array $filtros): array
     {
-        return $this->consultaListado($filtros)->pluck('id')->all();
+        return $this->consultaListado($filtros)
+            ->limit(self::MAXIMO_LOTE + 1)
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * Catálogo activo de estados. Incluye el estado vinculado al activo aunque
+     * esté inactivo, para no perder el valor al editar.
+     *
+     * @return Collection<int, EstadoActivo>
+     */
+    public function catalogoEstados(?Activo $activo = null): Collection
+    {
+        $seleccionado = $activo?->fk_estado;
+
+        return EstadoActivo::query()
+            ->where(function ($query) use ($seleccionado) {
+                $query->where('Estado', 1);
+
+                if ($seleccionado !== null) {
+                    $query->orWhere('id', $seleccionado);
+                }
+            })
+            ->orderBy('Grupo')
+            ->orderBy('Nombre')
+            ->get();
+    }
+
+    /**
+     * Grupos de estado distintos y activos, para los filtros del listado.
+     *
+     * @return BaseCollection<int, string>
+     */
+    public function gruposEstado(): BaseCollection
+    {
+        return EstadoActivo::query()
+            ->where('Estado', 1)
+            ->distinct()
+            ->orderBy('Grupo')
+            ->pluck('Grupo');
+    }
+
+    /**
+     * Categorías distintas presentes en el inventario.
+     *
+     * @return BaseCollection<int, string>
+     */
+    public function categorias(): BaseCollection
+    {
+        return Activo::query()
+            ->whereNotNull('Categoria')
+            ->distinct()
+            ->orderBy('Categoria')
+            ->pluck('Categoria');
+    }
+
+    /**
+     * Incluye la ubicación vinculada al activo aunque esté inactiva, para no
+     * perder el valor al editar.
+     *
+     * @return Collection<int, Ubicacion>
+     */
+    public function opcionesUbicaciones(?Activo $activo = null): Collection
+    {
+        $seleccionada = $activo?->fk_ubicacion;
+
+        return Ubicacion::query()
+            ->where(function ($query) use ($seleccionada) {
+                $query->where('Estado', 'Activo');
+
+                if ($seleccionada !== null) {
+                    $query->orWhere('id', $seleccionada);
+                }
+            })
+            ->orderBy('Nombre')
+            ->get();
+    }
+
+    /**
+     * Incluye el modelo vinculado al activo aunque esté inactivo, para no
+     * perder el valor al editar.
+     *
+     * @return Collection<int, ModeloActivo>
+     */
+    public function opcionesModelos(?Activo $activo = null): Collection
+    {
+        $seleccionado = $activo?->fk_modelo;
+
+        return ModeloActivo::query()
+            ->where(function ($query) use ($seleccionado) {
+                $query->where('Estado', 'Activo');
+
+                if ($seleccionado !== null) {
+                    $query->orWhere('id', $seleccionado);
+                }
+            })
+            ->orderBy('Nombre')
+            ->get();
     }
 
     /**
@@ -375,11 +478,16 @@ class ActivoService
     }
 
     /**
-     * @return Collection<int, Asignacion>
+     * Historial de asignaciones del activo, paginado para no cargar en memoria
+     * un histórico potencialmente largo.
      */
-    public function historialAsignaciones(Activo $activo): Collection
+    public function historialAsignaciones(Activo $activo, int $tamano = 15): LengthAwarePaginator
     {
-        return $activo->asignaciones()->with('personal')->orderByDesc('Fecha_asignacion')->get();
+        return $activo->asignaciones()
+            ->with('personal')
+            ->orderByDesc('Fecha_asignacion')
+            ->paginate($tamano)
+            ->withQueryString();
     }
 
     /**

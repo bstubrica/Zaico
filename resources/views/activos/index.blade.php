@@ -112,10 +112,7 @@
                         <tr>
                             @if (auth()->user()->puedeEscribir())
                                 <th class="w-10">
-                                    <input type="checkbox" aria-label="Seleccionar todos"
-                                           class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                           :checked="todosVisibles()"
-                                           @change="alternarVisibles($event.target.checked)">
+                                    <x-sel-todos />
                                 </th>
                             @endif
                             <th>Etiqueta</th>
@@ -133,10 +130,7 @@
                             <tr>
                                 @if (auth()->user()->puedeEscribir())
                                     <td class="w-10">
-                                        <input type="checkbox" value="{{ $activo->id }}"
-                                               class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                               :checked="estaSeleccionado({{ $activo->id }})"
-                                               @change="alternar({{ $activo->id }}, $event.target.checked)">
+                                        <x-sel-fila :valor="$activo->id" :etiqueta="$activo->Etiqueta_activo" />
                                     </td>
                                 @endif
                                 <td class="font-medium">

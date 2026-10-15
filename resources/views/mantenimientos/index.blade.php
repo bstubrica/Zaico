@@ -52,10 +52,7 @@
                         <tr>
                             @if (auth()->user()->puedeEscribir())
                                 <th class="w-10">
-                                    <input type="checkbox" aria-label="Seleccionar todos"
-                                           class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                           :checked="todosVisibles()"
-                                           @change="alternarVisibles($event.target.checked)">
+                                    <x-sel-todos />
                                 </th>
                             @endif
                             <th>Fecha</th>
@@ -74,10 +71,7 @@
                             <tr>
                                 @if (auth()->user()->puedeEscribir())
                                     <td class="w-10">
-                                        <input type="checkbox" value="{{ $mantenimiento->id }}"
-                                               class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                               :checked="estaSeleccionado({{ $mantenimiento->id }})"
-                                               @change="alternar({{ $mantenimiento->id }}, $event.target.checked)">
+                                        <x-sel-fila :valor="$mantenimiento->id" :etiqueta="$mantenimiento->activo?->Etiqueta_activo" />
                                     </td>
                                 @endif
                                 <td>{{ $mantenimiento->Fecha_mantenimiento?->format('d/m/Y') }}</td>

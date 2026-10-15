@@ -1,3 +1,12 @@
+# Memoria del proyecto (memory.md)
+
+Este proyecto usa `memory.md` (raíz del repo) como memoria de trabajo persistente entre sesiones.
+
+- **Antes de cada cambio o planificación**: lee `memory.md` para recuperar el contexto relevante. Si está vacío o no existe, continúa normalmente.
+- **Después de cada tarea relevante**: actualiza `memory.md` con el contexto importante de forma estructurada (qué se hizo, decisiones tomadas, convenciones, pendientes, comandos útiles).
+- **Límite estricto**: `memory.md` debe mantenerse siempre por debajo de 100 líneas. Antes de agregar contenido, borra o resume lo que ya no sea relevante.
+- Mantén secciones cortas y reutilizables, por ejemplo: Estado actual · Decisiones · Convenciones · Pendiente · Comandos útiles.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

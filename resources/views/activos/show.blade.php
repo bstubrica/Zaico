@@ -274,6 +274,12 @@
                             </tbody>
                         </table>
                     </div>
+
+                    @if ($historial->hasPages())
+                        <div class="border-t border-slate-200 px-4 py-3">
+                            {{ $historial->links() }}
+                        </div>
+                    @endif
                 @endif
             </div>
 

@@ -9,6 +9,7 @@ use App\Models\HistorialEvento;
 use App\Models\User;
 use App\Notifications\AlertaInventario;
 use Carbon\Carbon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
 
@@ -26,6 +27,36 @@ use Illuminate\Support\Facades\Notification;
  */
 class AlertaService
 {
+    /**
+     * Listado paginado de alertas activas, opcionalmente filtrado por tipo.
+     */
+    public function listar(?string $tipo = null, int $tamano = 50): LengthAwarePaginator
+    {
+        return Alerta::query()
+            ->activas()
+            ->with('activo')
+            ->when($tipo, fn ($query, $tipo) => $query->where('Tipo', $tipo))
+            ->orderBy('Tipo')
+            ->orderBy('Fecha_referencia')
+            ->paginate($tamano)
+            ->withQueryString();
+    }
+
+    /**
+     * Cantidad de alertas activas por tipo.
+     *
+     * @return Collection<string, int>
+     */
+    public function resumenPorTipo(): Collection
+    {
+        return Alerta::query()
+            ->activas()
+            ->select('Tipo')
+            ->selectRaw('count(*) as total')
+            ->groupBy('Tipo')
+            ->pluck('total', 'Tipo');
+    }
+
     /**
      * @return array{activas: int, nuevas: int, resueltas: int}
      */
@@ -48,7 +79,7 @@ class AlertaService
                 ],
             );
 
-            if ($alerta->wasRecentlyCreated) {
+            if ($alerta->wasRecentlyCreated || $alerta->wasChanged('Estado')) {
                 $nuevas->push($alerta);
             }
         }

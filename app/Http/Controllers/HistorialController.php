@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Personal;
 use App\Services\HistorialService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -19,7 +18,7 @@ class HistorialController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $personas = Personal::orderBy('Apellido')->get();
+        $personas = $this->historial->catalogoPersonal();
 
         return view('historial.index', compact('asignaciones', 'filtros', 'personas'));
     }
