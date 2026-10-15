@@ -102,13 +102,32 @@ class EliminacionRegistrosTest extends TestCase
         return $log;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function datosBaja(): array
+    {
+        return [
+            'tipo' => 'Desecho',
+            'destinatario' => 'Chatarra municipal',
+            'motivo' => 'Obsolescencia',
+            'fecha' => now()->toDateString(),
+        ];
+    }
+
     public function test_admin_puede_desincorporar_un_activo(): void
     {
         $desincorporado = $this->estado('Desincorporado (undeployable)', 'Desincorporado');
         $activo = $this->activo('TBDES001');
 
         $this->actingAs($this->admin)
-            ->post(route('activos.desincorporar', $activo), ['motivo' => 'Obsolescencia'])
+            ->post(route('activos.desincorporar', $activo), [
+                'tipo' => 'Venta',
+                'destinatario' => 'Proveedor ACME',
+                'monto' => 120.50,
+                'motivo' => 'Obsolescencia',
+                'fecha' => now()->toDateString(),
+            ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
 
@@ -117,7 +136,12 @@ class EliminacionRegistrosTest extends TestCase
         $this->assertSame($desincorporado->id, $activo->fk_estado);
         $this->assertDatabaseHas('HISTORIAL_EVENTOS', [
             'fk_activo' => $activo->id,
-            'Tipo_evento' => 'CambioEstado',
+            'Tipo_evento' => 'Desincorporacion',
+        ]);
+        $this->assertDatabaseHas('DESINCORPORACIONES', [
+            'fk_activo' => $activo->id,
+            'Tipo' => 'Venta',
+            'Estado' => 'Vigente',
         ]);
     }
 
@@ -128,7 +152,12 @@ class EliminacionRegistrosTest extends TestCase
         $this->asignacionActiva($activo, $this->persona('jperez'));
 
         $this->actingAs($this->admin)
-            ->post(route('activos.desincorporar', $activo), ['motivo' => 'x'])
+            ->post(route('activos.desincorporar', $activo), [
+                'tipo' => 'Desecho',
+                'destinatario' => 'Chatarra',
+                'motivo' => 'x',
+                'fecha' => now()->toDateString(),
+            ])
             ->assertSessionHasErrors('desincorporar');
 
         $this->assertSame('Disponible', $activo->fresh()->Estado);
@@ -147,7 +176,7 @@ class EliminacionRegistrosTest extends TestCase
             ->post(route('activos.desincorporar-masivo'), [
                 'ids' => [$a1->id, $a2->id, $ocupado->id, $yaDesincorporado->id],
                 'motivo' => 'Obsolescencia',
-            ])
+            ] + $this->datosBaja())
             ->assertSessionHasNoErrors();
 
         $this->assertSame('Desincorporado', $a1->fresh()->Estado);
@@ -178,7 +207,7 @@ class EliminacionRegistrosTest extends TestCase
                 'todos' => 1,
                 'termino' => 'TBTOT',
                 'motivo' => 'Obsolescencia',
-            ])
+            ] + $this->datosBaja())
             ->assertSessionHasNoErrors();
 
         $this->assertSame('Desincorporado', $a1->fresh()->Estado);
@@ -218,7 +247,7 @@ class EliminacionRegistrosTest extends TestCase
         $service = new ActivoService($historial);
 
         try {
-            $service->desincorporarLote([$a1->id, $a2->id], 'Obsolescencia', $this->admin->id);
+            $service->desincorporarLote([$a1->id, $a2->id], $this->datosBaja(), $this->admin->id);
             $this->fail('Se esperaba una RuntimeException que revierta todo el lote.');
         } catch (RuntimeException) {
             // Esperado: la transacción debe revertir el lote completo.

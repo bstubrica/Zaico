@@ -17,6 +17,7 @@ description: Reglas de negocio del inventario TI (Zaico) — entidades ACTIVOS/P
 | Asignación | `ASIGNACIONES` | Historial; máx. 1 fila `Estado = 'Activa'` por activo. |
 | Compra | `COMPRAS` | 1:1 con activo (`fk_activo` unique). |
 | Mantenimiento + evidencias | `MANTENIMIENTOS` / `EVIDENCIAS_MANTENIMIENTO` | Bitácora con archivos adjuntos. |
+| Desincorporación | `DESINCORPORACIONES` | Detalle de la baja (tipo/destino/monto/motivo/fecha/estado `Vigente|Anulada`). Una baja vigente por baja; se conserva al reincorporar. |
 | Auditoría | `HISTORIAL_EVENTOS` | Traza inmutable de cada operación relevante. |
 | Importación | `IMPORTACIONES_LOG` / `IMPORTACIONES_DETALLE` | Log por corrida y por fila del CSV. |
 | Operadores | `users` (Laravel) | Usuarios del sistema con columna `role`. |
@@ -31,10 +32,10 @@ description: Reglas de negocio del inventario TI (Zaico) — entidades ACTIVOS/P
 
 ## Reglas invariantes (no negociables)
 
-1. **Nunca `DELETE` físico** de activos ni personal. Desincorporación = cambio de estado con motivo obligatorio; baja de personal = `Estado = 'Inactivo'`.
+1. **Nunca `DELETE` físico** de activos ni personal. Desincorporación = baja lógica: fila en `DESINCORPORACIONES` (tipo `Venta, Donacion, Transferencia, Desecho, Robo, Otra`; `Venta` exige monto) + cambio de estado a grupo `Desincorporado` con motivo obligatorio. Reincorporar devuelve a `Disponible` y marca la baja como `Anulada`. Baja de personal = `Estado = 'Inactivo'`.
 2. **Máximo 1 asignación activa por activo.** Asignar exige: sin asignación previa `Activa`, estado ≠ `Desincorporado`, personal existente y `Activo`. La asignación pone el activo en grupo `Asignado`.
 3. **Devolución** cierra la asignación (`Estado = 'Cerrada'`, `Fecha_devolucion`) y devuelve el activo a grupo `Disponible`.
-4. **Toda escritura relevante genera evento** en `HISTORIAL_EVENTOS` con `fk_usuario` y `Fecha`. Tipos válidos: `Creacion`, `Modificacion`, `Asignacion`, `Devolucion`, `CambioEstado`, `Mantenimiento`, `Importacion`.
+4. **Toda escritura relevante genera evento** en `HISTORIAL_EVENTOS` con `fk_usuario` y `Fecha`. Tipos válidos: `Creacion`, `Modificacion`, `Asignacion`, `Devolucion`, `CambioEstado`, `Mantenimiento`, `Importacion`, `Desincorporacion`, `Reincorporacion`.
 5. **Cambio de estado siempre lleva motivo** (`Descripcion` del evento).
 6. `Serial`: único cuando no es `NULL`; el valor `N/A` del CSV se normaliza a `NULL`.
 

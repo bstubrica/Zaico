@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Activo;
 use App\Models\Asignacion;
+use App\Models\Desincorporacion;
+use App\Models\EstadoActivo;
 use App\Models\Mantenimiento;
 use App\Models\Personal;
 use App\Models\User;
@@ -146,5 +148,42 @@ class ReporteTest extends TestCase
     public function test_exportacion_requiere_autenticacion(): void
     {
         $this->get(route('reportes.activos'))->assertRedirect(route('login'));
+    }
+
+    public function test_exportar_desincorporados_genera_csv(): void
+    {
+        $estado = EstadoActivo::create([
+            'Nombre' => 'Desincorporado (undeployable)',
+            'Grupo' => 'Desincorporado',
+            'Deployed' => true,
+            'Deployable' => false,
+            'Estado' => 1,
+        ]);
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop Dell',
+            'Etiqueta_activo' => 'TBDES001',
+            'Estado' => 'Desincorporado',
+            'fk_estado' => $estado->id,
+        ]);
+        Desincorporacion::create([
+            'fk_activo' => $activo->id,
+            'Tipo' => 'Venta',
+            'Destinatario' => 'Proveedor ACME',
+            'Monto' => 120.50,
+            'Moneda' => 'USD',
+            'Motivo' => 'Obsolescencia',
+            'Fecha' => '2026-10-05',
+            'Estado' => 'Vigente',
+            'fk_usuario' => $this->admin->id,
+        ]);
+
+        $respuesta = $this->actingAs($this->admin)->get(route('reportes.desincorporados'));
+
+        $respuesta->assertOk();
+        $contenido = $respuesta->streamedContent();
+        $this->assertStringContainsString('"Tipo de baja";Destinatario', $contenido);
+        $this->assertStringContainsString('TBDES001', $contenido);
+        $this->assertStringContainsString('Venta', $contenido);
+        $this->assertStringContainsString('Proveedor ACME', $contenido);
     }
 }

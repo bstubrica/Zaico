@@ -7,6 +7,7 @@ use App\Models\Asignacion;
 use App\Models\Mantenimiento;
 use App\Models\Personal;
 use App\Services\ActivoService;
+use App\Services\DesincorporacionService;
 use App\Services\HistorialService;
 use App\Services\MantenimientoService;
 use App\Services\PersonalService;
@@ -22,6 +23,7 @@ class ReporteController extends Controller
         private readonly PersonalService $personal,
         private readonly HistorialService $historial,
         private readonly MantenimientoService $mantenimientos,
+        private readonly DesincorporacionService $desincorporaciones,
     ) {}
 
     public function activos(Request $request): StreamedResponse
@@ -103,6 +105,32 @@ class ReporteController extends Controller
                 $mantenimiento->Descripcion,
                 $mantenimiento->evidencias->count(),
                 $mantenimiento->usuario?->name,
+            ],
+        );
+    }
+
+    public function desincorporados(Request $request): StreamedResponse
+    {
+        $filtros = $request->only(['termino', 'tipo', 'desde', 'hasta', 'sin_datos']);
+
+        return $this->reportes->exportar(
+            'desincorporados-'.now()->format('Y-m-d').'.csv',
+            ['Fecha', 'Etiqueta', 'Equipo', 'Serial', 'Categoría', 'Tipo de baja', 'Destinatario', 'Detalle del destino', 'Referencia', 'Monto', 'Moneda', 'Motivo', 'Registrado por'],
+            $this->desincorporaciones->consultaListado($filtros),
+            fn (Activo $activo): array => [
+                $activo->desincorporacion?->Fecha?->format('d/m/Y'),
+                $activo->Etiqueta_activo,
+                $activo->Nombre_de_activo,
+                $activo->Serial,
+                $activo->Categoria,
+                $activo->desincorporacion?->Tipo,
+                $activo->desincorporacion?->Destinatario,
+                $activo->desincorporacion?->Detalle_destino,
+                $activo->desincorporacion?->Referencia,
+                $activo->desincorporacion?->Monto,
+                $activo->desincorporacion?->Moneda,
+                $activo->desincorporacion?->Motivo,
+                $activo->desincorporacion?->usuario?->name,
             ],
         );
     }

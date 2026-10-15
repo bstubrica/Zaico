@@ -283,7 +283,7 @@ users ──< IMPORTACIONES_LOG ──< IMPORTACIONES_DETALLE
 
 ### 6.2 Tablas
 
-Trece tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
+Catorce tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 
 #### `users` (extendida)
 
@@ -439,11 +439,33 @@ tabla estándar de Laravel `notifications`.
 |---|---|---|
 | id | bigint PK | |
 | fk_activo | bigint → `ACTIVOS` | cascadeOnDelete |
-| Tipo_evento | varchar(40) | `Creacion`, `Modificacion`, `Asignacion`, `Devolucion`, `CambioEstado`, `Mantenimiento`, `Importacion` |
+| Tipo_evento | varchar(40) | `Creacion`, `Modificacion`, `Asignacion`, `Devolucion`, `CambioEstado`, `Mantenimiento`, `Importacion`, `Desincorporacion`, `Reincorporacion` |
 | Descripcion | text null | |
 | Valor_anterior / Valor_nuevo | text null | |
 | fk_usuario | bigint null → `users` | |
 | Fecha | timestamptz | |
+
+#### `DESINCORPORACIONES` (detalle de la baja)
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | bigint PK | |
+| fk_activo | bigint → `ACTIVOS` | restrictOnDelete |
+| Tipo | varchar(20) | `Venta`, `Donacion`, `Transferencia`, `Desecho`, `Robo`, `Otra` |
+| Destinatario | varchar(150) | |
+| Detalle_destino | varchar(255) null | |
+| Referencia | varchar(100) null | Factura, acta, ticket |
+| Monto | decimal(12,2) null | Obligatorio cuando `Tipo = 'Venta'` |
+| Moneda | varchar(3) null | Por defecto `USD` en ventas |
+| Motivo | text | Obligatorio |
+| Fecha | date | Fecha de la baja |
+| Estado | varchar(20) | `Vigente` / `Anulada` |
+| fk_usuario | bigint → `users` | Quién registró la baja |
+| Creado_el | timestamptz | Por defecto `now()` |
+
+Índices `idx_desinc_activo`, `idx_desinc_tipo`, `idx_desinc_fecha`. Los equipos
+desincorporados se **ocultan** del inventario activo y se listan en
+`/desincorporados`; al reincorporar, la fila vigente pasa a `Anulada` (nunca se borra).
 
 #### `IMPORTACIONES_LOG` y `IMPORTACIONES_DETALLE`
 
@@ -508,8 +530,8 @@ Grupos de middleware en `routes/web.php`:
 
 ```php
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Consulta (cualquier usuario autenticado): activos, personal, historial,
-    // mantenimientos, estados, reportes, notificaciones.
+    // Consulta (cualquier usuario autenticado): activos, desincorporados,
+    // personal, historial, mantenimientos, estados, reportes, notificaciones.
 
     // Escritura: activos, personal, catálogos e importaciones (+ rate limit)
     Route::middleware(['role:Admin,SoporteTecnico', 'throttle:escritura'])->group(function () {
@@ -551,6 +573,9 @@ Todas bajo `middleware(['auth', 'verified'])`. Las de escritura requieren tambi�
 | PUT | `/activos/{activo}/estado` | `activos.estado` | `ActivosController@cambiarEstado` | Admin/Soporte |
 | POST | `/activos/desincorporar` | `activos.desincorporar-masivo` | `ActivosController@desincorporarMasivo` | Admin/Soporte |
 | POST | `/activos/{activo}/desincorporar` | `activos.desincorporar` | `ActivosController@desincorporar` | Admin/Soporte |
+| POST | `/activos/{activo}/reincorporar` | `activos.reincorporar` | `DesincorporadosController@reincorporar` | Admin/Soporte |
+| GET | `/desincorporados` | `desincorporados.index` | `DesincorporadosController@index` | autenticado |
+| PUT | `/desincorporados/{desincorporacion}` | `desincorporados.update` | `DesincorporadosController@actualizar` | Admin/Soporte |
 | GET | `/activos/{activo}/eventos` | `activos.eventos` | `ActivosController@eventos` (JSON) | Admin/Auditor |
 | GET | `/activos/{activo}/mantenimientos` | `activos.mantenimientos` | `MantenimientosController@porActivo` | autenticado |
 | POST | `/activos/{activo}/mantenimientos` | `activos.mantenimientos.store` | `MantenimientosController@store` | Admin/Soporte |
@@ -583,6 +608,7 @@ Todas bajo `middleware(['auth', 'verified'])`. Las de escritura requieren tambi�
 | GET | `/reportes/personal` | `reportes.personal` | `ReporteController@personal` | autenticado |
 | GET | `/reportes/historial` | `reportes.historial` | `ReporteController@historial` | autenticado |
 | GET | `/reportes/mantenimientos` | `reportes.mantenimientos` | `ReporteController@mantenimientos` | autenticado |
+| GET | `/reportes/desincorporados` | `reportes.desincorporados` | `ReporteController@desincorporados` | autenticado |
 | POST | `/notificaciones/leidas` | `notificaciones.leidas` | `NotificacionesController@marcarLeidas` | autenticado |
 | GET/PATCH/DELETE | `/profile` | `profile.*` | `ProfileController` (Breeze) | autenticado |
 
@@ -603,12 +629,13 @@ reseteo de contraseña, verificación de email y confirmación de contraseña.
 | `ActivosController` | `__construct`, `index`, `show`, `buscar`, `create`, `store`, `edit`, `update`, `guardarCompra`, `imagen`, `imagenFactura`, `asignar`, `devolver`, `cambiarEstado`, `desincorporar`, `desincorporarMasivo`, `eventos`, `apiIndex` | CRUD de activos, fotos (equipo y factura), compra editable, asignación/devolución/estado (individual y masivo) |
 | `PersonalController` | `index`, `create`, `store`, `show`, `edit`, `update`, `destroy`, `bajaMasiva` | CRUD de personal (baja lógica, individual y masiva) |
 | `MantenimientosController` | `index`, `porActivo`, `store`, `evidencia`, `destroy`, `destroyMasivo` | Registro + evidencias + eliminación (individual y masiva) |
+| `DesincorporadosController` | `index`, `actualizar`, `reincorporar` | Apartado de equipos desincorporados (consulta para todos; edición/reincorporación para Admin/Soporte) |
 | `HistorialController` | `index` | Historial consolidado de asignaciones con filtros |
 | `EstadosController` | `index`, `create`, `store`, `edit`, `update` | Catálogo de estados |
 | `UbicacionController` | `index`, `create`, `store`, `edit`, `update` | Catálogo de ubicaciones |
 | `ModeloActivoController` | `index`, `create`, `store`, `edit`, `update` | Catálogo de modelos |
 | `ImportacionesController` | `index`, `store`, `confirmar`, `show`, `destroy`, `destroyMasivo` | Flujo de importación CSV (previsualizar/confirmar, eliminar) |
-| `ReporteController` | `activos`, `personal`, `historial`, `mantenimientos` | Exportación CSV |
+| `ReporteController` | `activos`, `personal`, `historial`, `mantenimientos`, `desincorporados` | Exportación CSV |
 | `AlertaController` | `index`, `revisar` | Alertas de reparación/prolongación/garantía |
 | `AdminController` | `index`, `depurar` | Administración (depuración) |
 | `AdminUsuarioController` | `index`, `create`, `store`, `edit`, `update`, `toggleActivo` | Gestión de usuarios (solo Admin) |
@@ -714,6 +741,7 @@ gestionando sus marcas de tiempo con hooks (`booted`) o columnas propias.
 | `HistorialEvento` | `HISTORIAL_EVENTOS` | `activo`, `usuario` |
 | `ImportacionLog` | `IMPORTACIONES_LOG` | `usuario`, `detalles` |
 | `ImportacionDetalle` | `IMPORTACIONES_DETALLE` | `importacion` (cast `Datos_previos => array`) |
+| `Desincorporacion` | `DESINCORPORACIONES` | `activo`, `usuario` (cast `Monto => decimal:2`, `Fecha => date`) |
 
 **Ejemplo — hook de timestamp y relación:**
 
@@ -778,6 +806,7 @@ responsive, badge de rol, notificaciones, selección por lote y mensajes flash.
 |---|---|
 | Dashboard | `dashboard.blade.php` (contadores por grupo + últimos registrados) |
 | Activos | `index`, `create`, `edit`, `show`, `partials/form` |
+| Desincorporados | `desincorporados/index` |
 | Personal | `index`, `create`, `edit`, `show`, `partials/form` |
 | Mantenimientos | `index`, `por-activo` |
 | Historial | `index` |
@@ -981,7 +1010,8 @@ Importación verificada del reporte real (1.167 filas):
 | `MantenimientoTest` (7) | Mantenimientos + evidencias |
 | `ModeloActivoCRUDTest` (7) | Catálogo de modelos |
 | `ProfileTest` (6) | Perfil (Breeze) |
-| `ReporteTest` (7) | Exportación CSV |
+| `ReporteTest` (8) | Exportación CSV |
+| `DesincorporacionTest` (8) | Apartado de desincorporados: lectura, edición, reincorporación |
 | `SincronizacionSnipecTest` (4) | Sincronización Snipec IT |
 | `SmokePantallasTest` (1) | Render de pantallas críticas |
 | `UbicacionCRUDTest` (7) | Catálogo de ubicaciones |

@@ -2,6 +2,9 @@
     <x-slot name="header">
         <x-page-header title="Equipos" subtitle="Inventario de activos de TI" icon="cube">
             <x-slot name="actions">
+                <a href="{{ route('desincorporados.index') }}" class="btn btn-secondary">
+                    <x-icon name="inbox" :size="18" /> Desincorporados
+                </a>
                 <a href="{{ route('reportes.activos', request()->query()) }}" class="btn btn-secondary">
                     <x-icon name="download" :size="18" /> Exportar CSV
                 </a>
@@ -38,6 +41,7 @@
                 <select id="estado" name="estado" class="form-control">
                     <option value="">Todos</option>
                     @foreach ($grupos as $grupo)
+                        @continue($grupo === 'Desincorporado')
                         <option value="{{ $grupo }}" @selected(($filtros['estado'] ?? '') === $grupo)>
                             {{ $grupo }}
                         </option>
@@ -233,16 +237,54 @@
                 <x-seleccion.formulario id="bulk-activos" method="POST"
                                         action="{{ route('activos.desincorporar-masivo') }}">
                     @csrf
-                    <div class="min-w-[16rem] flex-1">
-                        <label for="motivo-masivo" class="form-label">
-                            Motivo de la desincorporación *
-                        </label>
-                        <input type="text" id="motivo-masivo" name="motivo" required maxlength="500"
-                               class="form-control" placeholder="Ej.: Obsolescencia, reemplazo por lote…">
+                    <div class="grid w-full grid-cols-1 gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 lg:grid-cols-4"
+                         x-data="{ tipo: '', exigeMonto() { return this.tipo === 'Venta'; } }">
+                        <div>
+                            <label for="tipo-masivo" class="form-label">Tipo de baja *</label>
+                            <select id="tipo-masivo" name="tipo" x-model="tipo" required class="form-control">
+                                <option value="">Seleccione...</option>
+                                @foreach ($tipos as $valor => $etiqueta)
+                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="destinatario-masivo" class="form-label">Destinatario *</label>
+                            <input type="text" id="destinatario-masivo" name="destinatario" required maxlength="150" class="form-control">
+                        </div>
+                        <div>
+                            <label for="detalle-masivo" class="form-label">Detalle del destino</label>
+                            <input type="text" id="detalle-masivo" name="detalle_destino" maxlength="255" class="form-control">
+                        </div>
+                        <div>
+                            <label for="referencia-masivo" class="form-label">Referencia</label>
+                            <input type="text" id="referencia-masivo" name="referencia" maxlength="100" class="form-control">
+                        </div>
+                        <div>
+                            <label for="fecha-masivo" class="form-label">Fecha *</label>
+                            <input type="date" id="fecha-masivo" name="fecha" value="{{ now()->format('Y-m-d') }}" required class="form-control">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="col-span-2">
+                                <label for="monto-masivo" class="form-label">Monto</label>
+                                <input type="number" step="0.01" min="0" id="monto-masivo" name="monto" :required="exigeMonto()" class="form-control">
+                            </div>
+                            <div>
+                                <label for="moneda-masivo" class="form-label">Moneda</label>
+                                <input type="text" id="moneda-masivo" name="moneda" maxlength="3" placeholder="USD" class="form-control">
+                            </div>
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label for="motivo-masivo" class="form-label">Motivo *</label>
+                            <input type="text" id="motivo-masivo" name="motivo" required maxlength="500" class="form-control"
+                                   placeholder="Motivo de la baja">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="btn btn-danger w-full" :disabled="cantidad() === 0">
+                                <x-icon name="trash" :size="18" /> Desincorporar
+                            </button>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-danger" :disabled="cantidad() === 0">
-                        <x-icon name="trash" :size="18" /> Desincorporar seleccionados
-                    </button>
                     @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a'] as $campo)
                         @if (filled($filtros[$campo] ?? null))
                             <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
@@ -262,13 +304,51 @@
 
     @if (auth()->user()->puedeEscribir())
         <x-modal name="desincorporar-activo" maxWidth="md">
-            <div x-data="{ id: null }" @set-desincorporar.window="id = $event.detail">
+                <div x-data="{ id: null, tipo: '', exigeMonto() { return this.tipo === 'Venta'; } }" @set-desincorporar.window="id = $event.detail">
                 <form method="POST" :action="'{{ url('activos') }}/' + (id ?? '') + '/desincorporar'" class="p-6">
                     @csrf
                     <h2 class="text-lg font-semibold text-slate-900">Desincorporar equipo</h2>
                     <p class="mt-1 text-sm text-slate-500">
                         El equipo pasará a estado <strong>Desincorporado</strong>. La operación no borra el registro ni su historial.
                     </p>
+
+                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <x-input-label for="tipo-individual" value="Tipo de baja *" />
+                            <select id="tipo-individual" name="tipo" x-model="tipo" required class="form-control mt-1">
+                                <option value="">Seleccione...</option>
+                                @foreach ($tipos as $valor => $etiqueta)
+                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <x-input-label for="destinatario-individual" value="Destinatario *" />
+                            <input type="text" id="destinatario-individual" name="destinatario" required maxlength="150" class="form-control mt-1">
+                        </div>
+                        <div>
+                            <x-input-label for="detalle-individual" value="Detalle del destino" />
+                            <input type="text" id="detalle-individual" name="detalle_destino" maxlength="255" class="form-control mt-1">
+                        </div>
+                        <div>
+                            <x-input-label for="referencia-individual" value="Referencia" />
+                            <input type="text" id="referencia-individual" name="referencia" maxlength="100" class="form-control mt-1" placeholder="Factura, acta, ticket...">
+                        </div>
+                        <div>
+                            <x-input-label for="fecha-individual" value="Fecha *" />
+                            <input type="date" id="fecha-individual" name="fecha" value="{{ now()->format('Y-m-d') }}" required class="form-control mt-1">
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="col-span-2">
+                                <x-input-label for="monto-individual" value="Monto" />
+                                <input type="number" step="0.01" min="0" id="monto-individual" name="monto" :required="exigeMonto()" class="form-control mt-1">
+                            </div>
+                            <div>
+                                <x-input-label for="moneda-individual" value="Moneda" />
+                                <input type="text" id="moneda-individual" name="moneda" maxlength="3" placeholder="USD" class="form-control mt-1">
+                            </div>
+                        </div>
+                    </div>
 
                     <x-input-label for="motivo-individual" value="Motivo *" class="mt-4" />
                     <textarea id="motivo-individual" name="motivo" rows="3" required maxlength="500"

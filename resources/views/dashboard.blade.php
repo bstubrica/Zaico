@@ -22,7 +22,7 @@
         <x-stat-card label="Asignados" :value="$porGrupo['Asignado'] ?? 0" icon="users" color="sky" />
         <x-stat-card label="Disponibles" :value="$porGrupo['Disponible'] ?? 0" icon="check-circle" color="emerald" />
         <x-stat-card label="Reparación / defectuosos" :value="$reparacion" icon="wrench" color="amber" />
-        <x-stat-card label="Desincorporados" :value="$porGrupo['Desincorporado'] ?? 0" icon="inbox" color="rose" />
+        <x-stat-card label="Desincorporados" :value="$porGrupo['Desincorporado'] ?? 0" icon="inbox" color="rose" :href="route('desincorporados.index')" />
     </div>
 
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">

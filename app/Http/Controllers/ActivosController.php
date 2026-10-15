@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TipoDesincorporacion;
 use App\Http\Requests\AsignarEquipoRequest;
 use App\Http\Requests\CambiarEstadoRequest;
 use App\Http\Requests\DesincorporarActivoRequest;
@@ -34,13 +35,14 @@ class ActivosController extends Controller
         $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a']);
         $filtros['tamano'] = 50;
         $activos = $this->activos->listar($filtros);
+        $tipos = TipoDesincorporacion::opciones();
 
         $grupos = $this->activos->gruposEstado();
         $categorias = $this->activos->categorias();
         $ubicaciones = $this->activos->opcionesUbicaciones();
         $modelos = $this->activos->opcionesModelos();
 
-        return view('activos.index', compact('activos', 'filtros', 'grupos', 'categorias', 'ubicaciones', 'modelos'));
+        return view('activos.index', compact('activos', 'filtros', 'grupos', 'categorias', 'ubicaciones', 'modelos', 'tipos'));
     }
 
     public function show(Activo $activo): View
@@ -178,7 +180,7 @@ class ActivosController extends Controller
     public function desincorporar(DesincorporarActivoRequest $request, Activo $activo): RedirectResponse
     {
         try {
-            $this->activos->desincorporar($activo, $request->validated('motivo'), $request->user()->id);
+            $this->activos->desincorporar($activo, $request->validated(), $request->user()->id);
         } catch (RuntimeException $e) {
             return back()->withErrors(['desincorporar' => $e->getMessage()]);
         }
@@ -200,8 +202,12 @@ class ActivosController extends Controller
             return back()->with('error', 'La selección supera el límite de '.ActivoService::MAXIMO_LOTE.' equipos por operación. Acote el filtro e inténtelo de nuevo.');
         }
 
+        $datos = $request->safe()->only([
+            'tipo', 'destinatario', 'detalle_destino', 'referencia', 'monto', 'moneda', 'fecha', 'motivo',
+        ]);
+
         try {
-            $resultado = $this->activos->desincorporarLote($ids, $request->validated('motivo'), $request->user()->id);
+            $resultado = $this->activos->desincorporarLote($ids, $datos, $request->user()->id);
         } catch (RuntimeException $e) {
             return back()->withErrors(['desincorporar' => $e->getMessage()]);
         }

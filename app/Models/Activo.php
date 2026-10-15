@@ -90,6 +90,24 @@ class Activo extends Model
     }
 
     /**
+     * Registro de baja más reciente del activo (si fue desincorporado).
+     */
+    public function desincorporacion(): HasOne
+    {
+        return $this->hasOne(Desincorporacion::class, 'fk_activo', 'id')
+            ->orderByDesc('Fecha')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * @return HasMany<Desincorporacion, $this>
+     */
+    public function desincorporaciones(): HasMany
+    {
+        return $this->hasMany(Desincorporacion::class, 'fk_activo', 'id');
+    }
+
+    /**
      * @return HasMany<HistorialEvento, $this>
      */
     public function eventos(): HasMany

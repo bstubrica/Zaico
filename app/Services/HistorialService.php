@@ -59,7 +59,8 @@ class HistorialService
      * Registra un evento de auditoría para un activo.
      *
      * Tipos válidos: Creacion, Modificacion, Asignacion, Devolucion,
-     * CambioEstado, Mantenimiento, Importacion.
+     * CambioEstado, Mantenimiento, Importacion, Desincorporacion,
+     * Reincorporacion.
      */
     public function registrar(
         int $activoId,

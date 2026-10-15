@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\TipoDesincorporacion;
 use App\Models\Activo;
 use App\Models\Asignacion;
 use App\Models\Compra;
+use App\Models\Desincorporacion;
 use App\Models\EstadoActivo;
 use App\Models\ModeloActivo;
 use App\Models\Personal;
@@ -51,6 +53,15 @@ class ActivoService
     {
         return Activo::query()
             ->with(['estadoCatalogo', 'asignacionActiva.personal'])
+            ->where(function (Builder $query) {
+                // Los equipos desincorporados se ocultan del inventario activo:
+                // viven en su propio apartado (y reporte). El grupo se
+                // denormaliza en `Estado`, pero `fk_estado` (activos importados)
+                // también se considera por robustez.
+                $query->where(function (Builder $sub) {
+                    $sub->whereNull('Estado')->orWhere('Estado', '!=', 'Desincorporado');
+                })->whereDoesntHave('estadoCatalogo', fn (Builder $estado) => $estado->where('Grupo', 'Desincorporado'));
+            })
             ->when($filtros['termino'] ?? null, fn ($query, $termino) => $this->aplicarBusqueda(
                 $query,
                 ['Nombre_de_activo', 'Serial', 'Etiqueta_activo', 'Modelo'],
@@ -293,10 +304,14 @@ class ActivoService
     }
 
     /**
-     * Desincorporación (baja lógica): cambia el estado a «Desincorporado» sin
-     * borrar la fila ni su historial.
+     * Desincorporación (baja lógica): registra en `DESINCORPORACIONES` el
+     * motivo, el tipo (venta, donación…) y el destino, cambia el estado a
+     * «Desincorporado» y deja traza en el historial. No borra la fila ni su
+     * historial.
+     *
+     * @param  array{tipo: string, destinatario: string, detalle_destino?: string|null, referencia?: string|null, monto?: float|int|string|null, moneda?: string|null, motivo: string, fecha: string}  $datos
      */
-    public function desincorporar(Activo $activo, string $motivo, int $usuarioId): Activo
+    public function desincorporar(Activo $activo, array $datos, int $usuarioId): Activo
     {
         $grupoActual = $activo->estadoCatalogo?->Grupo ?? $activo->Estado;
 
@@ -308,13 +323,13 @@ class ActivoService
             throw new RuntimeException('El activo ya está desincorporado.');
         }
 
-        $estadoDesincorporado = EstadoActivo::where('Grupo', 'Desincorporado')->first();
+        $estado = $this->estadoDesincorporado();
 
-        if ($estadoDesincorporado === null) {
-            throw new RuntimeException('No hay un estado de desincorporación en el catálogo; consulte al administrador.');
-        }
+        return DB::transaction(function () use ($activo, $datos, $usuarioId, $estado) {
+            $this->persistirDesincorporacion($activo, $datos, $usuarioId, $estado);
 
-        return $this->cambiarEstado($activo, $estadoDesincorporado->id, $motivo, $usuarioId);
+            return $activo->fresh(['estadoCatalogo', 'desincorporacion']);
+        });
     }
 
     /**
@@ -322,18 +337,16 @@ class ActivoService
      * desincorporan todos los procesables o no se aplica ninguno. Los que no
      * cumplen las reglas (asignación activa o ya desincorporados) se excluyen
      * antes de abrir la transacción y se detallan, para que una omisión
-     * esperada no anule el resto del lote.
+     * esperada no anule el resto del lote. El tipo, destino, motivo y fecha
+     * recibidos se aplican a todos los equipos del lote.
      *
      * @param  array<int, int>  $ids
+     * @param  array{tipo: string, destinatario: string, detalle_destino?: string|null, referencia?: string|null, monto?: float|int|string|null, moneda?: string|null, motivo: string, fecha: string}  $datos
      * @return array{desincorporados: int, omitidos: array<int, array{label: string, motivo: string}>}
      */
-    public function desincorporarLote(array $ids, string $motivo, int $usuarioId): array
+    public function desincorporarLote(array $ids, array $datos, int $usuarioId): array
     {
-        $estadoDesincorporado = EstadoActivo::where('Grupo', 'Desincorporado')->first();
-
-        if ($estadoDesincorporado === null) {
-            throw new RuntimeException('No hay un estado de desincorporación en el catálogo; consulte al administrador.');
-        }
+        $estado = $this->estadoDesincorporado();
 
         $activos = Activo::query()
             ->with(['estadoCatalogo', 'asignacionActiva'])
@@ -370,13 +383,128 @@ class ActivoService
             $procesables[] = $activo;
         }
 
-        DB::transaction(function () use ($procesables, $estadoDesincorporado, $motivo, $usuarioId): void {
+        DB::transaction(function () use ($procesables, $datos, $usuarioId, $estado): void {
             foreach ($procesables as $activo) {
-                $this->cambiarEstado($activo, $estadoDesincorporado->id, $motivo, $usuarioId);
+                $this->persistirDesincorporacion($activo, $datos, $usuarioId, $estado);
             }
         });
 
         return ['desincorporados' => count($procesables), 'omitidos' => $omitidos];
+    }
+
+    /**
+     * Reincorpora al inventario activo un equipo desincorporado: lo devuelve a
+     * grupo «Disponible» y anula el registro de baja vigente, conservándolo
+     * para la trazabilidad.
+     */
+    public function reincorporar(Activo $activo, int $usuarioId): Activo
+    {
+        $grupoActual = $activo->estadoCatalogo?->Grupo ?? $activo->Estado;
+
+        if ($grupoActual !== 'Desincorporado') {
+            throw new RuntimeException('El activo no está desincorporado.');
+        }
+
+        $estadoDisponible = EstadoActivo::where('Grupo', 'Disponible')->orderBy('id')->first();
+
+        if ($estadoDisponible === null) {
+            throw new RuntimeException('No hay un estado disponible en el catálogo; consulte al administrador.');
+        }
+
+        return DB::transaction(function () use ($activo, $usuarioId, $estadoDisponible) {
+            $activo->desincorporaciones()->where('Estado', 'Vigente')->update(['Estado' => 'Anulada']);
+
+            $activo->update(['Estado' => $estadoDisponible->Grupo, 'fk_estado' => $estadoDisponible->id]);
+
+            $this->historial->registrar(
+                $activo->id,
+                'Reincorporacion',
+                'Equipo reincorporado al inventario activo',
+                anterior: 'Desincorporado',
+                nuevo: $estadoDisponible->Nombre,
+                usuarioId: $usuarioId,
+            );
+
+            return $activo->fresh(['estadoCatalogo', 'desincorporacion']);
+        });
+    }
+
+    /**
+     * Primer estado disponible del grupo «Desincorporado». Se elige de forma
+     * determinista (por id) para que la baja sea reproducible.
+     */
+    private function estadoDesincorporado(): EstadoActivo
+    {
+        $estado = EstadoActivo::query()
+            ->where('Grupo', 'Desincorporado')
+            ->orderBy('id')
+            ->first();
+
+        if ($estado === null) {
+            throw new RuntimeException('No hay un estado de desincorporación en el catálogo; consulte al administrador.');
+        }
+
+        return $estado;
+    }
+
+    /**
+     * Persiste la baja y su traza dentro de la transacción abierta por el
+     * llamador: crea la fila en `DESINCORPORACIONES`, mueve el activo al grupo
+     * «Desincorporado» y registra el evento de auditoría.
+     *
+     * @param  array{tipo: string, destinatario: string, detalle_destino?: string|null, referencia?: string|null, monto?: float|int|string|null, moneda?: string|null, motivo: string, fecha: string}  $datos
+     */
+    private function persistirDesincorporacion(Activo $activo, array $datos, int $usuarioId, EstadoActivo $estado): void
+    {
+        $anterior = $activo->estadoCatalogo?->Nombre ?? $activo->Estado;
+        $moneda = $datos['moneda'] ?? null;
+
+        if (TipoDesincorporacion::tryFrom($datos['tipo']) === TipoDesincorporacion::Venta && blank($moneda)) {
+            $moneda = 'USD';
+        }
+
+        Desincorporacion::create([
+            'fk_activo' => $activo->id,
+            'Tipo' => $datos['tipo'],
+            'Destinatario' => $datos['destinatario'],
+            'Detalle_destino' => $datos['detalle_destino'] ?? null,
+            'Referencia' => $datos['referencia'] ?? null,
+            'Monto' => $datos['monto'] ?? null,
+            'Moneda' => $moneda,
+            'Motivo' => $datos['motivo'],
+            'Fecha' => $datos['fecha'],
+            'Estado' => 'Vigente',
+            'fk_usuario' => $usuarioId,
+        ]);
+
+        $activo->update(['Estado' => $estado->Grupo, 'fk_estado' => $estado->id]);
+
+        $this->historial->registrar(
+            $activo->id,
+            'Desincorporacion',
+            $this->descripcionDesincorporacion($datos),
+            anterior: $anterior,
+            nuevo: $estado->Nombre,
+            usuarioId: $usuarioId,
+        );
+    }
+
+    /**
+     * @param  array{tipo: string, destinatario?: string|null, motivo?: string|null}  $datos
+     */
+    private function descripcionDesincorporacion(array $datos): string
+    {
+        $descripcion = 'Desincorporado por '.TipoDesincorporacion::etiquetaDe($datos['tipo'] ?? null);
+
+        if (filled($datos['destinatario'] ?? null)) {
+            $descripcion .= ' a '.$datos['destinatario'];
+        }
+
+        if (filled($datos['motivo'] ?? null)) {
+            $descripcion .= '. Motivo: '.$datos['motivo'];
+        }
+
+        return $descripcion;
     }
 
     /**

@@ -75,4 +75,30 @@ return [
         'habilitado_en_produccion' => (bool) env('ZAICO_DEPURACION_HABILITADO', false),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Carta de desincorporación (membrete y firmas)
+    |--------------------------------------------------------------------------
+    |
+    | Datos del encabezado de la carta/acta de desincorporación generada en el
+    | apartado de equipos desincorporados. Si no se configuran, se usan valores
+    | neutros para no romper la descarga.
+    |
+    */
+
+    'carta' => [
+        'titulo' => env('ZAICO_CARTA_TITULO', 'Carta de desincorporación'),
+        'folio_prefijo' => env('ZAICO_CARTA_FOLIO_PREFIJO', 'DES'),
+        'organizacion' => [
+            'nombre' => env('ZAICO_EMPRESA_NOMBRE', env('APP_NAME', 'Zaico')),
+            'rif' => env('ZAICO_EMPRESA_RIF'),
+            'direccion' => env('ZAICO_EMPRESA_DIRECCION'),
+            'ciudad' => env('ZAICO_EMPRESA_CIUDAD'),
+        ],
+        'firmas' => [
+            'entrega' => env('ZAICO_CARTA_FIRMA_ENTREGA', 'Entrega'),
+            'recibe' => env('ZAICO_CARTA_FIRMA_RECIBE', 'Recibe'),
+        ],
+    ],
+
 ];

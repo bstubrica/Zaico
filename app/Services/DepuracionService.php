@@ -29,6 +29,7 @@ class DepuracionService
         'ASIGNACIONES' => 'Asignaciones',
         'COMPRAS' => 'Compras',
         'HISTORIAL_EVENTOS' => 'Historial de eventos',
+        'DESINCORPORACIONES' => 'Desincorporaciones',
         'IMPORTACIONES_DETALLE' => 'Detalle de importaciones',
         'IMPORTACIONES_LOG' => 'Importaciones',
         'ALERTAS' => 'Alertas',

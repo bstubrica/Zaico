@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\DesincorporacionRules;
 use App\Services\ActivoService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,6 +10,8 @@ use Illuminate\Validation\Rule;
 
 class DesincorporarActivosMasivoRequest extends FormRequest
 {
+    use DesincorporacionRules;
+
     public function authorize(): bool
     {
         return $this->user()?->puedeEscribir() ?? false;
@@ -19,7 +22,7 @@ class DesincorporarActivosMasivoRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'todos' => ['sometimes', 'boolean'],
             'ids' => [
                 Rule::requiredIf(! $this->boolean('todos')),
@@ -34,8 +37,7 @@ class DesincorporarActivosMasivoRequest extends FormRequest
             'ubicacion' => ['nullable', 'string', 'max:255'],
             'modelo' => ['nullable', 'string', 'max:255'],
             'asignado_a' => ['nullable', 'string', 'max:255'],
-            'motivo' => ['required', 'string', 'max:500'],
-        ];
+        ], $this->reglasDesincorporacion());
     }
 
     /**
@@ -43,13 +45,11 @@ class DesincorporarActivosMasivoRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
+        return array_merge([
             'ids.required' => 'Debe seleccionar al menos un equipo',
             'ids.min' => 'Debe seleccionar al menos un equipo',
             'ids.max' => 'No se pueden procesar más de '.ActivoService::MAXIMO_LOTE.' equipos a la vez; acote el filtro.',
-            'motivo.required' => 'El motivo de la desincorporación es obligatorio',
-            'motivo.max' => 'El motivo no puede exceder 500 caracteres',
-        ];
+        ], $this->mensajesDesincorporacion());
     }
 
     /**
@@ -57,9 +57,8 @@ class DesincorporarActivosMasivoRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return [
+        return array_merge([
             'ids' => 'equipos',
-            'motivo' => 'motivo',
-        ];
+        ], $this->atributosDesincorporacion());
     }
 }

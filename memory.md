@@ -4,8 +4,9 @@
 
 ## Estado actual
 
-- **Correcciones de auditoría aplicadas (2026-10-15)**, sin commitear (hay cambios preexistentes ajenos en el árbol: `.agents/skills/**`, `opencode.json`, `.opencode/commands/**`, `AGENTS.md`; no tocarlos/commitear).
-- **Tests:** 189 tests / 625 aserciones ✅ en SQLite en memoria. Correr con:
+- **Correcciones de auditoría** commiteadas y pusheadas (`886ee20`).
+- **Feature "Equipos desincorporados" y "Carta de desincorporación" implementadas (2026-10-15)**, sin commitear aún (junto a cambios preexistentes ajenos en el árbol: `.agents/skills/**`, `opencode.json`, `.opencode/commands/**`, `AGENTS.md`; no tocarlos/commitear).
+- **Tests:** 206 tests / 680 aserciones ✅ en SQLite en memoria. Correr con:
   `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`.
   La config por defecto (`phpunit.xml`) es pgsql `Zaico_test` y **falla aquí** por falta de contraseña (`fe_sendauth: no password supplied`). SQLite soporta el índice parcial `asignaciones_activa_unica`, así que la suite corre completa.
 - **MCP Postgres**: `@microsoft/postgres-mcp` en `opencode.json` → mcp.postgres. Perfil `zaico` (127.0.0.1:5432, db `Zaico`, user `postgres`, `ro`, sslmode=disable) en `~/.postgres-mcp/connections.yaml`. Falta `connection set-password zaico` + reiniciar opencode.
@@ -32,9 +33,15 @@
 - Listados grandes paginados vía Services: `listar(array $filtros, int $tamano = 15)`. `historialAsignaciones(Activo, int $tamano = 15)`. `idsDeFiltro()` acotado a `MAXIMO_LOTE + 1`.
 - Catálogos para selects resueltos en Services (`catalogoEstados`, `gruposEstado`, `categorias`, `opcionesUbicaciones`, `opcionesModelos`, `catalogoPersonal`); los basados en `pluck()` retornan `Illuminate\Support\Collection` (alias `BaseCollection`), los de `get()` retornan Eloquent `Collection`.
 
+## Desincorporaciones
+
+- Nueva entidad `DESINCORPORACIONES` (baja lógica con tipo/destino/monto/motivo/fecha/estado `Vigente|Anulada`). Enum `App\Enums\TipoDesincorporacion` (`Venta, Donacion, Transferencia, Desecho, Robo, Otra`); `Venta` exige `monto` (moneda por defecto `USD`).
+- Los desincorporados se **ocultan** de `activos.index` (`ActivoService::consultaListado`) y viven en `desincorporados.index` (lectura para cualquier auth; editar/reincorporar solo `puedeEscribir()`).
+- Eventos de auditoría nuevos: `Desincorporacion` (baja), `Reincorporacion` (vuelve a `Disponible`, anula la baja vigente), `Modificacion` (edición de la baja).
+- Reporte `reportes.desincorporados` (CSV "Exportar Excel"). Reglas compartidas en trait `Concerns\DesincorporacionRules`. `DesincorporacionService` (listado/edición) usa `BusquedaAproximada`+`PaginacionAcotada`.
+
 ## Pendiente
 
-- Fase 4 docs: `DOCUMENTACION.md`/`README.md` ya describen Tailwind 3.4 y pgsql `Zaico_test`; falta añadir nota de las correcciones de auditoría (o dejarlo en este `memory.md`).
 - Verificar conexión real del MCP tras `set-password` (probar `postgres_mcp_list_databases`).
 - Aclarar si la base local se llama `Zaico` o hay que crearla (`setup.ps1 -Database pgsql -PgPassword "..."`).
 

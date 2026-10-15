@@ -10,6 +10,7 @@
             'titulo' => 'Inventario',
             'enlaces' => [
                 ['ruta' => 'activos.index', 'patron' => ['activos.index', 'activos.show', 'activos.create', 'activos.edit'], 'icono' => 'cube', 'texto' => 'Equipos'],
+                ['ruta' => 'desincorporados.index', 'patron' => 'desincorporados.*', 'icono' => 'inbox', 'texto' => 'Desincorporados'],
                 ['ruta' => 'activos.buscar', 'patron' => 'activos.buscar', 'icono' => 'search', 'texto' => 'Búsqueda rápida'],
                 ['ruta' => 'personal.index', 'patron' => 'personal.*', 'icono' => 'users', 'texto' => 'Personal'],
                 ['ruta' => 'estados.index', 'patron' => 'estados.*', 'icono' => 'tag', 'texto' => 'Estados'],

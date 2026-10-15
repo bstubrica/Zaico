@@ -4,7 +4,9 @@ use App\Http\Controllers\ActivosController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminUsuarioController;
 use App\Http\Controllers\AlertaController;
+use App\Http\Controllers\CartaDesincorporacionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DesincorporadosController;
 use App\Http\Controllers\EstadosController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\ImportacionesController;
@@ -28,6 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('activos/{activo}', [ActivosController::class, 'update'])->name('activos.update');
         Route::post('activos/{activo}/asignacion', [ActivosController::class, 'asignar'])->name('activos.asignar');
         Route::post('activos/{activo}/devolucion', [ActivosController::class, 'devolver'])->name('activos.devolver');
+        Route::post('activos/{activo}/reincorporar', [DesincorporadosController::class, 'reincorporar'])->name('activos.reincorporar');
         Route::put('activos/{activo}/estado', [ActivosController::class, 'cambiarEstado'])->name('activos.estado');
         Route::put('activos/{activo}/compra', [ActivosController::class, 'guardarCompra'])->name('activos.compra.update');
         Route::post('activos/{activo}/mantenimientos', [MantenimientosController::class, 'store'])
@@ -38,6 +41,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('activos.desincorporar-masivo');
         Route::post('activos/{activo}/desincorporar', [ActivosController::class, 'desincorporar'])
             ->name('activos.desincorporar');
+
+        // Edición del registro de baja desde el apartado de desincorporados
+        Route::put('desincorporados/{desincorporacion}', [DesincorporadosController::class, 'actualizar'])
+            ->whereNumber('desincorporacion')
+            ->name('desincorporados.update');
 
         Route::resource('personal', PersonalController::class)->except(['show']);
         Route::get('personal/{personal}', [PersonalController::class, 'show'])->name('personal.show');
@@ -97,6 +105,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('personal', [ReporteController::class, 'personal'])->name('personal');
         Route::get('historial', [ReporteController::class, 'historial'])->name('historial');
         Route::get('mantenimientos', [ReporteController::class, 'mantenimientos'])->name('mantenimientos');
+        Route::get('desincorporados', [ReporteController::class, 'desincorporados'])->name('desincorporados');
     });
 
     // Consulta: cualquier usuario autenticado
@@ -111,6 +120,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:consulta')
         ->name('api.activos');
     Route::get('estados', [EstadosController::class, 'index'])->name('estados.index');
+    Route::get('desincorporados', [DesincorporadosController::class, 'index'])->name('desincorporados.index');
+
+    // Carta de desincorporación (imprimible / PDF / Excel): cualquier usuario autenticado
+    Route::middleware('throttle:consulta')->group(function () {
+        Route::get('desincorporados/carta', [CartaDesincorporacionController::class, 'acta'])
+            ->name('desincorporados.carta');
+        Route::get('desincorporados/{desincorporacion}/carta', [CartaDesincorporacionController::class, 'individual'])
+            ->whereNumber('desincorporacion')
+            ->name('desincorporados.carta.activo');
+    });
     Route::get('mantenimientos', [MantenimientosController::class, 'index'])->name('mantenimientos.index');
     Route::get('mantenimientos/evidencias/{evidencia}', [MantenimientosController::class, 'evidencia'])
         ->whereNumber('evidencia')

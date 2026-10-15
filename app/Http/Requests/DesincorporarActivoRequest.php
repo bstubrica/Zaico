@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\DesincorporacionRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DesincorporarActivoRequest extends FormRequest
 {
+    use DesincorporacionRules;
+
     public function authorize(): bool
     {
         return $this->user()?->puedeEscribir() ?? false;
@@ -17,9 +20,7 @@ class DesincorporarActivoRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'motivo' => ['required', 'string', 'max:500'],
-        ];
+        return $this->reglasDesincorporacion();
     }
 
     /**
@@ -27,10 +28,7 @@ class DesincorporarActivoRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            'motivo.required' => 'El motivo de la desincorporación es obligatorio',
-            'motivo.max' => 'El motivo no puede exceder 500 caracteres',
-        ];
+        return $this->mensajesDesincorporacion();
     }
 
     /**
@@ -38,8 +36,6 @@ class DesincorporarActivoRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return [
-            'motivo' => 'motivo',
-        ];
+        return $this->atributosDesincorporacion();
     }
 }
