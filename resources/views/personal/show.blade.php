@@ -40,6 +40,10 @@
                     <dd class="font-medium text-slate-900">{{ $personal->Cargo ?? '—' }}</dd>
                 </div>
                 <div>
+                    <dt class="text-slate-500">Departamento / Ubicación</dt>
+                    <dd class="font-medium text-slate-900">{{ $personal->ubicacion?->Nombre ?? '—' }}</dd>
+                </div>
+                <div>
                     <dt class="text-slate-500">Observaciones</dt>
                     <dd class="whitespace-pre-line font-medium text-slate-900">{{ $personal->Observaciones ?? '—' }}</dd>
                 </div>

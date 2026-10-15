@@ -90,7 +90,7 @@ return [
         'titulo' => env('ZAICO_CARTA_TITULO', 'Carta de desincorporación'),
         'folio_prefijo' => env('ZAICO_CARTA_FOLIO_PREFIJO', 'DES'),
         'organizacion' => [
-            'nombre' => env('ZAICO_EMPRESA_NOMBRE', env('APP_NAME', 'Zaico')),
+            'nombre' => env('ZAICO_EMPRESA_NOMBRE', env('APP_NAME', 'Zaiko')),
             'rif' => env('ZAICO_EMPRESA_RIF'),
             'direccion' => env('ZAICO_EMPRESA_DIRECCION'),
             'ciudad' => env('ZAICO_EMPRESA_CIUDAD'),

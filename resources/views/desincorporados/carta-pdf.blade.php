@@ -170,7 +170,7 @@
                 <div class="bloque">
                     <table>
                         <tr>
-                            <td class="etiqueta">Tipo de baja</td>
+                            <td class="etiqueta">Tipo de desincorporación</td>
                             <td>{{ $baja['tipo_etiqueta'] }}</td>
                             <td class="etiqueta">Fecha</td>
                             <td>{{ $baja['fecha']?->format('d/m/Y') ?? '—' }}</td>

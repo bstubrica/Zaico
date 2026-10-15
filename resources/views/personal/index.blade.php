@@ -15,11 +15,34 @@
     </x-slot>
 
     <form method="GET" action="{{ route('personal.index') }}" class="card card-body">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-            <div class="sm:col-span-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div>
                 <label for="termino" class="form-label">Buscar</label>
                 <input type="text" id="termino" name="termino" value="{{ $filtros['termino'] ?? '' }}"
                        placeholder="Nombre, apellido, usuario, cargo" class="form-control">
+            </div>
+            <div>
+                <label for="ubicacion_id" class="form-label">Departamento / Ubicación</label>
+                <select id="ubicacion_id" name="ubicacion_id" class="form-control">
+                    <option value="">Todos</option>
+                    <option value="sin_ubicacion" @selected(($filtros['ubicacion_id'] ?? '') === 'sin_ubicacion')>Sin asignar</option>
+                    @foreach ($ubicaciones as $ubicacion)
+                        <option value="{{ $ubicacion->id }}" @selected(($filtros['ubicacion_id'] ?? '') == $ubicacion->id)>
+                            {{ $ubicacion->Nombre }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="cargo" class="form-label">Cargo</label>
+                <select id="cargo" name="cargo" class="form-control">
+                    <option value="">Todos</option>
+                    @foreach ($cargos as $cargoOpcion)
+                        <option value="{{ $cargoOpcion }}" @selected(($filtros['cargo'] ?? '') === $cargoOpcion)>
+                            {{ $cargoOpcion }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label for="estado" class="form-label">Estado</label>
@@ -73,6 +96,7 @@
                             @endif
                             <th>Nombre completo</th>
                             <th>Usuario</th>
+                            <th class="hidden lg:table-cell">Departamento / Ubicación</th>
                             <th class="hidden md:table-cell">Cargo</th>
                             <th class="text-center">Equipos asignados</th>
                             <th>Estado</th>
@@ -91,6 +115,7 @@
                                     <a class="link" href="{{ route('personal.show', $persona) }}">{{ $persona->NombreCompleto }}</a>
                                 </td>
                                 <td class="text-slate-500">{{ $persona->Nombre_usuario }}</td>
+                                <td class="hidden text-slate-500 lg:table-cell">{{ $persona->ubicacion?->Nombre ?? '—' }}</td>
                                 <td class="hidden text-slate-500 md:table-cell">{{ $persona->Cargo ?? '—' }}</td>
                                 <td class="text-center">
                                     @if ($persona->asignaciones_activas > 0)
@@ -147,6 +172,9 @@
                                    class="block truncate font-semibold text-slate-900 hover:text-brand-700">{{ $persona->NombreCompleto }}</a>
                                 <p class="truncate text-xs text-slate-500">{{ $persona->Nombre_usuario }}</p>
                                 <p class="mt-0.5 truncate text-sm text-slate-600">{{ $persona->Cargo ?? '—' }}</p>
+                                @if ($persona->ubicacion)
+                                    <p class="truncate text-xs text-slate-400">{{ $persona->ubicacion->Nombre }}</p>
+                                @endif
                             </div>
                         </div>
 

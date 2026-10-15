@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Asignacion;
 use App\Models\Personal;
+use App\Models\Ubicacion;
 use App\Services\Concerns\BusquedaAproximada;
 use App\Services\Concerns\LimiteLote;
 use App\Services\Concerns\PaginacionAcotada;
@@ -22,12 +23,13 @@ class PersonalService
     /**
      * Consulta base del listado de personal con filtros (sin paginar).
      *
-     * @param  array{termino?: string, estado?: string}  $filtros
+     * @param  array{termino?: string, estado?: string, ubicacion_id?: int|string|null, cargo?: string|null}  $filtros
      * @return Builder<Personal>
      */
     public function consultaListado(array $filtros): Builder
     {
         return Personal::query()
+            ->with('ubicacion')
             ->withCount(['asignaciones as asignaciones_activas' => fn ($query) => $query->activas()])
             ->when($filtros['termino'] ?? null, fn ($query, $termino) => $this->aplicarBusqueda(
                 $query,
@@ -36,12 +38,61 @@ class PersonalService
             ))
             ->when($filtros['estado'] ?? null,
                 fn ($query, $estado) => $query->where('Estado', $estado))
+            ->when($filtros['ubicacion_id'] ?? null, function ($query, $ubicacionId) {
+                if ($ubicacionId === 'sin_ubicacion') {
+                    $query->whereNull('fk_ubicacion');
+                } elseif (is_numeric($ubicacionId) && (int) $ubicacionId > 0) {
+                    $query->where('fk_ubicacion', (int) $ubicacionId);
+                }
+            })
+            ->when($filtros['cargo'] ?? null, function ($query, $cargo) {
+                if (! blank($cargo)) {
+                    $query->where('Cargo', $cargo);
+                }
+            })
             ->orderBy('Apellido')
             ->orderBy('id');
     }
 
     /**
-     * @param  array{termino?: string, estado?: string, tamano?: int}  $filtros
+     * Catálogo de opciones de ubicación para selección en formularios y filtros.
+     *
+     * @return Collection<int, Ubicacion>
+     */
+    public function opcionesUbicaciones(?Personal $personal = null): Collection
+    {
+        $seleccionada = $personal?->fk_ubicacion;
+
+        return Ubicacion::query()
+            ->where(function ($query) use ($seleccionada) {
+                $query->where('Estado', 'Activo');
+
+                if ($seleccionada !== null) {
+                    $query->orWhere('id', $seleccionada);
+                }
+            })
+            ->orderBy('Nombre')
+            ->get();
+    }
+
+    /**
+     * Lista de cargos únicos registrados en la base de datos.
+     *
+     * @return array<int, string>
+     */
+    public function opcionesCargos(): array
+    {
+        return Personal::query()
+            ->whereNotNull('Cargo')
+            ->where('Cargo', '<>', '')
+            ->distinct()
+            ->orderBy('Cargo')
+            ->pluck('Cargo')
+            ->all();
+    }
+
+    /**
+     * @param  array{termino?: string, estado?: string, ubicacion_id?: int|string|null, cargo?: string|null, tamano?: int}  $filtros
      */
     public function listar(array $filtros): LengthAwarePaginator
     {
@@ -54,7 +105,7 @@ class PersonalService
      * IDs de todas las personas que coinciden con el filtro activo, para la
      * opción «seleccionar todos los resultados» del listado.
      *
-     * @param  array{termino?: string, estado?: string}  $filtros
+     * @param  array{termino?: string, estado?: string, ubicacion_id?: int|string|null, cargo?: string|null}  $filtros
      * @return array<int, int>
      */
     public function idsDeFiltro(array $filtros): array

@@ -51,17 +51,18 @@ class ReporteController extends Controller
 
     public function personal(Request $request): StreamedResponse
     {
-        $filtros = $request->only(['termino', 'estado']);
+        $filtros = $request->only(['termino', 'estado', 'ubicacion_id', 'cargo']);
 
         return $this->reportes->exportar(
             'personal-'.now()->format('Y-m-d').'.csv',
-            ['Nombre', 'Apellido', 'Usuario', 'Cargo', 'Estado', 'Equipos asignados'],
+            ['Nombre', 'Apellido', 'Usuario', 'Cargo', 'Departamento / Ubicación', 'Estado', 'Equipos asignados'],
             $this->personal->consultaListado($filtros),
             fn (Personal $persona): array => [
                 $persona->Nombre,
                 $persona->Apellido,
                 $persona->Nombre_usuario,
                 $persona->Cargo,
+                $persona->ubicacion?->Nombre ?? '—',
                 $persona->Estado,
                 $persona->asignaciones_activas,
             ],

@@ -37,7 +37,7 @@
             <x-icon name="cube" :size="22" />
         </span>
         <div class="leading-tight">
-            <p class="text-sm font-bold text-white">Zaico</p>
+            <p class="text-sm font-bold text-white">Zaiko</p>
             <p class="text-xs text-slate-400">Inventario TI</p>
         </div>
         <button type="button" @click="sidebarOpen = false"

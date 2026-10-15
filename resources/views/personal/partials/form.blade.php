@@ -23,9 +23,29 @@
     </div>
 
     <div>
+        <x-input-label for="fk_ubicacion" value="Departamento / Ubicación" />
+        <select id="fk_ubicacion" name="fk_ubicacion" class="form-control mt-1">
+            <option value="">Sin asignar</option>
+            @foreach ($ubicaciones as $ubicacion)
+                <option value="{{ $ubicacion->id }}" @selected(old('fk_ubicacion', $persona->fk_ubicacion) == $ubicacion->id)>
+                    {{ $ubicacion->Nombre }}
+                </option>
+            @endforeach
+        </select>
+        <x-input-error :messages="$errors->get('fk_ubicacion')" />
+    </div>
+
+    <div>
         <x-input-label for="Cargo" value="Cargo" />
-        <x-text-input id="Cargo" name="Cargo" type="text" class="mt-1"
-                      :value="old('Cargo', $persona->Cargo)" />
+        <x-text-input id="Cargo" name="Cargo" type="text" class="mt-1" list="cargos-sugeridos"
+                      :value="old('Cargo', $persona->Cargo)" placeholder="Ej. Analista Contable, Coordinador…" />
+        @if (! empty($cargos))
+            <datalist id="cargos-sugeridos">
+                @foreach ($cargos as $cargoOpcion)
+                    <option value="{{ $cargoOpcion }}"></option>
+                @endforeach
+            </datalist>
+        @endif
         <x-input-error :messages="$errors->get('Cargo')" />
     </div>
 

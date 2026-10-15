@@ -38,7 +38,7 @@
                     <div class="rounded-xl border border-slate-200">
                         <dl class="divide-y divide-slate-100">
                             <div class="grid grid-cols-3 gap-2 px-4 py-2 text-sm">
-                                <dt class="text-slate-500">Tipo de baja</dt>
+                                <dt class="text-slate-500">Tipo de desincorporación</dt>
                                 <dd class="col-span-2 font-medium text-slate-900">{{ $baja['tipo_etiqueta'] }}</dd>
                             </div>
                             <div class="grid grid-cols-3 gap-2 px-4 py-2 text-sm">

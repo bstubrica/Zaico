@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Zaico') }}</title>
+        <title>{{ config('app.name', 'Zaiko') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -26,7 +26,7 @@
                         <x-icon name="cube" :size="26" />
                     </span>
                     <div class="leading-tight">
-                        <p class="text-lg font-bold text-white">Zaico</p>
+                        <p class="text-lg font-bold text-white">Zaiko</p>
                         <p class="text-sm text-slate-400">Inventario TI</p>
                     </div>
                 </div>
@@ -52,7 +52,7 @@
                     </ul>
                 </div>
 
-                <p class="relative text-xs text-slate-500">© {{ date('Y') }} Zaico · Inventario de activos de TI</p>
+                <p class="relative text-xs text-slate-500">© {{ date('Y') }} Zaiko · Inventario de activos de TI</p>
             </div>
 
             {{-- Formulario --}}
@@ -63,7 +63,7 @@
                             <x-icon name="cube" :size="22" />
                         </span>
                         <div class="leading-tight">
-                            <p class="text-base font-bold text-slate-900">Zaico</p>
+                            <p class="text-base font-bold text-slate-900">Zaiko</p>
                             <p class="text-xs text-slate-500">Inventario TI</p>
                         </div>
                     </div>

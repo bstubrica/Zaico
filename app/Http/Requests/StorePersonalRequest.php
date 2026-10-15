@@ -28,6 +28,7 @@ class StorePersonalRequest extends FormRequest
                 Rule::unique('PERSONAL', 'Nombre_usuario')->ignore($personalId),
             ],
             'Cargo' => ['nullable', 'string', 'max:100'],
+            'fk_ubicacion' => ['nullable', 'integer', 'exists:UBICACIONES,id'],
             'Observaciones' => ['nullable', 'string'],
             'Estado' => ['sometimes', 'string', 'max:20'],
         ];
@@ -59,6 +60,7 @@ class StorePersonalRequest extends FormRequest
             'Apellido' => 'apellido',
             'Nombre_usuario' => 'nombre de usuario',
             'Cargo' => 'cargo',
+            'fk_ubicacion' => 'departamento / ubicación',
         ];
     }
 }

@@ -31,7 +31,7 @@
                        placeholder="Nombre, serial, etiqueta…" class="form-control">
             </div>
             <div>
-                <label for="tipo" class="form-label">Tipo de baja</label>
+                <label for="tipo" class="form-label">Tipo de desincorporación</label>
                 <select id="tipo" name="tipo" class="form-control">
                     <option value="">Todos</option>
                     @foreach ($tipos as $valor => $etiqueta)
@@ -81,10 +81,9 @@
                         <tr>
                             <th>Fecha</th>
                             <th>Equipo</th>
-                            <th class="hidden md:table-cell">Tipo</th>
+                            <th class="hidden whitespace-nowrap md:table-cell">Tipo de desincorporación</th>
                             <th class="hidden lg:table-cell">Destinatario / destino</th>
                             <th class="hidden xl:table-cell">Referencia</th>
-                            <th class="hidden lg:table-cell">Monto</th>
                             <th class="hidden xl:table-cell">Motivo</th>
                             <th class="hidden md:table-cell">Registrado por</th>
                             @if (auth()->user()->puedeEscribir())
@@ -122,13 +121,6 @@
                                     @endif
                                 </td>
                                 <td class="hidden text-slate-500 xl:table-cell">{{ $baja?->Referencia ?? '—' }}</td>
-                                <td class="hidden whitespace-nowrap lg:table-cell">
-                                    @if ($baja?->Monto !== null)
-                                        {{ $baja->Moneda }} {{ number_format((float) $baja->Monto, 2) }}
-                                    @else
-                                        <span class="text-slate-400">—</span>
-                                    @endif
-                                </td>
                                 <td class="hidden max-w-xs text-slate-500 xl:table-cell">{{ \Illuminate\Support\Str::limit($baja?->Motivo, 60) ?? '—' }}</td>
                                 <td class="hidden text-slate-500 md:table-cell">{{ $baja?->usuario?->name ?? '—' }}</td>
                                 @if (auth()->user()->puedeEscribir())
@@ -213,7 +205,7 @@
 
                     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
-                            <x-input-label for="edit-tipo" value="Tipo de baja *" />
+                            <x-input-label for="edit-tipo" value="Tipo de desincorporación *" />
                             <select id="edit-tipo" name="tipo" x-model="tipo" required class="form-control mt-1">
                                 <option value="">Seleccione…</option>
                                 @foreach ($tipos as $valor => $etiqueta)

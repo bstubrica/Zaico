@@ -17,16 +17,21 @@ class PersonalController extends Controller
 
     public function index(Request $request): View
     {
-        $filtros = $request->only(['termino', 'estado']);
+        $filtros = $request->only(['termino', 'estado', 'ubicacion_id', 'cargo']);
         $filtros['tamano'] = 50;
         $personas = $this->personal->listar($filtros);
+        $ubicaciones = $this->personal->opcionesUbicaciones();
+        $cargos = $this->personal->opcionesCargos();
 
-        return view('personal.index', compact('personas', 'filtros'));
+        return view('personal.index', compact('personas', 'filtros', 'ubicaciones', 'cargos'));
     }
 
     public function create(): View
     {
-        return view('personal.create');
+        $ubicaciones = $this->personal->opcionesUbicaciones();
+        $cargos = $this->personal->opcionesCargos();
+
+        return view('personal.create', compact('ubicaciones', 'cargos'));
     }
 
     public function store(StorePersonalRequest $request)
@@ -45,7 +50,10 @@ class PersonalController extends Controller
 
     public function edit(Personal $personal): View
     {
-        return view('personal.edit', compact('personal'));
+        $ubicaciones = $this->personal->opcionesUbicaciones($personal);
+        $cargos = $this->personal->opcionesCargos();
+
+        return view('personal.edit', compact('personal', 'ubicaciones', 'cargos'));
     }
 
     public function update(StorePersonalRequest $request, Personal $personal)

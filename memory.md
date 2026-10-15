@@ -6,7 +6,7 @@
 
 - **Correcciones de auditoría** commiteadas y pusheadas (`886ee20`).
 - **Feature "Equipos desincorporados" y "Carta de desincorporación" implementadas (2026-10-15)**, sin commitear aún (junto a cambios preexistentes ajenos en el árbol: `.agents/skills/**`, `opencode.json`, `.opencode/commands/**`, `AGENTS.md`; no tocarlos/commitear).
-- **Tests:** 206 tests / 680 aserciones ✅ en SQLite en memoria. Correr con:
+- **Tests:** 212 tests / 700 aserciones ✅ en SQLite en memoria. Correr con:
   `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`.
   La config por defecto (`phpunit.xml`) es pgsql `Zaico_test` y **falla aquí** por falta de contraseña (`fe_sendauth: no password supplied`). SQLite soporta el índice parcial `asignaciones_activa_unica`, así que la suite corre completa.
 - **MCP Postgres**: `@microsoft/postgres-mcp` en `opencode.json` → mcp.postgres. Perfil `zaico` (127.0.0.1:5432, db `Zaico`, user `postgres`, `ro`, sslmode=disable) en `~/.postgres-mcp/connections.yaml`. Falta `connection set-password zaico` + reiniciar opencode.
@@ -19,6 +19,7 @@
 - Mantener **pgsql `Zaico_test`** como BD de pruebas (SQLite solo como override local).
 - Mantener `database.sql` (intencional). `repomix-output.xml` (1.19 MB) se dejó de versionar (`.gitignore` + `git rm --cached`).
 - Alertas reactivadas sí notifican: `wasRecentlyCreated || wasChanged('Estado')` (ALERTAS tiene `unique(Tipo, fk_activo)` no parcial → reusa fila).
+- Nombre de la aplicación actualizado a **Zaiko** (`APP_NAME`, vistas de navegación, login, layouts y defaults).
 
 ## Convenciones
 
@@ -39,6 +40,9 @@
 - Los desincorporados se **ocultan** de `activos.index` (`ActivoService::consultaListado`) y viven en `desincorporados.index` (lectura para cualquier auth; editar/reincorporar solo `puedeEscribir()`).
 - Eventos de auditoría nuevos: `Desincorporacion` (baja), `Reincorporacion` (vuelve a `Disponible`, anula la baja vigente), `Modificacion` (edición de la baja).
 - Reporte `reportes.desincorporados` (CSV "Exportar Excel"). Reglas compartidas en trait `Concerns\DesincorporacionRules`. `DesincorporacionService` (listado/edición) usa `BusquedaAproximada`+`PaginacionAcotada`.
+- **Carta de desincorporación**: Servicio `CartaDesincorporacionService` y controlador `CartaDesincorporacionController`. Formatos vía enum `FormatoCarta` (`impresion`, `pdf`, `xlsx`, `xls`). Emisión individual (`desincorporados/{desincorporacion}/carta`) y acta por filtros (`desincorporados/carta`). Plantillas: `carta-pdf.blade.php` (DomPDF), `carta-web.blade.php` (impresión web). Hoja cálculo con PhpSpreadsheet. Config branding en `config/zaico.php` (`zaico.carta`).
+- **Frontend unificado**: Etiquetas y cabeceras estandarizadas como «Tipo de desincorporación» en filtros, tabla, modal de edición y cartas. Columna «Monto» removida de la tabla de desincorporados para maximizar espacio de destino y motivo (se conserva en modal de edición, cartas y CSV).
+- **Personal segmentado**: Columna `PERSONAL.fk_ubicacion` vinculada a `UBICACIONES` (nullable). Filtros en `PersonalService::consultaListado` por `ubicacion_id` (incluye `sin_ubicacion`) y `cargo`. Datalist de cargos existentes en formulario de alta/edición. Columna visible en listado, tarjeta, show y reporte CSV.
 
 ## Pendiente
 
