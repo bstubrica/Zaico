@@ -377,6 +377,12 @@ class EliminacionRegistrosTest extends TestCase
         $this->assertDatabaseCount('MANTENIMIENTOS', 0);
         $this->assertDatabaseCount('EVIDENCIAS_MANTENIMIENTO', 0);
         $this->assertFalse(Storage::disk('local')->exists($ruta));
+        // El borrado es auditable: queda traza del mantenimiento eliminado.
+        $this->assertDatabaseHas('HISTORIAL_EVENTOS', [
+            'fk_activo' => $activo->id,
+            'Tipo_evento' => 'Mantenimiento',
+            'fk_usuario' => $this->admin->id,
+        ]);
     }
 
     public function test_se_eliminan_varios_mantenimientos(): void
@@ -404,6 +410,12 @@ class EliminacionRegistrosTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseCount('MANTENIMIENTOS', 0);
+        $this->assertSame(
+            2,
+            HistorialEvento::where('fk_activo', $activo->id)
+                ->where('Tipo_evento', 'Mantenimiento')
+                ->count(),
+        );
     }
 
     public function test_se_eliminan_mantenimientos_con_todos_los_filtrados(): void

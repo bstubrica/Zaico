@@ -319,7 +319,11 @@ class ActivoService
             throw new RuntimeException('No se puede desincorporar: el activo tiene una asignación activa. Devuélvalo primero.');
         }
 
-        if ($grupoActual === 'Desincorporado') {
+        // Doble comprobación deliberada: el estado del catálogo es lo que ve el
+        // usuario, pero la baja vigente en `DESINCORPORACIONES` es la fuente
+        // autoritativa (datos heredados o ediciones directas pueden dejar el
+        // estado sin sincronizar) y es la que exige el índice único.
+        if ($grupoActual === 'Desincorporado' || $this->tieneBajaVigente($activo->id)) {
             throw new RuntimeException('El activo ya está desincorporado.');
         }
 
@@ -357,6 +361,12 @@ class ActivoService
         $procesables = [];
         $omitidos = [];
 
+        $conBajaVigente = Desincorporacion::query()
+            ->whereIn('fk_activo', $activos->keys())
+            ->where('Estado', 'Vigente')
+            ->pluck('fk_activo')
+            ->flip();
+
         foreach ($ids as $id) {
             $activo = $activos->get($id);
 
@@ -374,7 +384,7 @@ class ActivoService
 
             $grupoActual = $activo->estadoCatalogo?->Grupo ?? $activo->Estado;
 
-            if ($grupoActual === 'Desincorporado') {
+            if ($grupoActual === 'Desincorporado' || $conBajaVigente->has($activo->id)) {
                 $omitidos[] = ['label' => $activo->Etiqueta_activo, 'motivo' => 'Ya está desincorporado.'];
 
                 continue;
@@ -480,7 +490,7 @@ class ActivoService
         } catch (QueryException $e) {
             // Índice único parcial `desinc_vigente_unica`: otra solicitud
             // concurrente ya registró una baja vigente para este activo.
-            if (($e->errorInfo[0] ?? $e->getCode()) === '23505') {
+            if ($this->esViolacionDeUnicidad($e)) {
                 throw new RuntimeException('El activo ya tiene una desincorporación vigente.');
             }
 
@@ -497,6 +507,34 @@ class ActivoService
             nuevo: $estado->Nombre,
             usuarioId: $usuarioId,
         );
+    }
+
+    /**
+     * ¿El activo tiene una baja vigente registrada? Se consulta la tabla y no
+     * el estado del catálogo porque el índice único `desinc_vigente_unica`
+     * valida contra esas filas: así el servicio rechaza la baja repetida antes
+     * de que la base lance la violación de unicidad.
+     */
+    private function tieneBajaVigente(int $activoId): bool
+    {
+        return Desincorporacion::query()
+            ->where('fk_activo', $activoId)
+            ->where('Estado', 'Vigente')
+            ->exists();
+    }
+
+    /**
+     * Detecta la violación de un índice único sin depender del motor: cada uno
+     * reporta un SQLSTATE/código distinto (PostgreSQL 23505; SQLite y MySQL
+     * 23000 con 19 y 1062 respectivamente).
+     */
+    private function esViolacionDeUnicidad(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+        $codigo = (int) ($e->errorInfo[1] ?? 0);
+
+        return $sqlState === '23505'
+            || ($sqlState === '23000' && in_array($codigo, [19, 1062], true));
     }
 
     /**

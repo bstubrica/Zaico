@@ -11,6 +11,7 @@
   La config por defecto (`phpunit.xml`) es pgsql `Zaico_test` y **falla aquí** por falta de contraseña (`fe_sendauth: no password supplied`). SQLite soporta el índice parcial `asignaciones_activa_unica`, así que la suite corre completa.
 - **MCP Postgres**: `@microsoft/postgres-mcp` en `opencode.json` → mcp.postgres. Perfil `zaico` (127.0.0.1:5432, db `Zaico`, user `postgres`, `ro`, sslmode=disable) en `~/.postgres-mcp/connections.yaml`. Falta `connection set-password zaico` + reiniciar opencode.
 - **Bases**: dev local usa `DB_CONNECTION=sqlite`; pgsql 18 nativo en 5432 (servicio `postgresql-x64-18`, scram-sha-256). Laravel Boost MCP da `database-query`/`database-schema`.
+- **2026-10-19 — fix `SQLiteDatabaseDoesNotExistException`**: faltaba `database/database.sqlite` (está gitignoreado). Laravel 11+ **no** crea el archivo: hay que crearlo (`New-Item`) y luego `php artisan migrate --seed`. Verificado: `http://127.0.0.1:8000/` responde login, 27 migraciones, 17 estados, 3 usuarios.
 
 ## Decisiones (auditoría)
 
@@ -43,6 +44,7 @@
 - **Carta de desincorporación**: Servicio `CartaDesincorporacionService` y controlador `CartaDesincorporacionController`. Formatos vía enum `FormatoCarta` (`impresion`, `pdf`, `xlsx`, `xls`). Emisión individual (`desincorporados/{desincorporacion}/carta`) y acta por filtros (`desincorporados/carta`). Plantillas: `carta-pdf.blade.php` (DomPDF), `carta-web.blade.php` (impresión web). Hoja cálculo con PhpSpreadsheet. Config branding en `config/zaico.php` (`zaico.carta`).
 - **Frontend unificado**: Etiquetas y cabeceras estandarizadas como «Tipo de desincorporación» en filtros, tabla, modal de edición y cartas. Columna «Monto» removida de la tabla de desincorporados para maximizar espacio de destino y motivo (se conserva en modal de edición, cartas y CSV).
 - **Personal segmentado**: Columna `PERSONAL.fk_ubicacion` vinculada a `UBICACIONES` (nullable). Filtros en `PersonalService::consultaListado` por `ubicacion_id` (incluye `sin_ubicacion`) y `cargo`. Datalist de cargos existentes en formulario de alta/edición. Columna visible en listado, tarjeta, show y reporte CSV.
+- **2026-10-19 — endurecido `ActivoService::desincorporar`**: la guarda «ya desincorporado» ahora consulta la baja `Vigente` en `DESINCORPORACIONES` (fuente autoritativa) además del grupo del catálogo, y el catch de unicidad detecta PostgreSQL `23505`, SQLite/MySQL `23000`+`19/1062` (antes solo `23505`, por eso en SQLite saltaba el `QueryException` crudo). `desincorporarLote` omite esos equipos con un solo `whereIn`. Test `DesincorporacionUnicaTest` (3 casos).
 
 ## Pendiente
 
@@ -52,7 +54,9 @@
 ## Comandos útiles
 
 - Tests (SQLite): `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`
-- Pint: `vendor/bin/pint --dirty --format agent`
+- BD local desde cero: `New-Item database\database.sqlite -Force; php artisan migrate --seed` (o `.\setup.ps1`)
+- Pint: `vendor/bin/pint --dirty --format agent`. **En este sandbox Pint exige permisos completos**: `is_writable()` de PHP devuelve `false` (aunque las escrituras reales funcionan), así que falla con «not writable» al escribir su temporal; ejecutarlo con `sandbox_permissions: danger-full-access`.
+- `public/storage` creado con `php artisan storage:link` (junction); faltaba y las evidencias no se servían.
 - Build frontend: `npm run build`
 - Perfil MCP: `npx -y @microsoft/postgres-mcp connection list`
 - Prod (docker): `docker compose up -d db`
