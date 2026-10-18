@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use InvalidArgumentException;
+use Throwable;
 
 class ImportacionesController extends Controller
 {
@@ -39,7 +40,15 @@ class ImportacionesController extends Controller
                 $request->user()->id,
             );
         } catch (InvalidArgumentException $e) {
+            // Importación rechazada antes de crear el log: no dejar el CSV
+            // temporal huérfano hasta que pase el depurador diario.
+            Storage::disk('local')->delete($ruta);
+
             return back()->withErrors(['archivo' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            Storage::disk('local')->delete($ruta);
+
+            throw $e;
         }
 
         $resumen = "Filtradas {$log->Total_filas}: {$log->Insertadas} nuevas, {$log->Actualizadas} actualizadas, {$log->Errores} errores.";

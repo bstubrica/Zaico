@@ -28,7 +28,7 @@ class ReporteController extends Controller
 
     public function activos(Request $request): StreamedResponse
     {
-        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'asignado_a']);
+        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a']);
 
         return $this->reportes->exportar(
             'activos-'.now()->format('Y-m-d').'.csv',

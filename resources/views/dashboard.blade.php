@@ -14,7 +14,10 @@
             ['clave' => 'Defectuoso', 'label' => 'Defectuosos', 'color' => 'bg-orange-500'],
             ['clave' => 'Desincorporado', 'label' => 'Desincorporados', 'color' => 'bg-rose-500'],
         ];
-        $sumaDistribucion = max($porGrupo->sum(), 1);
+        // El denominador son solo los grupos con representación visual: los
+        // activos sin catálogo de estado agrupan bajo su estado denormalizado
+        // y no deben diluir los porcentajes de la distribución.
+        $sumaDistribucion = max(collect($distribucion)->sum(fn ($fila) => $porGrupo[$fila['clave']] ?? 0), 1);
     @endphp
 
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">

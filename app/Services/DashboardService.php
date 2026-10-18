@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Activo;
-use App\Models\EstadoActivo;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as BaseCollection;
 
@@ -21,11 +20,16 @@ class DashboardService
      */
     public function totalesPorGrupo(): BaseCollection
     {
-        return EstadoActivo::query()
-            ->join('ACTIVOS', 'ACTIVOS.fk_estado', '=', 'ESTADOS_ACTIVO.id')
-            ->select('ESTADOS_ACTIVO.Grupo as grupo')
+        // Se parte de ACTIVOS con un LEFT JOIN al catálogo: `fk_estado` es
+        // nullable (activos importados sin detalle de catálogo), así que el
+        // INNER JOIN perdía filas y los subtotales no sumaban el total. El
+        // grupo se resuelve con la misma lógica dual del listado: catálogo
+        // vinculado o, en su defecto, el estado denormalizado del activo.
+        return Activo::query()
+            ->leftJoin('ESTADOS_ACTIVO', 'ACTIVOS.fk_estado', '=', 'ESTADOS_ACTIVO.id')
+            ->selectRaw('COALESCE("ESTADOS_ACTIVO"."Grupo", "ACTIVOS"."Estado") as grupo')
             ->selectRaw('count(*) as total')
-            ->groupBy('ESTADOS_ACTIVO.Grupo')
+            ->groupByRaw('COALESCE("ESTADOS_ACTIVO"."Grupo", "ACTIVOS"."Estado")')
             ->pluck('total', 'grupo');
     }
 

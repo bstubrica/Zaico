@@ -62,7 +62,7 @@
     </form>
 
     <div class="card" x-data="vistaListado({ clave: 'vista:personal' })">
-        <div x-data="seleccionLote({ clave: 'sel:personal', total: {{ $personas->total() }}, pagina: {{ json_encode($personas->pluck('id')->all()) }}, mensaje: 'Se darán de baja {n} personas. No podrán recibir equipos.', mensajeGrande: 'Son {n} personas. La baja se aplicará de una sola vez a todas las seleccionadas. ¿Continuar?' })">
+        <div x-data="seleccionLote({ clave: 'sel:personal', total: {{ $personas->total() }}, pagina: @js($personas->pluck('id')->all()), mensaje: 'Se darán de baja {n} personas. No podrán recibir equipos.', mensajeGrande: 'Son {n} personas. La baja se aplicará de una sola vez a todas las seleccionadas. ¿Continuar?' })">
             <div class="card-header">
                 <h3 class="card-title">
                     Resultados
@@ -136,7 +136,7 @@
                                     @if (auth()->user()->puedeEscribir())
                                         <a href="{{ route('personal.edit', $persona) }}" class="link ms-3">Editar</a>
                                         <form method="POST" action="{{ route('personal.destroy', $persona) }}" class="inline"
-                                              onsubmit="return confirm('¿Dar de baja a {{ $persona->NombreCompleto }}?')">
+                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja a '.$persona->NombreCompleto.'?') }})">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="link ms-3 text-rose-600">Baja</button>
@@ -195,7 +195,7 @@
                                 <div class="flex items-center gap-3">
                                     <a href="{{ route('personal.edit', $persona) }}" class="link text-sm">Editar</a>
                                     <form method="POST" action="{{ route('personal.destroy', $persona) }}" class="inline"
-                                          onsubmit="return confirm('¿Dar de baja a {{ $persona->NombreCompleto }}?')">
+                                          onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja a '.$persona->NombreCompleto.'?') }})">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-sm font-medium text-rose-600 hover:underline">Baja</button>

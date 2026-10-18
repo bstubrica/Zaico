@@ -34,7 +34,7 @@
     </form>
 
     <div class="card"
-         x-data="seleccionLote({ clave: 'sel:mantenimientos', total: {{ $mantenimientos->total() }}, pagina: {{ json_encode($mantenimientos->pluck('id')->all()) }}, mensaje: 'Se eliminarán {n} mantenimientos junto con sus evidencias y archivos.', mensajeGrande: 'Son {n} mantenimientos y sus evidencias se borrarán de forma permanente. ¿Continuar?' })">
+         x-data="seleccionLote({ clave: 'sel:mantenimientos', total: {{ $mantenimientos->total() }}, pagina: @js($mantenimientos->pluck('id')->all()), mensaje: 'Se eliminarán {n} mantenimientos junto con sus evidencias y archivos.', mensajeGrande: 'Son {n} mantenimientos y sus evidencias se borrarán de forma permanente. ¿Continuar?' })">
         <div class="card-header">
             <h3 class="card-title">
                 Resultados

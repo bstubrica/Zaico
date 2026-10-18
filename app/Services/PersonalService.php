@@ -110,7 +110,10 @@ class PersonalService
      */
     public function idsDeFiltro(array $filtros): array
     {
-        return $this->consultaListado($filtros)->pluck('id')->all();
+        return $this->consultaListado($filtros)
+            ->limit(self::MAXIMO_LOTE + 1)
+            ->pluck('id')
+            ->all();
     }
 
     /**

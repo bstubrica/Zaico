@@ -114,7 +114,7 @@
                                         <span class="badge ms-3 bg-brand-50 text-brand-700">Sesión actual</span>
                                     @elseif ($usuario->estaActivo())
                                         <form method="POST" action="{{ route('admin.usuarios.toggle', $usuario) }}" class="inline"
-                                              onsubmit="return confirm('¿Deshabilitar a {{ $usuario->name }}? No podrá iniciar sesión hasta que se habilite de nuevo.')">
+                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Deshabilitar a '.$usuario->name.'? No podrá iniciar sesión hasta que se habilite de nuevo.') }})">
                                             @csrf
                                             <button type="submit" class="link ms-3 text-rose-600">
                                                 <x-icon name="lock-closed" :size="15" class="inline align-text-bottom" /> Deshabilitar
@@ -122,7 +122,7 @@
                                         </form>
                                     @else
                                         <form method="POST" action="{{ route('admin.usuarios.toggle', $usuario) }}" class="inline"
-                                              onsubmit="return confirm('¿Habilitar a {{ $usuario->name }}?')">
+                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Habilitar a '.$usuario->name.'?') }})">
                                             @csrf
                                             <button type="submit" class="link ms-3 text-emerald-600">
                                                 <x-icon name="lock-open" :size="15" class="inline align-text-bottom" /> Habilitar

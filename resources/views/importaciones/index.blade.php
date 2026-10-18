@@ -56,7 +56,7 @@
 
         {{-- Historial --}}
         <div class="card lg:col-span-2"
-             x-data="seleccionLote({ clave: 'sel:importaciones', total: {{ $historial->total() }}, pagina: {{ json_encode($historial->pluck('id')->all()) }}, mensaje: 'Se eliminarán {n} registros de importación junto con su detalle.', mensajeGrande: 'Son {n} registros de importación. Se eliminarán de forma permanente. ¿Continuar?' })">
+             x-data="seleccionLote({ clave: 'sel:importaciones', total: {{ $historial->total() }}, pagina: @js($historial->pluck('id')->all()), mensaje: 'Se eliminarán {n} registros de importación junto con su detalle.', mensajeGrande: 'Son {n} registros de importación. Se eliminarán de forma permanente. ¿Continuar?' })">
             <div class="card-header">
                 <h3 class="card-title">Historial de importaciones</h3>
             </div>

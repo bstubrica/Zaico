@@ -49,9 +49,9 @@ class MantenimientosController extends Controller
         return $this->mantenimientos->descargarEvidencia($evidencia);
     }
 
-    public function destroy(Mantenimiento $mantenimiento): RedirectResponse
+    public function destroy(Request $request, Mantenimiento $mantenimiento): RedirectResponse
     {
-        $this->mantenimientos->eliminar($mantenimiento);
+        $this->mantenimientos->eliminar($mantenimiento, $request->user()->id);
 
         return back()->with('success', 'Mantenimiento eliminado.');
     }
@@ -70,7 +70,7 @@ class MantenimientosController extends Controller
             return back()->with('error', 'La selección supera el límite de '.MantenimientoService::MAXIMO_LOTE.' mantenimientos por operación. Acote el filtro e inténtelo de nuevo.');
         }
 
-        $resultado = $this->mantenimientos->eliminarLote($ids);
+        $resultado = $this->mantenimientos->eliminarLote($ids, $request->user()->id);
 
         $redirect = back()
             ->with('success', "Mantenimientos eliminados: {$resultado['eliminados']} de ".count($ids).' seleccionados.');

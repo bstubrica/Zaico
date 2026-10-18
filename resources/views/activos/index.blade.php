@@ -87,7 +87,7 @@
 
     {{-- Listado --}}
     <div class="card" x-data="vistaListado({ clave: 'vista:activos' })">
-        <div x-data="seleccionLote({ clave: 'sel:activos', total: {{ $activos->total() }}, pagina: {{ json_encode($activos->pluck('id')->all()) }}, mensaje: 'Se desincorporarán {n} equipos. El estado cambiará a Desincorporado y quedará registrado en el historial.', mensajeGrande: 'Son {n} equipos. La desincorporación se aplicará de una sola vez a todos los seleccionados. ¿Continuar?' })">
+        <div x-data="seleccionLote({ clave: 'sel:activos', total: {{ $activos->total() }}, pagina: @js($activos->pluck('id')->all()), mensaje: 'Se desincorporarán {n} equipos. El estado cambiará a Desincorporado y quedará registrado en el historial.', mensajeGrande: 'Son {n} equipos. La desincorporación se aplicará de una sola vez a todos los seleccionados. ¿Continuar?' })">
             <div class="card-header">
                 <h3 class="card-title">
                     Resultados
@@ -303,7 +303,7 @@
     <x-resultado-lote />
 
     @if (auth()->user()->puedeEscribir())
-        <x-modal name="desincorporar-activo" maxWidth="md">
+        <x-modal name="desincorporar-activo" maxWidth="md" title="Desincorporar equipo">
                 <div x-data="{ id: null, tipo: '', exigeMonto() { return this.tipo === 'Venta'; } }" @set-desincorporar.window="id = $event.detail">
                 <form method="POST" :action="'{{ url('activos') }}/' + (id ?? '') + '/desincorporar'" class="p-6">
                     @csrf

@@ -127,7 +127,10 @@ class MantenimientoService
      */
     public function idsDeFiltro(array $filtros): array
     {
-        return $this->consultaGlobal($filtros)->pluck('id')->all();
+        return $this->consultaGlobal($filtros)
+            ->limit(self::MAXIMO_LOTE + 1)
+            ->pluck('id')
+            ->all();
     }
 
     /**
@@ -149,28 +152,44 @@ class MantenimientoService
 
     /**
      * Borra el mantenimiento y sus evidencias (filas y archivos en disco).
+     * El borrado es una operación auditable: deja traza en HISTORIAL_EVENTOS.
      */
-    public function eliminar(Mantenimiento $mantenimiento): void
+    public function eliminar(Mantenimiento $mantenimiento, int $usuarioId): void
     {
-        DB::transaction(function () use ($mantenimiento) {
+        $rutas = [];
+
+        DB::transaction(function () use ($mantenimiento, $usuarioId, &$rutas) {
             foreach ($mantenimiento->evidencias()->get() as $evidencia) {
-                Storage::disk(self::DISCO)->delete($evidencia->Ruta_archivo);
+                $rutas[] = $evidencia->Ruta_archivo;
             }
+
+            $this->historial->registrar(
+                $mantenimiento->fk_activo,
+                'Mantenimiento',
+                "Mantenimiento eliminado (#{$mantenimiento->id}, {$mantenimiento->Tipo})",
+                usuarioId: $usuarioId,
+            );
 
             $mantenimiento->evidencias()->delete();
             $mantenimiento->delete();
         });
+
+        // Los archivos se borran solo tras el commit: si la transacción
+        // revierte, las evidencias siguen disponibles en disco.
+        foreach ($rutas as $ruta) {
+            Storage::disk(self::DISCO)->delete($ruta);
+        }
     }
 
     /**
      * Borra un lote de mantenimientos de forma atómica, junto con sus
      * evidencias (filas y archivos en disco). Los IDs inexistentes se detallan
-     * como omitidos.
+     * como omitidos. Deja traza de cada borrado en HISTORIAL_EVENTOS.
      *
      * @param  array<int, int>  $ids
      * @return array{eliminados: int, omitidos: array<int, array{label: string, motivo: string}>}
      */
-    public function eliminarLote(array $ids): array
+    public function eliminarLote(array $ids, int $usuarioId): array
     {
         $mantenimientos = Mantenimiento::query()
             ->with('evidencias')
@@ -193,16 +212,29 @@ class MantenimientoService
             $procesables[] = $mantenimiento;
         }
 
-        DB::transaction(function () use ($procesables): void {
+        $rutas = [];
+
+        DB::transaction(function () use ($procesables, $usuarioId, &$rutas): void {
             foreach ($procesables as $mantenimiento) {
                 foreach ($mantenimiento->evidencias as $evidencia) {
-                    Storage::disk(self::DISCO)->delete($evidencia->Ruta_archivo);
+                    $rutas[] = $evidencia->Ruta_archivo;
                 }
+
+                $this->historial->registrar(
+                    $mantenimiento->fk_activo,
+                    'Mantenimiento',
+                    "Mantenimiento eliminado (#{$mantenimiento->id}, {$mantenimiento->Tipo})",
+                    usuarioId: $usuarioId,
+                );
 
                 $mantenimiento->evidencias()->delete();
                 $mantenimiento->delete();
             }
         });
+
+        foreach ($rutas as $ruta) {
+            Storage::disk(self::DISCO)->delete($ruta);
+        }
 
         return ['eliminados' => count($procesables), 'omitidos' => $omitidos];
     }

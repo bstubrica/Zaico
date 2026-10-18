@@ -82,7 +82,7 @@
                                         <x-badge color="slate" :dot="true">{{ $asignacion->Estado }}</x-badge>
                                     @endif
                                 </td>
-                                <td class="hidden text-slate-500 lg:table-cell">{{ \Illuminate\Support\Str::limit($asignacion->Observaciones ?? '—', 60) }}</td>
+                                <td class="hidden text-slate-500 lg:table-cell">{{ filled($asignacion->Observaciones) ? \Illuminate\Support\Str::limit($asignacion->Observaciones, 60) : '—' }}</td>
                             </tr>
                         @endforeach
                     </tbody>

@@ -13,6 +13,7 @@ use App\Services\Concerns\LimiteLote;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Throwable;
@@ -103,47 +104,63 @@ class ImportacionService
             'Total_filas' => count($filas),
         ]);
 
-        $planes = $this->planear($filas);
+        try {
+            $planes = $this->planear($filas);
 
-        if (! $dryRun) {
-            $planes = $this->aplicar($planes, $usuarioId);
-        }
-
-        $conteos = [
-            'Insertadas' => 0,
-            'Actualizadas' => 0,
-            'Errores' => 0,
-        ];
-
-        foreach ($planes as $plan) {
-            if ($plan['accion'] === 'Insertado') {
-                $conteos['Insertadas']++;
-            } elseif ($plan['accion'] === 'Actualizado') {
-                $conteos['Actualizadas']++;
-            } elseif ($plan['accion'] === 'Error') {
-                $conteos['Errores']++;
+            if (! $dryRun) {
+                $planes = $this->aplicar($planes, $usuarioId);
             }
-        }
 
-        $detalles = [];
-        foreach ($planes as $plan) {
-            $detalles[] = [
-                'fk_importacion' => $log->id,
-                'Fila_numero' => $plan['fila'],
-                'Etiqueta' => $plan['etiqueta'],
-                'Accion' => $plan['accion'],
-                'Mensaje' => $plan['mensaje'],
-                'Datos_previos' => $plan['datos_previos'] !== null ? json_encode($plan['datos_previos']) : null,
+            $conteos = [
+                'Insertadas' => 0,
+                'Actualizadas' => 0,
+                'Errores' => 0,
             ];
-        }
 
-        DB::transaction(function () use ($log, $detalles, $conteos) {
-            foreach (array_chunk($detalles, self::LOTE) as $lote) {
-                ImportacionDetalle::insert($lote);
+            foreach ($planes as $plan) {
+                if ($plan['accion'] === 'Insertado') {
+                    $conteos['Insertadas']++;
+                } elseif ($plan['accion'] === 'Actualizado') {
+                    $conteos['Actualizadas']++;
+                } elseif ($plan['accion'] === 'Error') {
+                    $conteos['Errores']++;
+                }
             }
 
-            $log->update([...$conteos, 'Estado' => 'Completado']);
-        });
+            $detalles = [];
+            foreach ($planes as $plan) {
+                $detalles[] = [
+                    'fk_importacion' => $log->id,
+                    'Fila_numero' => $plan['fila'],
+                    'Etiqueta' => $plan['etiqueta'],
+                    'Accion' => $plan['accion'],
+                    'Mensaje' => $plan['mensaje'],
+                    'Datos_previos' => $plan['datos_previos'] !== null ? json_encode($plan['datos_previos']) : null,
+                ];
+            }
+
+            DB::transaction(function () use ($log, $detalles, $conteos) {
+                foreach (array_chunk($detalles, self::LOTE) as $lote) {
+                    ImportacionDetalle::insert($lote);
+                }
+
+                $log->update([...$conteos, 'Estado' => 'Completado']);
+            });
+        } catch (Throwable $error) {
+            // Sin este cierre, un fallo inesperado dejaba el registro en
+            // «EnProceso» para siempre, visible en el historial y sin rastro
+            // de la causa.
+            $log->update(['Estado' => 'Fallido']);
+
+            Log::error('Fallo al importar CSV', [
+                'importacion_id' => $log->id,
+                'archivo' => $nombreOriginal,
+                'modo' => $log->Modo,
+                'exception' => $error,
+            ]);
+
+            throw $error;
+        }
 
         return $log->load('detalles');
     }
@@ -664,7 +681,10 @@ class ImportacionService
      */
     public function idsDeFiltro(): array
     {
-        return ImportacionLog::query()->pluck('id')->all();
+        return ImportacionLog::query()
+            ->limit(self::MAXIMO_LOTE + 1)
+            ->pluck('id')
+            ->all();
     }
 
     /**

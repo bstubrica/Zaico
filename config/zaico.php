@@ -90,7 +90,9 @@ return [
         'titulo' => env('ZAICO_CARTA_TITULO', 'Carta de desincorporación'),
         'folio_prefijo' => env('ZAICO_CARTA_FOLIO_PREFIJO', 'DES'),
         'organizacion' => [
-            'nombre' => env('ZAICO_EMPRESA_NOMBRE', env('APP_NAME', 'Zaiko')),
+            // `env()` anidado falla con `config:cache` (el interno devuelve
+            // null al no leerse el .env); se resuelve con config('app.name').
+            'nombre' => env('ZAICO_EMPRESA_NOMBRE') ?: config('app.name', 'Zaiko'),
             'rif' => env('ZAICO_EMPRESA_RIF'),
             'direccion' => env('ZAICO_EMPRESA_DIRECCION'),
             'ciudad' => env('ZAICO_EMPRESA_CIUDAD'),

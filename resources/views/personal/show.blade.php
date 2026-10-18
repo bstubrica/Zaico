@@ -51,7 +51,7 @@
                 @if (auth()->user()->puedeEscribir() && $personal->Estado === 'Activo')
                     <div class="border-t border-slate-200 pt-4">
                         <form method="POST" action="{{ route('personal.destroy', $personal) }}"
-                              onsubmit="return confirm('¿Dar de baja a {{ $personal->NombreCompleto }}?');">
+                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja a '.$personal->NombreCompleto.'?') }});">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger w-full">

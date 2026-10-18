@@ -91,7 +91,7 @@
                                     @if (auth()->user()->puedeEscribir())
                                         <a href="{{ route('modelos.edit', $modelo) }}" class="link">Editar</a>
                                         <form method="POST" action="{{ route('modelos.destroy', $modelo) }}" class="inline"
-                                              onsubmit="return confirm('¿Dar de baja el modelo {{ $modelo->Nombre }}?')">
+                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja el modelo '.$modelo->Nombre.'?') }})">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="link ms-3 text-rose-600">Baja</button>

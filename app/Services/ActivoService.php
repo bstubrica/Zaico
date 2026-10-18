@@ -463,19 +463,29 @@ class ActivoService
             $moneda = 'USD';
         }
 
-        Desincorporacion::create([
-            'fk_activo' => $activo->id,
-            'Tipo' => $datos['tipo'],
-            'Destinatario' => $datos['destinatario'],
-            'Detalle_destino' => $datos['detalle_destino'] ?? null,
-            'Referencia' => $datos['referencia'] ?? null,
-            'Monto' => $datos['monto'] ?? null,
-            'Moneda' => $moneda,
-            'Motivo' => $datos['motivo'],
-            'Fecha' => $datos['fecha'],
-            'Estado' => 'Vigente',
-            'fk_usuario' => $usuarioId,
-        ]);
+        try {
+            Desincorporacion::create([
+                'fk_activo' => $activo->id,
+                'Tipo' => $datos['tipo'],
+                'Destinatario' => $datos['destinatario'],
+                'Detalle_destino' => $datos['detalle_destino'] ?? null,
+                'Referencia' => $datos['referencia'] ?? null,
+                'Monto' => $datos['monto'] ?? null,
+                'Moneda' => $moneda,
+                'Motivo' => $datos['motivo'],
+                'Fecha' => $datos['fecha'],
+                'Estado' => 'Vigente',
+                'fk_usuario' => $usuarioId,
+            ]);
+        } catch (QueryException $e) {
+            // Índice único parcial `desinc_vigente_unica`: otra solicitud
+            // concurrente ya registró una baja vigente para este activo.
+            if (($e->errorInfo[0] ?? $e->getCode()) === '23505') {
+                throw new RuntimeException('El activo ya tiene una desincorporación vigente.');
+            }
+
+            throw $e;
+        }
 
         $activo->update(['Estado' => $estado->Grupo, 'fk_estado' => $estado->id]);
 

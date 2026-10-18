@@ -61,7 +61,7 @@
                                         @if (auth()->user()->puedeEscribir())
                                             <a href="{{ route('estados.edit', $estado) }}" class="link">Editar</a>
                                             <form method="POST" action="{{ route('estados.destroy', $estado) }}" class="inline"
-                                                  onsubmit="return confirm('¿Eliminar el estado {{ $estado->Nombre }}?')">
+                                                  onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Eliminar el estado '.$estado->Nombre.'?') }})">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="link ms-3 text-rose-600">Eliminar</button>

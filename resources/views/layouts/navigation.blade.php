@@ -29,8 +29,8 @@
 @endphp
 
 <aside x-cloak
-       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-       class="fixed inset-y-0 start-0 z-50 flex w-64 flex-col bg-slate-900 transition-transform duration-200 ease-out lg:translate-x-0">
+       :class="sidebarOpen ? 'translate-x-0' : 'invisible -translate-x-full lg:visible lg:translate-x-0'"
+       class="fixed inset-y-0 start-0 z-50 flex w-64 flex-col bg-slate-900 transition-[transform,visibility] duration-200 ease-out lg:visible lg:translate-x-0">
     <!-- Marca -->
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-5">
         <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
@@ -48,7 +48,7 @@
     </div>
 
     <!-- Navegación -->
-    <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+    <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label="Navegación principal">
         @foreach ($secciones as $seccion)
             <div>
                 <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{{ $seccion['titulo'] }}</p>

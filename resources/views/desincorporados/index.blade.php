@@ -121,7 +121,7 @@
                                     @endif
                                 </td>
                                 <td class="hidden text-slate-500 xl:table-cell">{{ $baja?->Referencia ?? '—' }}</td>
-                                <td class="hidden max-w-xs text-slate-500 xl:table-cell">{{ \Illuminate\Support\Str::limit($baja?->Motivo, 60) ?? '—' }}</td>
+                                <td class="hidden max-w-xs text-slate-500 xl:table-cell">{{ filled($baja?->Motivo) ? \Illuminate\Support\Str::limit($baja->Motivo, 60) : '—' }}</td>
                                 <td class="hidden text-slate-500 md:table-cell">{{ $baja?->usuario?->name ?? '—' }}</td>
                                 @if (auth()->user()->puedeEscribir())
                                     <td class="text-right whitespace-nowrap">
@@ -173,7 +173,7 @@
     </div>
 
     @if (auth()->user()->puedeEscribir())
-        <x-modal name="editar-desincorporacion" maxWidth="lg" focusable>
+        <x-modal name="editar-desincorporacion" maxWidth="lg" focusable title="Editar desincorporación">
             <div x-data="{
                     id: '',
                     tipo: '',

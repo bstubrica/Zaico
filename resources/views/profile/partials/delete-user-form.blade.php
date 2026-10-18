@@ -11,7 +11,7 @@
         x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')"
     >Eliminar cuenta</x-danger-button>
 
-    <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
+    <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable title="Eliminar cuenta">
         <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
             @csrf
             @method('delete')
