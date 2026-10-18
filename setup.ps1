@@ -298,17 +298,24 @@ if ($Database -eq 'sqlite') {
 
     $psql = Find-Executable -Name 'psql' -Globs @('C:\Program Files\PostgreSQL\*\bin\psql.exe')
     if ($psql) {
+        # La contrasena vive solo en el entorno de este proceso y se limpia al
+        # terminar: no queda expuesta para procesos hijos ni en el historial.
         $env:PGPASSWORD = $PgPassword
-        $exists = & $psql -h $PgHost -p $PgPort -U $PgUsername -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$PgDatabase'"
-        if (($exists -join '').Trim() -ne '1') {
-            Invoke-Native -File $psql -Arguments @('-h', $PgHost, '-p', $PgPort, '-U', $PgUsername, '-d', 'postgres', '-c', "CREATE DATABASE `"$PgDatabase`"") -ErrorMessage "No se pudo crear la base $PgDatabase"
-            Write-Ok "Base $PgDatabase creada"
-        } else {
-            Write-Ok "Base $PgDatabase ya existe"
+        try {
+            foreach ($database in @($PgDatabase, 'Zaico_test') | Select-Object -Unique) {
+                $exists = & $psql -h $PgHost -p $PgPort -U $PgUsername -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$database'"
+                if (($exists -join '').Trim() -ne '1') {
+                    Invoke-Native -File $psql -Arguments @('-h', $PgHost, '-p', $PgPort, '-U', $PgUsername, '-d', 'postgres', '-c', "CREATE DATABASE `"$database`"") -ErrorMessage "No se pudo crear la base $database"
+                    Write-Ok "Base $database creada"
+                } else {
+                    Write-Ok "Base $database ya existe"
+                }
+            }
+        } finally {
+            Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
         }
     } else {
-        Write-Warn "psql no encontrado: asegurate de que la base $PgDatabase exista."
-        Write-Warn "Las pruebas requieren ademas la base Zaico_test."
+        Write-Warn "psql no encontrado: asegurate de que las bases $PgDatabase y Zaico_test existan."
     }
 }
 
