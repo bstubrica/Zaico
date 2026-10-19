@@ -5,16 +5,15 @@
 ## Estado actual
 
 - **Correcciones de auditoría** commiteadas y pusheadas (`886ee20`).
-- **Feature "Equipos desincorporados" y "Carta de desincorporación" implementadas (2026-10-15)**, sin commitear aún (junto a cambios preexistentes ajenos en el árbol: `.agents/skills/**`, `opencode.json`, `.opencode/commands/**`, `AGENTS.md`; no tocarlos/commitear).
-- **Tests:** 212 tests / 700 aserciones ✅ en SQLite en memoria. Correr con:
+- **2026-10-19 — UI listados** (acciones de fila con iconos + scroll propio/sticky/ancladas) **commiteada** en `94f0fb5` (18 archivos).
+- **2026-10-19 — login por `username`**: implementado, tests en verde; **sin commitear**. Archivos: migración `2026_10_19_145202_add_username_to_users_table`, `LoginRequest`, `User`/`UserFactory`/`UserSeeder`, `Store/UpdateUsuarioRequest`, `UsuarioService`, `RegisteredUserController`, `ConfirmablePasswordController`, `EnsureUserIsActive`, vistas de login/registro/usuarios/perfil/topbar, `README.md`, `DOCUMENTACION.md`. Ver «Autenticación».
+- **Tests:** 222 tests / 735 aserciones ✅ en SQLite en memoria. Correr con:
   `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`.
   La config por defecto (`phpunit.xml`) es pgsql `Zaico_test` y **falla aquí** por falta de contraseña (`fe_sendauth: no password supplied`). SQLite soporta el índice parcial `asignaciones_activa_unica`, así que la suite corre completa.
 - **MCP Postgres**: `@microsoft/postgres-mcp` en `opencode.json` → mcp.postgres. Perfil `zaico` (127.0.0.1:5432, db `Zaico`, user `postgres`, `ro`, sslmode=disable) en `~/.postgres-mcp/connections.yaml`. Falta `connection set-password zaico` + reiniciar opencode.
 - **Bases**: dev local usa `DB_CONNECTION=sqlite`; pgsql 18 nativo en 5432 (servicio `postgresql-x64-18`, scram-sha-256). Laravel Boost MCP da `database-query`/`database-schema`.
-- **2026-10-19 — fix `SQLiteDatabaseDoesNotExistException`**: faltaba `database/database.sqlite` (está gitignoreado). Laravel 11+ **no** crea el archivo: hay que crearlo (`New-Item`) y luego `php artisan migrate --seed`. Verificado: `http://127.0.0.1:8000/` responde login, 27 migraciones, 17 estados, 3 usuarios.
-
-- **2026-10-19 — acciones de fila unificadas (UI)**: en todos los listados «Ver/Editar/Baja/…» pasaron de enlaces de texto a iconos compactos con `.icon-btn` (`app.css`) + `aria-label`/`title`; columnas de texto largo con `truncate`+`title` (Nombre/Ubicación/Asignado a en activos; Nombre en personal); columna «Acciones» oculta si el usuario no tiene acciones (modelos/estados/ubicaciones). Motivo: en Equipos los botones quedaban cortados fuera de pantalla. Requiere `npm run build`.
-- **2026-10-19 — scroll de tablas cómodo (UI)**: `.table-wrap` ahora tiene `max-h-[70vh]` + scroll propio, `thead` sticky y columna de identidad fija; listados con columna secundaria en `xl` y terciaria en `2xl` (nunca `md`/`lg`); contenedor ampliado a `max-w-screen-2xl` en los listados vía prop `ancho` de `AppLayout` (ver «Convenciones de tablas»). Tests: 217/714 ✅ (incluye `ComodidadTablaTest`). Requiere `npm run build`.
+- **2026-10-19 — fix `SQLiteDatabaseDoesNotExistException`**: faltaba `database/database.sqlite` (está gitignoreado). Laravel 11+ **no** crea el archivo: hay que crearlo (`New-Item`) y luego `php artisan migrate --seed`. DB dev ya migrada (30 migraciones, 3 usuarios).
+- **2026-10-19 — acciones de fila unificadas (UI)**: «Ver/Editar/Baja/…» son iconos `.icon-btn` con `aria-label`/`title`; texto largo con `truncate`+`title`; columna «Acciones» oculta sin acciones; scroll de tablas cómodo (`.table-wrap` `max-h-[70vh]`, `thead` sticky, columnas ancladas, `max-w-screen-2xl` en listados vía prop `ancho`). Requiere `npm run build`.
 
 ## Convenciones de tablas
 
@@ -23,6 +22,13 @@
 - Regla de visibilidad de columnas en listados: esenciales siempre, secundarias `hidden xl:table-cell`, terciarias `hidden 2xl:table-cell`. **Nunca `md`/`lg`**: el sidebar de 256px aparece en `lg` y entonces el contenedor se angosta justo cuando esas clases muestran columnas.
 - Ancho de contenido: `AppLayout` recibe `ancho` (default `max-w-7xl`); los listados pasan `ancho="max-w-screen-2xl"`. La clase está como literal en `AppLayout.php` → `tailwind.config.js` escanea `./app/View/Components/*.php`.
 - Guarda `@media print` en `app.css`: anula `max-height`/`overflow`/`position: sticky` de tablas.
+
+## Autenticación
+
+- Login por **usuario** (`username`) + contraseña. El correo queda como dato de contacto y canal de recuperación (`PasswordResetLinkController` sigue por email, igual que verificación/confirmación); `ConfirmablePasswordController` y `EnsureUserIsActive` usan `username`. La clave de error del formulario de login es `username`.
+- `username`: `required|string|min:3|max:60|lowercase|regex:/^[a-z0-9._-]+$/|unique` (ignora el propio id al actualizar). Se normaliza `trim`+`Str::lower` en los Form Requests y en `LoginRequest::prepareForValidation` (el login tolera mayúsculas/espacios).
+- Solo `Admin` cambia el usuario (formulario de administración); en el perfil se muestra deshabilitado. `UserSeeder`: `admin`/`soporte`/`auditor` con `Admin123!`/`Soporte123!`/`Auditor123!`; localiza por `username` para no duplicar si se editó el correo.
+- Migración `add_username_to_users_table`: nullable+unique → backfill (parte local del correo, con sufijo si colisiona) → `nullable(false)->change()`; probado en SQLite.
 
 ## Decisiones (auditoría)
 

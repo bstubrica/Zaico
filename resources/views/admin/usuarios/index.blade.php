@@ -30,7 +30,7 @@
             <div class="sm:col-span-2">
                 <label for="termino" class="form-label">Buscar</label>
                 <input type="text" id="termino" name="termino" value="{{ $filtros['termino'] ?? '' }}"
-                       placeholder="Nombre o correo electrónico" class="form-control">
+                       placeholder="Nombre, usuario o correo electrónico" class="form-control">
             </div>
             <div>
                 <label for="rol" class="form-label">Rol</label>
@@ -93,7 +93,9 @@
                             <tr>
                                 <td class="table-col-fija">
                                     <span class="font-medium text-slate-900">{{ $usuario->name }}</span>
-                                    <span class="block text-xs text-slate-500">{{ $usuario->email }}</span>
+                                    <span class="block text-xs text-slate-500" title="{{ $usuario->email }}">
+                                        {{ '@'.$usuario->username }}
+                                    </span>
                                 </td>
                                 <td>
                                     <x-badge :color="$coloresRol[$usuario->role] ?? 'slate'">

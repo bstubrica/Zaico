@@ -7,6 +7,15 @@ Este proyecto usa `memory.md` (raíz del repo) como memoria de trabajo persisten
 - **Límite estricto**: `memory.md` debe mantenerse siempre por debajo de 100 líneas. Antes de agregar contenido, borra o resume lo que ya no sea relevante.
 - Mantén secciones cortas y reutilizables, por ejemplo: Estado actual · Decisiones · Convenciones · Pendiente · Comandos útiles.
 
+# Autenticación
+
+El inicio de sesión es por **usuario** (`users.username`), no por correo.
+
+- `username`: 3–60 caracteres, minúsculas y `[a-z0-9._-]`, único; se normaliza con `trim` + `Str::lower` en `StoreUsuarioRequest`/`UpdateUsuarioRequest` y en `LoginRequest::prepareForValidation()`.
+- El correo sigue siendo el dato de contacto y el canal de recuperación de contraseña (`PasswordResetLinkController`), pero ya no sirve para iniciar sesión. Los errores del login se muestran bajo la clave `username`.
+- Solo `Admin` puede cambiar el usuario (formulario de administración); en el perfil propio aparece deshabilitado. Usuarios de desarrollo (`UserSeeder`): `admin`, `soporte`, `auditor`.
+- Al tocar autenticación, cubre `tests/Feature/Auth/*`, `AdminUsuarioTest` y `UserSecurityTest`.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

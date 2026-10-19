@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -34,14 +35,29 @@ class RegisteredUserController extends Controller
     {
         abort_unless(config('zaico.registro_publico'), 404);
 
+        // El usuario de acceso se guarda siempre en minúsculas.
+        $request->merge([
+            'username' => Str::lower(trim((string) $request->input('username'))),
+        ]);
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:60',
+                'lowercase',
+                'regex:/^[a-z0-9._-]+$/',
+                'unique:'.User::class,
+            ],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
+            'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);

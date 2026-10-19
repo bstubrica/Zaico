@@ -123,7 +123,9 @@
                         <x-slot name="content">
                             <div class="border-b border-slate-100 px-4 py-3">
                                 <p class="text-sm font-semibold text-slate-800">{{ Auth::user()->name }}</p>
-                                <p class="truncate text-xs text-slate-500">{{ Auth::user()->email }}</p>
+                                <p class="truncate text-xs text-slate-500" title="{{ Auth::user()->email }}">
+                                    {{ '@'.Auth::user()->username }}
+                                </p>
                                 <x-badge color="brand" class="mt-2">{{ Auth::user()->role }}</x-badge>
                             </div>
                             <x-dropdown-link :href="route('profile.edit')" class="flex items-center gap-2">

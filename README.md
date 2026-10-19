@@ -115,11 +115,14 @@ QUEUE_CONNECTION=database
 
 Creados por `UserSeeder` (solo desarrollo — **cámbialos antes de producción**):
 
-| Email | Rol | Contraseña |
-|---|---|---|
-| `admin@ti.local` | Admin | `Admin123!` |
-| `soporte@ti.local` | SoporteTecnico | `Soporte123!` |
-| `auditor@ti.local` | Auditor | `Auditor123!` |
+| Usuario | Correo | Rol | Contraseña |
+|---|---|---|---|
+| `admin` | `admin@ti.local` | Admin | `Admin123!` |
+| `soporte` | `soporte@ti.local` | SoporteTecnico | `Soporte123!` |
+| `auditor` | `auditor@ti.local` | Auditor | `Auditor123!` |
+
+> El inicio de sesión es por **usuario y contraseña**. El correo se conserva como dato de
+> contacto y para la recuperación de contraseña; ya no sirve para entrar.
 
 ---
 

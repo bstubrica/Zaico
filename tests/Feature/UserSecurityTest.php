@@ -15,6 +15,7 @@ class UserSecurityTest extends TestCase
     {
         $usuario = User::create([
             'name' => 'Intruso',
+            'username' => 'intruso',
             'email' => 'intruso@ti.local',
             'password' => 'Secret123!',
             'role' => 'Admin',
@@ -27,8 +28,20 @@ class UserSecurityTest extends TestCase
     {
         $this->seed(UserSeeder::class);
 
-        $this->assertDatabaseHas('users', ['email' => 'admin@ti.local', 'role' => 'Admin']);
-        $this->assertDatabaseHas('users', ['email' => 'soporte@ti.local', 'role' => 'SoporteTecnico']);
-        $this->assertDatabaseHas('users', ['email' => 'auditor@ti.local', 'role' => 'Auditor']);
+        $this->assertDatabaseHas('users', ['username' => 'admin', 'email' => 'admin@ti.local', 'role' => 'Admin']);
+        $this->assertDatabaseHas('users', ['username' => 'soporte', 'email' => 'soporte@ti.local', 'role' => 'SoporteTecnico']);
+        $this->assertDatabaseHas('users', ['username' => 'auditor', 'email' => 'auditor@ti.local', 'role' => 'Auditor']);
+    }
+
+    public function test_las_cuentas_sembradas_inician_sesion_con_usuario_y_contrasena(): void
+    {
+        $this->seed(UserSeeder::class);
+
+        $this->post('/login', [
+            'username' => 'Admin',
+            'password' => 'Admin123!',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertAuthenticatedAs(User::where('username', 'admin')->firstOrFail());
     }
 }

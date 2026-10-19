@@ -19,6 +19,12 @@
         </div>
 
         <div>
+            <x-input-label for="username" value="Usuario" />
+            <x-text-input id="username" type="text" class="mt-1 cursor-not-allowed bg-slate-100 text-slate-500" :value="$user->username" disabled readonly />
+            <p class="form-hint">Credencial de acceso; solo un administrador puede cambiarla.</p>
+        </div>
+
+        <div>
             <x-input-label for="email" value="Correo electrónico" />
             <x-text-input id="email" name="email" type="email" class="mt-1" :value="old('email', $user->email)" required autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" />

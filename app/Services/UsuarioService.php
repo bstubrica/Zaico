@@ -30,6 +30,7 @@ class UsuarioService
             ->when($filtros['termino'] ?? null, fn ($query, $termino) => $query->where(
                 fn ($where) => $where
                     ->where('name', 'like', "%{$termino}%")
+                    ->orWhere('username', 'like', "%{$termino}%")
                     ->orWhere('email', 'like', "%{$termino}%"),
             ))
             ->when($filtros['rol'] ?? null, fn ($query, $rol) => $query->where('role', $rol))
@@ -40,13 +41,14 @@ class UsuarioService
     }
 
     /**
-     * @param  array{name: string, email: string, role: string, password: string, activo?: bool}  $datos
+     * @param  array{name: string, username: string, email: string, role: string, password: string, activo?: bool}  $datos
      */
     public function crear(array $datos): User
     {
         return DB::transaction(function () use ($datos): User {
             $usuario = User::create([
                 'name' => $datos['name'],
+                'username' => $datos['username'],
                 'email' => $datos['email'],
                 'password' => Hash::make($datos['password']),
             ]);
@@ -61,7 +63,7 @@ class UsuarioService
     }
 
     /**
-     * @param  array{name: string, email: string, role: string, password?: string|null, activo?: bool}  $datos
+     * @param  array{name: string, username: string, email: string, role: string, password?: string|null, activo?: bool}  $datos
      */
     public function actualizar(User $usuario, array $datos): User
     {
@@ -74,6 +76,7 @@ class UsuarioService
 
         return DB::transaction(function () use ($usuario, $datos, $nuevoRol, $nuevoActivo): User {
             $usuario->name = $datos['name'];
+            $usuario->username = $datos['username'];
             $usuario->email = $datos['email'];
             $usuario->role = $nuevoRol;
             $usuario->activo = $nuevoActivo;

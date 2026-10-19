@@ -31,6 +31,7 @@ class AdminUsuarioTest extends TestCase
     {
         return array_merge([
             'name' => 'Nuevo Usuario',
+            'username' => 'nuevo.usuario',
             'email' => 'nuevo@ti.local',
             'role' => 'SoporteTecnico',
             'password' => 'Contrasena123!',
@@ -66,9 +67,10 @@ class AdminUsuarioTest extends TestCase
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('admin.usuarios.index'));
 
-        $creado = User::where('email', 'nuevo@ti.local')->firstOrFail();
+        $creado = User::where('username', 'nuevo.usuario')->firstOrFail();
 
         $this->assertSame('Nuevo Usuario', $creado->name);
+        $this->assertSame('nuevo@ti.local', $creado->email);
         $this->assertSame('SoporteTecnico', $creado->role);
         $this->assertTrue($creado->estaActivo());
         $this->assertTrue(Hash::check('Contrasena123!', $creado->password));
@@ -85,6 +87,43 @@ class AdminUsuarioTest extends TestCase
             ->assertRedirect(route('admin.usuarios.create'));
 
         $this->assertSame(1, User::where('email', 'repetido@ti.local')->count());
+    }
+
+    public function test_no_permite_usuario_duplicado(): void
+    {
+        User::factory()->create(['username' => 'ocupado']);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.usuarios.create'))
+            ->post(route('admin.usuarios.store'), $this->datos([
+                'username' => 'ocupado',
+                'email' => 'otro@ti.local',
+            ]))
+            ->assertSessionHasErrors('username')
+            ->assertRedirect(route('admin.usuarios.create'));
+
+        $this->assertSame(1, User::where('username', 'ocupado')->count());
+    }
+
+    public function test_normaliza_el_usuario_en_minusculas_sin_espacios(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('admin.usuarios.store'), $this->datos([
+                'username' => '  Nuevo.Usuario  ',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users', ['username' => 'nuevo.usuario']);
+    }
+
+    public function test_rechaza_usuario_con_caracteres_no_permitidos(): void
+    {
+        $this->actingAs($this->admin)
+            ->from(route('admin.usuarios.create'))
+            ->post(route('admin.usuarios.store'), $this->datos([
+                'username' => 'usuario con espacios',
+            ]))
+            ->assertSessionHasErrors('username');
     }
 
     public function test_valida_rol_y_confirmacion_de_contrasena(): void
@@ -105,6 +144,7 @@ class AdminUsuarioTest extends TestCase
         $this->actingAs($this->admin)
             ->put(route('admin.usuarios.update', $usuario), $this->datos([
                 'name' => 'Nombre Nuevo',
+                'username' => 'usuario.nuevo',
                 'email' => 'actualizado@ti.local',
                 'role' => 'SoporteTecnico',
                 'password' => '',
@@ -115,6 +155,7 @@ class AdminUsuarioTest extends TestCase
 
         $usuario->refresh();
         $this->assertSame('Nombre Nuevo', $usuario->name);
+        $this->assertSame('usuario.nuevo', $usuario->username);
         $this->assertSame('actualizado@ti.local', $usuario->email);
         $this->assertSame('SoporteTecnico', $usuario->role);
     }
@@ -203,15 +244,16 @@ class AdminUsuarioTest extends TestCase
     public function test_usuario_deshabilitado_no_puede_iniciar_sesion(): void
     {
         User::factory()->create([
+            'username' => 'inactivo',
             'email' => 'inactivo@ti.local',
             'password' => 'password',
             'activo' => false,
         ]);
 
         $this->post('/login', [
-            'email' => 'inactivo@ti.local',
+            'username' => 'inactivo',
             'password' => 'password',
-        ])->assertSessionHasErrors('email');
+        ])->assertSessionHasErrors('username');
 
         $this->assertGuest();
     }
@@ -220,6 +262,7 @@ class AdminUsuarioTest extends TestCase
     {
         $soporte = User::factory()->create([
             'name' => 'Soporte Técnico',
+            'username' => 'soporte',
             'email' => 'soporte@ti.local',
             'role' => 'SoporteTecnico',
             'password' => 'Soporte123!',
@@ -228,6 +271,7 @@ class AdminUsuarioTest extends TestCase
         $this->actingAs($this->admin)
             ->put(route('admin.usuarios.update', $soporte), [
                 'name' => 'Soporte Técnico',
+                'username' => 'soportetic',
                 'email' => 'soportetic@tubrica.com',
                 'role' => 'SoporteTecnico',
                 'password' => 'NuevaClave456!',
@@ -237,6 +281,7 @@ class AdminUsuarioTest extends TestCase
             ->assertRedirect(route('admin.usuarios.index'));
 
         $soporte->refresh();
+        $this->assertSame('soportetic', $soporte->username);
         $this->assertSame('soportetic@tubrica.com', $soporte->email);
         $this->assertTrue(Hash::check('NuevaClave456!', $soporte->password));
 
@@ -244,7 +289,7 @@ class AdminUsuarioTest extends TestCase
         Auth::logout();
 
         $this->post('/login', [
-            'email' => 'soportetic@tubrica.com',
+            'username' => 'soportetic',
             'password' => 'NuevaClave456!',
         ])->assertSessionHasNoErrors();
 
@@ -254,26 +299,11 @@ class AdminUsuarioTest extends TestCase
         Auth::logout();
 
         $this->post('/login', [
-            'email' => 'soporte@ti.local',
+            'username' => 'soporte',
             'password' => 'Soporte123!',
-        ])->assertSessionHasErrors('email');
+        ])->assertSessionHasErrors('username');
 
         $this->assertGuest();
-    }
-
-    public function test_el_login_ignora_mayusculas_y_espacios_en_el_correo(): void
-    {
-        $usuario = User::factory()->create([
-            'email' => 'soporte@ti.local',
-            'password' => 'Soporte123!',
-        ]);
-
-        $this->post('/login', [
-            'email' => '  Soporte@TI.Local  ',
-            'password' => 'Soporte123!',
-        ])->assertSessionHasNoErrors();
-
-        $this->assertAuthenticatedAs($usuario);
     }
 
     public function test_sesion_de_usuario_deshabilitado_se_cierra(): void

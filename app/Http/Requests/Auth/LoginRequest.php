@@ -21,16 +21,16 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Normaliza el correo (sin espacios y en minúsculas) antes de validar y
-     * autenticar. La comparación de correo es sensible a mayúsculas según el
-     * motor de base de datos (p. ej. SQLite/PostgreSQL), por lo que normalizar
-     * evita falsos "auth.failed" cuando el usuario escribe con otra capitalización.
+     * Normaliza el usuario (sin espacios y en minúsculas) antes de validar y
+     * autenticar: el `username` se guarda siempre en minúsculas, por lo que
+     * normalizar evita falsos "auth.failed" cuando el usuario escribe con otra
+     * capitalización o con espacios sobrantes.
      */
     protected function prepareForValidation(): void
     {
-        if ($this->has('email')) {
+        if ($this->has('username')) {
             $this->merge([
-                'email' => Str::lower(trim((string) $this->input('email'))),
+                'username' => Str::lower(trim((string) $this->input('username'))),
             ]);
         }
     }
@@ -43,7 +43,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'username' => ['required', 'string', 'max:60'],
             'password' => ['required', 'string'],
         ];
     }
@@ -57,7 +57,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $credenciales = $this->only('email', 'password');
+        $credenciales = $this->only('username', 'password');
         // Solo las cuentas habilitadas pueden iniciar sesión.
         $credenciales['activo'] = true;
 
@@ -65,7 +65,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'username' => trans('auth.failed'),
             ]);
         }
 
@@ -88,7 +88,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'username' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -100,6 +100,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('username')).'|'.$this->ip());
     }
 }

@@ -28,7 +28,7 @@ class EnsureUserIsActive
             }
 
             return redirect()->route('login')->withErrors([
-                'email' => 'Su cuenta está deshabilitada. Contacte a un administrador.',
+                'username' => 'Su cuenta está deshabilitada. Contacte a un administrador.',
             ]);
         }
 

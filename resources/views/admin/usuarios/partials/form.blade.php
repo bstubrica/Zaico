@@ -17,9 +17,18 @@
     </div>
 
     <div>
+        <x-input-label for="username" value="Usuario *" />
+        <x-text-input id="username" name="username" type="text" class="mt-1 block w-full"
+                      :value="old('username', $usuario?->username)" required autocomplete="username" />
+        <p class="form-hint">Credencial de acceso. Minúsculas, números, punto, guion y guion bajo (3 a 60 caracteres).</p>
+        <x-input-error :messages="$errors->get('username')" class="mt-2" />
+    </div>
+
+    <div class="md:col-span-2">
         <x-input-label for="email" value="Correo electrónico *" />
         <x-text-input id="email" name="email" type="email" class="mt-1 block w-full"
                       :value="old('email', $usuario?->email)" required autocomplete="email" />
+        <p class="form-hint">Dato de contacto y canal para restablecer la contraseña; no sirve para iniciar sesión.</p>
         <x-input-error :messages="$errors->get('email')" class="mt-2" />
     </div>
 

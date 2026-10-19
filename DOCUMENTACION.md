@@ -290,8 +290,9 @@ Catorce tablas de negocio. Nombres en mayúsculas por compatibilidad con Power B
 | Columna | Tipo | Notas |
 |---|---|---|
 | id | bigint PK | |
-| name | varchar | |
-| email | varchar unique | |
+| name | varchar | Nombre para mostrar |
+| **username** | varchar(60) unique | **Credencial de acceso** (minúsculas, `[a-z0-9._-]`) |
+| email | varchar unique | Dato de contacto y canal de recuperación de contraseña |
 | password | varchar | hashed |
 | **role** | varchar(30) | `Admin` \| `SoporteTecnico` \| `Auditor` (default `Auditor`) |
 | **activo** | boolean | `true` = acceso habilitado (baja lógica de cuentas) |
@@ -616,8 +617,9 @@ Todas bajo `middleware(['auth', 'verified'])`. Las de escritura requieren tambi�
 `admin.usuarios.index`, `admin.usuarios.create`, `admin.usuarios.store`,
 `admin.usuarios.edit`, `admin.usuarios.update`, `admin.usuarios.toggle`.
 
-**Autenticación** (`routes/auth.php`, Breeze): login, registro, logout, recuperación y
-reseteo de contraseña, verificación de email y confirmación de contraseña.
+**Autenticación** (`routes/auth.php`, Breeze): el login es por **usuario y contraseña**
+(`username`, no el correo); el registro, la recuperación y el reseteo de contraseña siguen
+usando el correo, igual que la verificación de email y la confirmación de contraseña.
 
 ---
 
@@ -1099,11 +1101,11 @@ Más allá del MVP (fases 0–5), el plan contemplaba las siguientes fases, ya i
 
 ## Apéndice · Usuarios sembrados (solo desarrollo)
 
-| Email | Rol | Contraseña |
-|---|---|---|
-| `admin@ti.local` | Admin | `Admin123!` |
-| `soporte@ti.local` | SoporteTecnico | `Soporte123!` |
-| `auditor@ti.local` | Auditor | `Auditor123!` |
+| Usuario | Correo | Rol | Contraseña |
+|---|---|---|---|
+| `admin` | `admin@ti.local` | Admin | `Admin123!` |
+| `soporte` | `soporte@ti.local` | SoporteTecnico | `Soporte123!` |
+| `auditor` | `auditor@ti.local` | Auditor | `Auditor123!` |
 
 > Credenciales de **desarrollo** creadas por `UserSeeder`. Cámbielas antes de cualquier
 > despliegue real.

@@ -22,7 +22,7 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->post('/login', [
-            'email' => $user->email,
+            'username' => $user->username,
             'password' => 'password',
         ]);
 
@@ -35,11 +35,43 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $this->post('/login', [
-            'email' => $user->email,
+            'username' => $user->username,
             'password' => 'wrong-password',
-        ]);
+        ])->assertSessionHasErrors('username');
 
         $this->assertGuest();
+    }
+
+    public function test_el_correo_no_sirve_para_iniciar_sesion(): void
+    {
+        User::factory()->create([
+            'username' => 'admin',
+            'email' => 'admin@ti.local',
+            'password' => 'Admin123!',
+        ]);
+
+        $this->post('/login', [
+            'email' => 'admin@ti.local',
+            'password' => 'Admin123!',
+        ])->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+    }
+
+    public function test_el_login_ignora_mayusculas_y_espacios_en_el_usuario(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'soporte',
+            'email' => 'soporte@ti.local',
+            'password' => 'Soporte123!',
+        ]);
+
+        $this->post('/login', [
+            'username' => '  Soporte  ',
+            'password' => 'Soporte123!',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_users_can_logout(): void

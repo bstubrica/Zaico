@@ -1,6 +1,6 @@
 <x-guest-layout>
     <h2 class="text-lg font-bold text-slate-900">Iniciar sesión</h2>
-    <p class="mt-1 text-sm text-slate-500">Accede con tu cuenta para continuar.</p>
+    <p class="mt-1 text-sm text-slate-500">Accede con tu usuario y contraseña.</p>
 
     <x-auth-session-status class="mt-4" :status="session('status')" />
 
@@ -8,9 +8,9 @@
         @csrf
 
         <div>
-            <x-input-label for="email" value="Correo electrónico" />
-            <x-text-input id="email" class="mt-1" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" placeholder="tu@correo.com" />
-            <x-input-error :messages="$errors->get('email')" />
+            <x-input-label for="username" value="Usuario" />
+            <x-text-input id="username" class="mt-1" type="text" name="username" :value="old('username')" required autofocus autocomplete="username" placeholder="admin" />
+            <x-input-error :messages="$errors->get('username')" />
         </div>
 
         <div>

@@ -18,6 +18,10 @@ class UpdateUsuarioRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if ($this->has('username')) {
+            $this->merge(['username' => Str::lower(trim((string) $this->input('username')))]);
+        }
+
         if ($this->has('email')) {
             $this->merge(['email' => Str::lower(trim((string) $this->input('email')))]);
         }
@@ -29,16 +33,26 @@ class UpdateUsuarioRequest extends FormRequest
     public function rules(): array
     {
         $usuario = $this->route('usuario');
+        $idUsuario = $usuario instanceof User ? $usuario->getKey() : $usuario;
 
         return [
             'name' => ['required', 'string', 'max:255'],
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:60',
+                'lowercase',
+                'regex:/^[a-z0-9._-]+$/',
+                Rule::unique(User::class)->ignore($idUsuario),
+            ],
             'email' => [
                 'required',
                 'string',
                 'lowercase',
                 'email',
                 'max:255',
-                Rule::unique(User::class)->ignore($usuario instanceof User ? $usuario->getKey() : $usuario),
+                Rule::unique(User::class)->ignore($idUsuario),
             ],
             'role' => ['required', 'string', Rule::in(User::ROLES)],
             'password' => ['nullable', 'string', 'confirmed', Password::defaults()],
@@ -52,6 +66,12 @@ class UpdateUsuarioRequest extends FormRequest
     {
         return [
             'name.required' => 'El nombre es obligatorio.',
+            'username.required' => 'El usuario es obligatorio.',
+            'username.min' => 'El usuario debe tener al menos 3 caracteres.',
+            'username.max' => 'El usuario no puede tener más de 60 caracteres.',
+            'username.lowercase' => 'El usuario debe estar en minúsculas.',
+            'username.regex' => 'El usuario solo admite letras minúsculas, números, punto, guion y guion bajo.',
+            'username.unique' => 'Ya existe una cuenta con ese usuario.',
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'El correo electrónico no es válido.',
             'email.unique' => 'Ya existe un usuario con ese correo electrónico.',
@@ -68,6 +88,7 @@ class UpdateUsuarioRequest extends FormRequest
     {
         return [
             'name' => 'nombre',
+            'username' => 'usuario',
             'email' => 'correo electrónico',
             'role' => 'rol',
             'password' => 'contraseña',

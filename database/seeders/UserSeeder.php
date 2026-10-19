@@ -10,18 +10,20 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->sembrar('admin@ti.local', 'Administrador', 'Admin', 'Admin123!');
-        $this->sembrar('soporte@ti.local', 'Soporte Técnico', 'SoporteTecnico', 'Soporte123!');
-        $this->sembrar('auditor@ti.local', 'Auditor', 'Auditor', 'Auditor123!');
+        $this->sembrar('admin', 'admin@ti.local', 'Administrador', 'Admin', 'Admin123!');
+        $this->sembrar('soporte', 'soporte@ti.local', 'Soporte Técnico', 'SoporteTecnico', 'Soporte123!');
+        $this->sembrar('auditor', 'auditor@ti.local', 'Auditor', 'Auditor', 'Auditor123!');
     }
 
     /**
      * `role` no es asignable en masa (defensa en profundidad), por lo que se
-     * fija explícitamente con forceFill.
+     * fija explícitamente con forceFill. La cuenta se localiza por `username`
+     * (identificador de acceso) para no duplicarla si el correo se editó desde
+     * el panel; el correo solo se fija al crear la cuenta.
      */
-    private function sembrar(string $email, string $nombre, string $rol, string $password): void
+    private function sembrar(string $username, string $email, string $nombre, string $rol, string $password): void
     {
-        $usuario = User::firstOrNew(['email' => $email]);
+        $usuario = User::firstOrNew(['username' => $username], ['email' => $email]);
 
         $usuario->forceFill([
             'name' => $nombre,

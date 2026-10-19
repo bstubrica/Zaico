@@ -12,8 +12,14 @@
         </div>
 
         <div>
+            <x-input-label for="username" value="Usuario" />
+            <x-text-input id="username" class="mt-1" type="text" name="username" :value="old('username')" required autocomplete="username" />
+            <x-input-error :messages="$errors->get('username')" />
+        </div>
+
+        <div>
             <x-input-label for="email" value="Correo electrónico" />
-            <x-text-input id="email" class="mt-1" type="email" name="email" :value="old('email')" required autocomplete="username" />
+            <x-text-input id="email" class="mt-1" type="email" name="email" :value="old('email')" required autocomplete="email" />
             <x-input-error :messages="$errors->get('email')" />
         </div>
 
