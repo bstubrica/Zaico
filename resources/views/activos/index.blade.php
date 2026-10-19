@@ -98,9 +98,27 @@
                     Resultados
                     <span class="ms-1 font-normal text-slate-400">({{ $activos->total() }})</span>
                 </h3>
-                @unless ($activos->isEmpty())
-                    <x-vista-toggle />
-                @endunless
+                <div class="flex items-center gap-3">
+                    <form method="GET" action="{{ route('activos.index') }}" class="flex items-center gap-1.5 text-xs text-slate-500">
+                        @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip'] as $campo)
+                            @if (filled($filtros[$campo] ?? null))
+                                <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
+                            @endif
+                        @endforeach
+                        <label for="filas_por_pagina" class="hidden sm:inline">Mostrar:</label>
+                        <select id="filas_por_pagina" name="tamano" onchange="this.form.submit()"
+                                class="rounded-lg border-slate-300 py-1 pe-7 ps-2 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                            @foreach ([15, 25, 50, 100] as $opcion)
+                                <option value="{{ $opcion }}" @selected((int) ($filtros['tamano'] ?? 50) === $opcion)>
+                                    {{ $opcion }} filas
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
+                    @unless ($activos->isEmpty())
+                        <x-vista-toggle />
+                    @endunless
+                </div>
             </div>
 
         @if ($activos->isEmpty())
@@ -306,7 +324,7 @@
                             </button>
                         </div>
                     </div>
-                    @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip'] as $campo)
+                    @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip', 'tamano'] as $campo)
                         @if (filled($filtros[$campo] ?? null))
                             <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
                         @endif

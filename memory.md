@@ -5,12 +5,10 @@
 ## Estado actual
 
 - **2026-10-19 — login por `username`** commiteado en `3c0f010` (tras UI de listados `94f0fb5`). Ver «Autenticación».
-- **2026-10-19 — datos de servidor + tarjetas de red**: código, migraciones (BD dev migrada, 33), tests, pint y `npm run build` ✅; **sin commitear**. Ver «Servidores».
-- **Tests:** 239 / 824 aserciones ✅ (SQLite en memoria):
+- **2026-10-19 — servidores, nomenclatura y selector de filas**: servidores + NICs, nomenclatura estricta (`Nomenclatura.md`) y selector de filas (15, 25, 50, 100) en `activos.index`. Tests y Vite build ✅.
+- **Tests:** 263 / 887 aserciones ✅ (SQLite en memoria):
   `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`.
-  `phpunit.xml` apunta a pgsql `Zaico_test` (falla sin contraseña); SQLite soporta el índice parcial.
 - **Bases:** dev local en SQLite (`database/database.sqlite`, gitignoreado); pgsql 18 nativo en 5432 (servicio `postgresql-x64-18`). Laravel Boost MCP da `database-query`/`database-schema`.
-- **MCP Postgres**: `@microsoft/postgres-mcp` en `opencode.json`; perfil `zaico` en `~/.postgres-mcp/connections.yaml` (`ro`, sslmode=disable). Falta `connection set-password zaico` + reiniciar.
 
 ## Servidores (2026-10-19)
 
@@ -21,6 +19,16 @@
 - UI: `partials/servidor.blade.php` (fieldset `x-show="esServidor"` + hidden `tarjetas_presente`) y `partials/tarjeta.blade.php`. Filas Blade + `<template id="servidor-plantilla-tarjeta">` clonado por `panelServidor` (`resources/js/servidor.js`) hacia `#servidor-filas-tarjetas`; tras insertar la fila se llama `Alpine.initTree(fila)` para que arranquen los `x-search-select` clonados. El payload de `x-data` es un **objeto plano** (anidarlo rompe `@click` en silencio). `show` tiene pestaña «Servidor».
 - Filtro `ip` en `activos.index`, `apiIndex` y CSV. Columnas nuevas en CSV, `vw_inventario` y nueva `vw_tarjetas_red` (migración `2026_10_19_154310`).
 - Tests: `ServidorTest` (17) cubre CRUD, validación, UI, CSV y vistas.
+
+## Nomenclatura (2026-10-19)
+
+- `App\Enums\CategoriaActivo` = única fuente de verdad: 25 canónicos + sinónimos (`canonico()`/`normalizar()`). `Access Point`/`AP` → `Router`.
+- `config('zaico.nomenclatura.estructura')`: orden `['Tipo','Fabricante','Modelo','Serial','Etiqueta']`.
+- `Concerns\ReglasNomenclatura`: normaliza categoría; regla `in`; `valorEfectivo()`/`modeloEfectivo()`.
+- `App\Rules\NombreActivoNomenclatura`: valida coincidencia **exacta** con `Tipo Fabricante Modelo [Serial] Etiqueta` (limpia espacios); serial obligatorio en el nombre si el equipo tiene serial; no admite texto arbitrario.
+- Solo en `StoreActivoRequest`/`UpdateActivoRequest` (formularios). No en CSV ni `MODELOS_ACTIVO`. Legados protegidos en lectura.
+- UI: select de categorías, botón «Generar según campos» en formulario para auto-armar nombre conforme a la regla.
+- Tests: `NomenclaturaTest` (20) + suite completa (262 tests, 885 aserciones ✅).
 
 ## Convenciones de tablas
 
@@ -42,6 +50,7 @@
 - Mantener **pgsql `Zaico_test`** como BD de pruebas (SQLite como override local) y `database.sql`.
 - Alertas sí notifican con `wasRecentlyCreated || wasChanged('Estado')` (`ALERTAS` reusa fila por `unique(Tipo, fk_activo)`).
 - Nombre de la app: **Zaiko**.
+- Nomenclatura: catálogo cerrado y estructura de nombre **solo** en captura manual; CSV/catálogos y datos legados quedan exentos.
 
 ## Convenciones
 
@@ -74,7 +83,7 @@
 
 - Verificar conexión real del MCP tras `set-password` (`postgres_mcp_list_databases`).
 - Aclarar si la base local se llama `Zaico` o hay que crearla (`setup.ps1 -Database pgsql -PgPassword "..."`).
-- Commit del trabajo de servidores (pedir confirmación al usuario).
+- Commit de servidores + nomenclatura (pedir confirmación al usuario).
 
 ## Comandos útiles
 

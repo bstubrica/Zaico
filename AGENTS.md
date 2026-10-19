@@ -25,6 +25,14 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - Reportes/Power BI: columnas en el CSV de activos, `vw_inventario` y `vw_tarjetas_red`; cualquier cambio exige actualizar la migración de vistas y `tests/Feature/ServidorTest.php`.
 - Tests de referencia: `ServidorTest`, `VistaInventarioTest`, `ReporteTest`.
 
+# Nomenclatura de activos
+
+- `App\Enums\CategoriaActivo` es la **única fuente de verdad** del catálogo: 25 categorías canónicas + sinónimos. `Categoria` en captura manual debe pertenecer al catálogo (los sinónimos se normalizan al canónico vía `canonico()`/`normalizar()`, comparación sin acentos ni mayúsculas). `Access Point`/`AP` pertenece a `Router`.
+- `Nombre_de_activo` debe coincidir **exactamente** con la estructura `Tipo Fabricante Modelo [Serial] Etiqueta` (`config('zaico.nomenclatura.estructura')`); lo valida `App\Rules\NombreActivoNomenclatura`. Tipo = categoría canónica; Modelo = el del catálogo (`fk_modelo`→`Nombre`) con respaldo en el texto libre; **Serial es obligatorio en el nombre si el equipo tiene serial** (si no tiene, se omite); no se admiten términos arbitrarios ni texto intermedio.
+- Reglas/mensajes/normalización compartidos en `App\Http\Requests\Concerns\ReglasNomenclatura` (patrón `ReglasServidor`); se aplican **solo** en `StoreActivoRequest`/`UpdateActivoRequest` (formulario). **No** aplican a la importación CSV ni al catálogo `MODELOS_ACTIVO`.
+- Los registros legados no se rompen: solo se valida al escribir. En `UpdateActivoRequest` los campos usan `sometimes`, así que una edición parcial no revalida el nombre, pero si se envía un nombre debe cumplir la estructura del estado resultante.
+- UI: `Categoria` es un `<select>` de `CategoriaActivo::valores()` (el controlador pasa `$categorias`); `Fabricante`/`Modelo` son `required`. Al tocar nomenclatura, cubre `tests/Feature/NomenclaturaTest.php` y los formularios de activos.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

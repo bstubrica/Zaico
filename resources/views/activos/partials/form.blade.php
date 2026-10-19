@@ -15,9 +15,34 @@
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
     <div class="md:col-span-2">
-        <x-input-label for="Nombre_de_activo" value="Nombre del activo *" />
+        <div class="flex items-center justify-between">
+            <x-input-label for="Nombre_de_activo" value="Nombre del activo *" />
+            <button type="button"
+                    onclick="(function(){
+                        const cat = document.getElementById('Categoria')?.value?.trim() || '';
+                        const fab = document.getElementById('Fabricante')?.value?.trim() || '';
+                        const mod = document.getElementById('Modelo')?.value?.trim() || '';
+                        const ser = document.getElementById('Serial')?.value?.trim() || '';
+                        const etq = document.getElementById('Etiqueta_activo')?.value?.trim() || '';
+                        const partes = [cat, fab, mod];
+                        if (ser) partes.push(ser);
+                        if (etq) partes.push(etq);
+                        const res = partes.filter(Boolean).join(' ');
+                        if (res) {
+                            const inp = document.getElementById('Nombre_de_activo');
+                            if (inp) { inp.value = res; inp.dispatchEvent(new Event('input')); }
+                        }
+                    })()"
+                    class="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline">
+                Generar según campos
+            </button>
+        </div>
         <x-text-input id="Nombre_de_activo" name="Nombre_de_activo" type="text" class="mt-1"
                       :value="old('Nombre_de_activo', $activo->Nombre_de_activo)" required />
+        <p class="mt-1 text-xs text-slate-500">
+            Estructura obligatoria: <span class="font-medium">Tipo Fabricante Modelo [Serial] Etiqueta</span>.
+            Ej.: <span class="font-mono">Teclado DELUX K7009 K700923F001704 TBK0116</span>.
+        </p>
         <x-input-error :messages="$errors->get('Nombre_de_activo')" />
     </div>
 
@@ -36,16 +61,20 @@
     </div>
 
     <div>
-        <x-input-label for="Categoria" value="Categoría" />
-        <x-text-input id="Categoria" name="Categoria" type="text" class="mt-1"
-                      :value="old('Categoria', $activo->Categoria)" />
+        <x-input-label for="Categoria" value="Categoría *" />
+        <select id="Categoria" name="Categoria" class="form-control mt-1" required>
+            <option value="">Seleccione una categoría…</option>
+            @foreach ($categorias as $categoria)
+                <option value="{{ $categoria }}" @selected(old('Categoria', $activo->Categoria) === $categoria)>{{ $categoria }}</option>
+            @endforeach
+        </select>
         <x-input-error :messages="$errors->get('Categoria')" />
     </div>
 
     <div>
-        <x-input-label for="Fabricante" value="Fabricante" />
+        <x-input-label for="Fabricante" value="Fabricante *" />
         <x-text-input id="Fabricante" name="Fabricante" type="text" class="mt-1"
-                      :value="old('Fabricante', $activo->Fabricante)" />
+                      :value="old('Fabricante', $activo->Fabricante)" required />
         <x-input-error :messages="$errors->get('Fabricante')" />
     </div>
 
@@ -62,6 +91,13 @@
                 'meta' => $modelo->Fabricante ?? '',
             ])->values()->all()" />
         <x-input-error :messages="$errors->get('fk_modelo')" />
+    </div>
+
+    <div>
+        <x-input-label for="Modelo" value="Modelo (texto) *" />
+        <x-text-input id="Modelo" name="Modelo" type="text" class="mt-1"
+                      :value="old('Modelo', $activo->Modelo)" required />
+        <x-input-error :messages="$errors->get('Modelo')" />
     </div>
 
     <div>

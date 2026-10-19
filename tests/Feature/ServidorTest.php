@@ -30,9 +30,11 @@ class ServidorTest extends TestCase
     private function datosServidor(array $extra = []): array
     {
         return array_merge([
-            'Nombre_de_activo' => 'Servidor Dell PowerEdge',
+            'Nombre_de_activo' => 'Servidor Dell PowerEdge TBSRV0001',
             'Etiqueta_activo' => 'TBSRV0001',
             'Categoria' => 'Servidor',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'PowerEdge',
             'Estado' => 'Disponible',
             'IP' => '10.0.0.5',
             'Sistema_Operativo' => 'Windows Server 2019',
@@ -137,7 +139,7 @@ class ServidorTest extends TestCase
     public function test_guardar_sin_el_bloque_de_servidor_no_borra_las_tarjetas(): void
     {
         $servidor = Activo::create($this->datosServidor([
-            'Nombre_de_activo' => 'Servidor sin bloque',
+            'Nombre_de_activo' => 'Servidor Dell PowerEdge TBSRV0002',
             'Etiqueta_activo' => 'TBSRV0002',
         ]));
 
@@ -148,8 +150,11 @@ class ServidorTest extends TestCase
         ]);
 
         $this->actingAs($this->admin)->put("/activos/{$servidor->id}", [
-            'Nombre_de_activo' => 'Servidor sin bloque',
+            'Nombre_de_activo' => 'Servidor Dell PowerEdge TBSRV0002',
             'Etiqueta_activo' => 'TBSRV0002',
+            'Categoria' => 'Servidor',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'PowerEdge',
             'Estado' => 'Disponible',
         ])->assertSessionHasNoErrors();
 
@@ -167,6 +172,7 @@ class ServidorTest extends TestCase
         $servidor = Activo::where('Etiqueta_activo', 'TBSRV0001')->firstOrFail();
 
         $this->actingAs($this->admin)->put("/activos/{$servidor->id}", $this->datosServidor([
+            'Nombre_de_activo' => 'Laptop Dell PowerEdge TBSRV0001',
             'Categoria' => 'Laptop',
             'tarjetas_presente' => 1,
             'tarjetas' => [['Numero' => 1, 'Nombre' => 'Ethernet 1']],
@@ -379,7 +385,7 @@ class ServidorTest extends TestCase
         $tarjeta = DB::table('vw_tarjetas_red')->where('Etiqueta_activo', 'TBSRV0001')->first();
 
         $this->assertNotNull($tarjeta);
-        $this->assertSame('Servidor Dell PowerEdge', $tarjeta->Nombre_de_activo);
+        $this->assertSame('Servidor Dell PowerEdge TBSRV0001', $tarjeta->Nombre_de_activo);
         $this->assertSame('10.0.0.5', $tarjeta->IP_servidor);
         $this->assertSame(1, (int) $tarjeta->Numero);
         $this->assertSame('00:11:22:33:44:55', $tarjeta->Direccion_MAC);

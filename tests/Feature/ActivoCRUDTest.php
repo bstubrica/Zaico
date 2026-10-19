@@ -28,41 +28,88 @@ class ActivoCRUDTest extends TestCase
         $this->seed(EstadoSeeder::class);
     }
 
+    /**
+     * Datos mínimos de un activo conforme a la nomenclatura
+     * (`Tipo Fabricante Modelo [Serial] Etiqueta`).
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function datosActivo(array $extra = []): array
+    {
+        return array_merge([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCOR0999',
+            'Etiqueta_activo' => 'TBCOR0999',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
+            'Estado' => 'Disponible',
+        ], $extra);
+    }
+
     public function test_puede_registrar_activo(): void
     {
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop Dell Latitude 5520',
-            'Etiqueta_activo' => 'TBCOR0999',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude DL-5520-001 TBCOR0999',
             'Serial' => 'DL-5520-001',
-            'Estado' => 'Disponible',
-        ]);
+        ]));
 
         $respuesta->assertRedirect('/activos');
         $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBCOR0999']);
         $this->assertDatabaseHas('HISTORIAL_EVENTOS', ['Tipo_evento' => 'Creacion']);
     }
 
+    public function test_rechaza_categoria_fuera_del_catalogo(): void
+    {
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Categoria' => 'Cachivache',
+        ]));
+
+        $respuesta->assertSessionHasErrors('Categoria');
+        $this->assertDatabaseMissing('ACTIVOS', ['Etiqueta_activo' => 'TBCOR0999']);
+    }
+
+    public function test_normaliza_sinonimo_de_categoria_al_nombre_canonico(): void
+    {
+        $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop HP Pavilion TBNOT0001',
+            'Etiqueta_activo' => 'TBNOT0001',
+            'Categoria' => 'Notebook',
+            'Fabricante' => 'HP',
+            'Modelo' => 'Pavilion',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBNOT0001', 'Categoria' => 'Laptop']);
+    }
+
+    public function test_rechaza_nombre_que_no_respeta_la_estructura(): void
+    {
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Equipo sin estructura',
+        ]));
+
+        $respuesta->assertSessionHasErrors('Nombre_de_activo');
+    }
+
     public function test_etiqueta_duplicada_es_rechazada(): void
     {
         Activo::create(['Nombre_de_activo' => 'X', 'Etiqueta_activo' => 'DUP001', 'Estado' => 'Activo']);
 
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Y',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
             'Etiqueta_activo' => 'DUP001',
-            'Estado' => 'Activo',
-        ]);
+            'Nombre_de_activo' => 'Laptop Dell Latitude DUP001',
+        ]));
 
         $respuesta->assertSessionHasErrors('Etiqueta_activo');
     }
 
     public function test_acepta_una_direccion_mac_valida(): void
     {
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop con MAC',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBMAC0001',
             'Etiqueta_activo' => 'TBMAC0001',
-            'Estado' => 'Disponible',
             'Direccion_MAC' => '00:11:22:33:44:55',
-        ]);
+        ]));
 
         $respuesta->assertSessionHasNoErrors();
         $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBMAC0001', 'Direccion_MAC' => '00:11:22:33:44:55']);
@@ -70,23 +117,22 @@ class ActivoCRUDTest extends TestCase
 
     public function test_rechaza_una_direccion_mac_invalida(): void
     {
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop MAC mala',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBMAC0002',
             'Etiqueta_activo' => 'TBMAC0002',
-            'Estado' => 'Disponible',
             'Direccion_MAC' => 'no-es-una-mac',
-        ]);
+        ]));
 
         $respuesta->assertSessionHasErrors('Direccion_MAC');
     }
 
     public function test_rechaza_un_grupo_de_estado_inexistente(): void
     {
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Equipo grupo invalido',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBGRP0001',
             'Etiqueta_activo' => 'TBGRP0001',
             'Estado' => 'Inventado',
-        ]);
+        ]));
 
         $respuesta->assertSessionHasErrors('Estado');
         $this->assertDatabaseMissing('ACTIVOS', ['Etiqueta_activo' => 'TBGRP0001']);
@@ -96,12 +142,12 @@ class ActivoCRUDTest extends TestCase
     {
         $reparacion = EstadoActivo::where('Grupo', 'Reparacion')->firstOrFail();
 
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Equipo mismatch',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBGRP0002',
             'Etiqueta_activo' => 'TBGRP0002',
             'Estado' => 'Disponible',
             'fk_estado' => $reparacion->id,
-        ]);
+        ]));
 
         $respuesta->assertSessionHasErrors('fk_estado');
     }
@@ -110,12 +156,11 @@ class ActivoCRUDTest extends TestCase
     {
         $disponible = EstadoActivo::where('Grupo', 'Disponible')->firstOrFail();
 
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Equipo coherente',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBGRP0003',
             'Etiqueta_activo' => 'TBGRP0003',
-            'Estado' => 'Disponible',
             'fk_estado' => $disponible->id,
-        ]);
+        ]));
 
         $respuesta->assertSessionHasNoErrors();
         $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBGRP0003', 'fk_estado' => $disponible->id]);
@@ -127,15 +172,21 @@ class ActivoCRUDTest extends TestCase
         $reparacion = EstadoActivo::where('Grupo', 'Reparacion')->firstOrFail();
 
         $activo = Activo::create([
-            'Nombre_de_activo' => 'Equipo a editar',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBEDT0001',
             'Etiqueta_activo' => 'TBEDT0001',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'fk_estado' => $disponible->id,
         ]);
 
         $respuesta = $this->actingAs($this->admin)->put("/activos/{$activo->id}", [
-            'Nombre_de_activo' => 'Equipo editado',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBEDT0001',
             'Etiqueta_activo' => 'TBEDT0001',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Reparacion',
             'fk_estado' => $reparacion->id,
         ]);
@@ -149,13 +200,13 @@ class ActivoCRUDTest extends TestCase
         $ubicacion = Ubicacion::create(['Nombre' => 'Piso 3', 'Estado' => 'Activo']);
         $modelo = ModeloActivo::create(['Nombre' => 'Latitude 5520', 'Fabricante' => 'Dell']);
 
-        $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop con catálogo',
+        $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude 5520 TBCAT0001',
             'Etiqueta_activo' => 'TBCAT0001',
-            'Estado' => 'Disponible',
+            'Modelo' => 'Latitude 5520',
             'fk_ubicacion' => $ubicacion->id,
             'fk_modelo' => $modelo->id,
-        ])->assertSessionHasNoErrors();
+        ]))->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('ACTIVOS', [
             'Etiqueta_activo' => 'TBCAT0001',
@@ -171,16 +222,22 @@ class ActivoCRUDTest extends TestCase
         $ubicacion = Ubicacion::create(['Nombre' => 'Piso 3', 'Estado' => 'Activo']);
 
         $activo = Activo::create([
-            'Nombre_de_activo' => 'Laptop',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCAT0002',
             'Etiqueta_activo' => 'TBCAT0002',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'fk_ubicacion' => $ubicacion->id,
             'Ubicacion' => 'Piso 3',
         ]);
 
         $this->actingAs($this->admin)->put("/activos/{$activo->id}", [
-            'Nombre_de_activo' => 'Laptop',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCAT0002',
             'Etiqueta_activo' => 'TBCAT0002',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'fk_ubicacion' => '',
         ])->assertSessionHasNoErrors();
@@ -194,12 +251,11 @@ class ActivoCRUDTest extends TestCase
 
     public function test_rechaza_una_ubicacion_de_catalogo_inexistente(): void
     {
-        $respuesta = $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop',
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCAT0003',
             'Etiqueta_activo' => 'TBCAT0003',
-            'Estado' => 'Disponible',
             'fk_ubicacion' => 999999,
-        ]);
+        ]));
 
         $respuesta->assertSessionHasErrors('fk_ubicacion');
     }
@@ -451,5 +507,22 @@ class ActivoCRUDTest extends TestCase
             ->getJson(route('api.activos', ['tamano' => 999999]));
 
         $respuesta->assertOk()->assertJsonPath('per_page', 100);
+    }
+
+    public function test_index_activos_permite_seleccionar_tamano_de_pagina(): void
+    {
+        for ($i = 1; $i <= 20; $i++) {
+            Activo::create([
+                'Nombre_de_activo' => sprintf('Equipo Test %02d', $i),
+                'Etiqueta_activo' => sprintf('TBPAGE%02d', $i),
+                'Estado' => 'Disponible',
+            ]);
+        }
+
+        $respuesta = $this->actingAs($this->admin)
+            ->get(route('activos.index', ['tamano' => 15]));
+
+        $respuesta->assertOk();
+        $this->assertCount(15, $respuesta->viewData('activos'));
     }
 }

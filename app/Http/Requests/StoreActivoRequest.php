@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReglasNomenclatura;
 use App\Http\Requests\Concerns\ReglasServidor;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,11 +10,13 @@ use Illuminate\Validation\Rule;
 
 class StoreActivoRequest extends FormRequest
 {
+    use ReglasNomenclatura;
     use ReglasServidor;
 
     protected function prepareForValidation(): void
     {
         $this->normalizarDatosServidor();
+        $this->normalizarCategoria();
     }
 
     public function authorize(): bool
@@ -27,15 +30,15 @@ class StoreActivoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'Nombre_de_activo' => ['required', 'string', 'min:3', 'max:150'],
+            'Nombre_de_activo' => ['required', 'string', 'min:3', 'max:150', $this->reglaNombreActivo()],
             'Etiqueta_activo' => ['required', 'string', 'max:100', 'unique:ACTIVOS,Etiqueta_activo'],
             'Serial' => ['nullable', 'string', 'max:100', 'unique:ACTIVOS,Serial'],
             'Ubicacion' => ['nullable', 'string', 'max:150'],
             'Ubicacion_Predeterminada' => ['nullable', 'string', 'max:150'],
             'fk_ubicacion' => ['nullable', Rule::exists('UBICACIONES', 'id')],
-            'Fabricante' => ['nullable', 'string', 'max:100'],
-            'Categoria' => ['nullable', 'string', 'max:100'],
-            'Modelo' => ['nullable', 'string', 'max:100'],
+            'Fabricante' => ['required', 'string', 'max:100'],
+            'Categoria' => $this->reglaCategoria(),
+            'Modelo' => ['required', 'string', 'max:100'],
             'fk_modelo' => ['nullable', Rule::exists('MODELOS_ACTIVO', 'id')],
             'Observaciones' => ['nullable', 'string'],
             'Direccion_MAC' => ['nullable', 'string', 'mac_address', 'max:17'],
@@ -60,6 +63,8 @@ class StoreActivoRequest extends FormRequest
             'Etiqueta_activo.required' => 'La etiqueta es obligatoria',
             'Etiqueta_activo.unique' => 'Ya existe un activo con esa etiqueta',
             'Etiqueta_activo.max' => 'La etiqueta no puede exceder 100 caracteres',
+            'Fabricante.required' => 'El fabricante es obligatorio para armar el nombre del activo',
+            'Modelo.required' => 'El modelo es obligatorio para armar el nombre del activo',
             'Serial.unique' => 'Ya existe un activo con ese número de serie',
             'Serial.max' => 'El número de serie no puede exceder 100 caracteres',
             'Direccion_MAC.mac_address' => 'La dirección MAC no es válida',
@@ -71,7 +76,7 @@ class StoreActivoRequest extends FormRequest
             'imagen.file' => 'La imagen debe ser un archivo',
             'imagen.mimes' => 'La imagen debe ser JPG, PNG o WEBP',
             'imagen.max' => 'La imagen no puede exceder 10 MB',
-        ] + $this->mensajesServidor();
+        ] + $this->mensajesNomenclatura() + $this->mensajesServidor();
     }
 
     /**
@@ -90,6 +95,6 @@ class StoreActivoRequest extends FormRequest
             'Direccion_MAC' => 'dirección MAC',
             'fk_estado' => 'estado de catálogo',
             'imagen' => 'imagen del activo',
-        ] + $this->atributosServidor();
+        ] + $this->atributosNomenclatura() + $this->atributosServidor();
     }
 }

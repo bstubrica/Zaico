@@ -97,8 +97,11 @@ class ActivoCompraImagenTest extends TestCase
         Storage::fake('public');
 
         $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop con imagen',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCMP0002',
             'Etiqueta_activo' => 'TBCMP0002',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'imagen' => UploadedFile::fake()->create('equipo.jpg', 100, 'image/jpeg'),
         ])->assertSessionHasNoErrors();
@@ -115,8 +118,11 @@ class ActivoCompraImagenTest extends TestCase
         Storage::fake('local');
 
         $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop imagen inválida',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCMP0002',
             'Etiqueta_activo' => 'TBCMP0002',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'imagen' => UploadedFile::fake()->create('malicioso.exe', 10, 'application/x-msdownload'),
         ])->assertSessionHasErrors('imagen');
@@ -129,8 +135,11 @@ class ActivoCompraImagenTest extends TestCase
         Storage::fake('local');
 
         $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop con imagen',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCMP0003',
             'Etiqueta_activo' => 'TBCMP0003',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'imagen' => UploadedFile::fake()->create('primera.jpg', 100, 'image/jpeg'),
         ])->assertSessionHasNoErrors();
@@ -139,8 +148,11 @@ class ActivoCompraImagenTest extends TestCase
         $anterior = $activo->Imagen_Activo;
 
         $this->actingAs($this->admin)->put("/activos/{$activo->id}", [
-            'Nombre_de_activo' => 'Laptop con imagen',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCMP0003',
             'Etiqueta_activo' => 'TBCMP0003',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'imagen' => UploadedFile::fake()->create('segunda.jpg', 100, 'image/jpeg'),
         ])->assertSessionHasNoErrors();
@@ -156,8 +168,11 @@ class ActivoCompraImagenTest extends TestCase
         Storage::fake('local');
 
         $this->actingAs($this->admin)->post('/activos', [
-            'Nombre_de_activo' => 'Laptop con imagen',
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBCMP0004',
             'Etiqueta_activo' => 'TBCMP0004',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
             'Estado' => 'Disponible',
             'imagen' => UploadedFile::fake()->create('equipo.jpg', 100, 'image/jpeg'),
         ])->assertSessionHasNoErrors();

@@ -21,6 +21,7 @@ export default function registrarServidor(Alpine) {
             };
 
             campo.addEventListener('input', sincronizar);
+            campo.addEventListener('change', sincronizar);
             sincronizar();
         },
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReglasNomenclatura;
 use App\Http\Requests\Concerns\ReglasServidor;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,11 +10,13 @@ use Illuminate\Validation\Rule;
 
 class UpdateActivoRequest extends FormRequest
 {
+    use ReglasNomenclatura;
     use ReglasServidor;
 
     protected function prepareForValidation(): void
     {
         $this->normalizarDatosServidor();
+        $this->normalizarCategoria();
     }
 
     public function authorize(): bool
@@ -30,7 +33,7 @@ class UpdateActivoRequest extends FormRequest
         $grupo = $this->input('Estado', $this->route('activo')?->Estado);
 
         return [
-            'Nombre_de_activo' => ['sometimes', 'required', 'string', 'min:3', 'max:150'],
+            'Nombre_de_activo' => ['sometimes', 'required', 'string', 'min:3', 'max:150', $this->reglaNombreActivo()],
             'Etiqueta_activo' => [
                 'sometimes', 'required', 'string', 'max:100',
                 Rule::unique('ACTIVOS', 'Etiqueta_activo')->ignore($activoId),
@@ -42,9 +45,9 @@ class UpdateActivoRequest extends FormRequest
             'Ubicacion' => ['nullable', 'string', 'max:150'],
             'Ubicacion_Predeterminada' => ['nullable', 'string', 'max:150'],
             'fk_ubicacion' => ['nullable', Rule::exists('UBICACIONES', 'id')],
-            'Fabricante' => ['nullable', 'string', 'max:100'],
-            'Categoria' => ['nullable', 'string', 'max:100'],
-            'Modelo' => ['nullable', 'string', 'max:100'],
+            'Fabricante' => ['sometimes', 'required', 'string', 'max:100'],
+            'Categoria' => array_merge(['sometimes'], $this->reglaCategoria()),
+            'Modelo' => ['sometimes', 'required', 'string', 'max:100'],
             'fk_modelo' => ['nullable', Rule::exists('MODELOS_ACTIVO', 'id')],
             'Observaciones' => ['nullable', 'string'],
             'Direccion_MAC' => ['nullable', 'string', 'mac_address', 'max:17'],
@@ -66,6 +69,8 @@ class UpdateActivoRequest extends FormRequest
             'Nombre_de_activo.required' => 'El nombre del activo es obligatorio',
             'Etiqueta_activo.required' => 'La etiqueta es obligatoria',
             'Etiqueta_activo.unique' => 'Ya existe un activo con esa etiqueta',
+            'Fabricante.required' => 'El fabricante es obligatorio para armar el nombre del activo',
+            'Modelo.required' => 'El modelo es obligatorio para armar el nombre del activo',
             'Serial.unique' => 'Ya existe un activo con ese número de serie',
             'Direccion_MAC.mac_address' => 'La dirección MAC no es válida',
             'fk_ubicacion.exists' => 'La ubicación seleccionada no es válida',
@@ -76,7 +81,7 @@ class UpdateActivoRequest extends FormRequest
             'imagen.file' => 'La imagen debe ser un archivo',
             'imagen.mimes' => 'La imagen debe ser JPG, PNG o WEBP',
             'imagen.max' => 'La imagen no puede exceder 10 MB',
-        ] + $this->mensajesServidor();
+        ] + $this->mensajesNomenclatura() + $this->mensajesServidor();
     }
 
     /**
@@ -93,6 +98,6 @@ class UpdateActivoRequest extends FormRequest
             'Direccion_MAC' => 'dirección MAC',
             'fk_estado' => 'estado de catálogo',
             'imagen' => 'imagen del activo',
-        ] + $this->atributosServidor();
+        ] + $this->atributosNomenclatura() + $this->atributosServidor();
     }
 }

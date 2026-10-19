@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CategoriaActivo;
 use App\Enums\EstatusServidor;
 use App\Enums\TipoDesincorporacion;
 use App\Http\Requests\AsignarEquipoRequest;
@@ -37,8 +38,8 @@ class ActivosController extends Controller
 
     public function index(Request $request): View
     {
-        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip']);
-        $filtros['tamano'] = 50;
+        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip', 'tamano']);
+        $filtros['tamano'] = (int) $request->input('tamano', 50);
         $activos = $this->activos->listar($filtros);
         $tipos = TipoDesincorporacion::opciones();
 
@@ -91,8 +92,9 @@ class ActivosController extends Controller
         $modelos = $this->activos->opcionesModelos();
         $switches = $this->servidores->catalogoSwitches();
         $estatuses = EstatusServidor::opciones();
+        $categorias = CategoriaActivo::valores();
 
-        return view('activos.create', compact('estados', 'grupos', 'ubicaciones', 'modelos', 'switches', 'estatuses'));
+        return view('activos.create', compact('estados', 'grupos', 'ubicaciones', 'modelos', 'switches', 'estatuses', 'categorias'));
     }
 
     public function store(StoreActivoRequest $request)
@@ -114,8 +116,9 @@ class ActivosController extends Controller
         $modelos = $this->activos->opcionesModelos($activo);
         $switches = $this->servidores->catalogoSwitches($activo->tarjetasRed->pluck('fk_switch')->all());
         $estatuses = EstatusServidor::opciones();
+        $categorias = CategoriaActivo::valores();
 
-        return view('activos.edit', compact('activo', 'estados', 'grupos', 'ubicaciones', 'modelos', 'switches', 'estatuses'));
+        return view('activos.edit', compact('activo', 'estados', 'grupos', 'ubicaciones', 'modelos', 'switches', 'estatuses', 'categorias'));
     }
 
     public function update(UpdateActivoRequest $request, Activo $activo)

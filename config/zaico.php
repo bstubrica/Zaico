@@ -36,6 +36,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Nomenclatura de dispositivos (Nomenclatura.md)
+    |--------------------------------------------------------------------------
+    |
+    | Orden exigido de los componentes de `ACTIVOS.Nombre_de_activo`. El
+    | catálogo canónico de categorías y sus sinónimos vive en el enum
+    | `App\Enums\CategoriaActivo` para mantener una única fuente de verdad.
+    | El serial es el único componente tolerado como ausente.
+    |
+    */
+
+    'nomenclatura' => [
+        'estructura' => ['Tipo', 'Fabricante', 'Modelo', 'Serial', 'Etiqueta'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Alertas de inventario (Fase 8)
     |--------------------------------------------------------------------------
     |

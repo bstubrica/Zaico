@@ -345,6 +345,16 @@ Los campos de servidor son opcionales y solo se muestran/editan cuando `Categori
 `Servidor`/`Servidores` (comparación normalizada con `Str::lower(trim(...))`; lista
 configurable en `zaico.servidores.categorias`).
 
+**Nomenclatura de activos.** En la captura manual (alta/edición) `Categoria` debe pertenecer al
+catálogo canónico de `App\Enums\CategoriaActivo` (25 categorías; los sinónimos se normalizan al
+nombre canónico → `canonico()`), y `Nombre_de_activo` debe contener, en orden, los componentes
+`Tipo Fabricante Modelo Serial Etiqueta` (`config('zaico.nomenclatura.estructura')`). El tipo es la
+categoría canónica; el modelo es el del catálogo (`fk_modelo` → `Nombre`) con respaldo en el texto
+libre; **el serial es opcional** (si se informa, debe aparecer en el nombre). La regla
+`App\Rules\NombreActivoNomenclatura` tolera mayúsculas, acentos y espacios sobrantes. Estas reglas
+**solo** aplican a `StoreActivoRequest`/`UpdateActivoRequest`; la importación CSV y el catálogo
+`MODELOS_ACTIVO` quedan exentos, y los registros legados solo se validan al volver a escribirlos.
+
 #### `TARJETAS_RED` (1:N con activo)
 
 | Columna | Tipo | Notas |
