@@ -271,6 +271,7 @@ CACHE_STORE=database
 users ──< ASIGNACIONES >── ACTIVOS ──< MANTENIMIENTOS ──< EVIDENCIAS_MANTENIMIENTO
                 │              │
                 │              ├──< HISTORIAL_EVENTOS
+                │              ├──< TARJETAS_RED  (solo equipos "Servidor")
                 │              ├──1 COMPRAS
                 │              ├──1 ESTADOS_ACTIVO    (fk_estado)
                 │              ├──1 UBICACIONES       (fk_ubicacion)
@@ -283,7 +284,7 @@ users ──< IMPORTACIONES_LOG ──< IMPORTACIONES_DETALLE
 
 ### 6.2 Tablas
 
-Catorce tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
+Quince tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI.
 
 #### `users` (extendida)
 
@@ -325,6 +326,11 @@ Catorce tablas de negocio. Nombres en mayúsculas por compatibilidad con Power B
 | Etiqueta_activo | varchar(100) **unique** | Clave de upsert de importación |
 | Estado | varchar(20) | Grupo de estado |
 | Direccion_MAC | varchar(17) null | |
+| **IP** | varchar(45) null | Datos de servidor (opcionales) |
+| **Sistema_Operativo** | varchar(100) null | |
+| **Memoria_RAM** | varchar(100) null | Texto libre (ej. `32 GB`) |
+| **Capacidad_Disco** | varchar(100) null | Texto libre (ej. `2 x 1 TB SSD`) |
+| **Estatus_Servidor** | varchar(30) null | `Encendido` \| `Apagado` \| `Mantenimiento` |
 | Imagen_Activo | varchar(255) null | Ruta de la foto del equipo (disco `local`) |
 | fk_estado | bigint null → `ESTADOS_ACTIVO` | `nullOnDelete` |
 | fk_ubicacion | bigint null → `UBICACIONES` | `nullOnDelete` (se conserva `Ubicacion` denormalizado) |
@@ -332,8 +338,39 @@ Catorce tablas de negocio. Nombres en mayúsculas por compatibilidad con Power B
 | Creado_el / Actualizado_el | timestamptz | |
 
 Índices: `idx_activos_nombre`, `idx_activos_categoria`, `idx_activos_estado`,
-`idx_activos_ubicacion`, `idx_activos_modelo`, `idx_activos_estado_valor`
-(columna `Estado`, añadido en la corrección de auditoría 2026-10-15).
+`idx_activos_ubicacion`, `idx_activos_modelo`, `idx_activos_estado_valor`,
+`idx_activos_ip` (columna `Estado`, añadido en la corrección de auditoría 2026-10-15).
+
+Los campos de servidor son opcionales y solo se muestran/editan cuando `Categoria` es
+`Servidor`/`Servidores` (comparación normalizada con `Str::lower(trim(...))`; lista
+configurable en `zaico.servidores.categorias`).
+
+#### `TARJETAS_RED` (1:N con activo)
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | bigint PK | |
+| fk_activo | bigint → `ACTIVOS` | cascadeOnDelete |
+| Numero | varchar(20) | N.º de tarjeta indicado por el usuario |
+| Nombre | varchar(60) null | Nombre de la interfaz (ej. `eth0`) |
+| Direccion_MAC | varchar(17) null | Formato MAC |
+| IP | varchar(45) null | IPv4/IPv6 |
+| fk_switch | bigint null → `ACTIVOS` | Equipo switch del inventario; `nullOnDelete` |
+| Switch | varchar(150) null | Nombre del switch denormalizado (o texto libre) |
+| Puerto | varchar(30) null | |
+| Creado_el | timestamptz | Por defecto `now()` |
+
+Único `(fk_activo, Numero)`; máximo 8 tarjetas por equipo (`zaico.servidores.maximo_tarjetas`).
+El bloque se envía completo en cada guardado (`tarjetas_presente=1`): las filas ausentes
+se eliminan y los cambios quedan auditados como `Modificacion`.
+
+#### Vistas de solo lectura (Power BI)
+
+`vw_inventario` aplana activo + estado + asignación + compra e incluye las columnas de
+servidor (`IP`, `Sistema_Operativo`, `Memoria_RAM`, `Capacidad_Disco`, `Estatus_Servidor`).
+`vw_tarjetas_red` expone cada tarjeta con `fk_activo`, `Numero`, `Nombre`, `Direccion_MAC`,
+`IP`, `fk_switch`, `Switch`, `Puerto`, `Creado_el` y los datos del equipo
+(`IP_servidor`, `Etiqueta_activo`, `Nombre_de_activo`).
 
 #### `UBICACIONES` (catálogo)
 
@@ -693,6 +730,7 @@ Detalles de implementación:
 - Búsqueda de texto con `ILIKE` (PostgreSQL) sobre nombre, serial, etiqueta y modelo.
 - Filtro por grupo de estado mediante `whereHas('estadoCatalogo')`.
 - Filtro por persona asignada con expresión cruda `trim(Nombre || ' ' || Apellido) ILIKE ?`.
+- Filtro `ip` sobre `ACTIVOS.IP` con el trait `BusquedaAproximada`.
 - Paginación server-side de 50 con `withQueryString()`.
 
 ### 10.3 `PersonalService`
@@ -720,17 +758,31 @@ Detalles de implementación:
 
 Servicio central de importación CSV (ver [sección 15](#15-importación-de-csv-snipec-it)).
 
+### 10.6 `ServidorService`
+
+| Método | Descripción |
+|---|---|
+| `catalogoSwitches(array $idsExtra = [])` | Switches del inventario (`Categoria` en `zaico.servidores.categorias_switch`) + los ya referenciados |
+| `sincronizarTarjetas(Activo, array $tarjetas, int $usuarioId)` | `updateOrCreate` por `(fk_activo, Numero)`, elimina las ausentes y audita solo si hubo cambios |
+| `prepararTarjetas(array $tarjetas)` | Normaliza filas y resuelve el nombre del switch en una sola consulta |
+| `retratoTarjetas(Activo)` | JSON con el estado actual (para comparar antes/después) |
+
+`ActivoService` lo inyecta: `crear`/`actualizar` separan `tarjetas` y `tarjetas_presente`
+del resto de los datos, guardan los escalares y luego sincronizan las tarjetas dentro de
+la misma transacción. Un formulario sin bloque de servidor no modifica tarjetas existentes.
+
 ---
 
 ## 11. Modelos Eloquent
 
-11 modelos. Los de negocio usan `$table` en mayúsculas y `$timestamps = false`,
+12 modelos. Los de negocio usan `$table` en mayúsculas y `$timestamps = false`,
 gestionando sus marcas de tiempo con hooks (`booted`) o columnas propias.
 
 | Modelo | Tabla | Relaciones destacadas |
 |---|---|---|
 | `User` | `users` | Helpers `isAdmin()`, `puedeEscribir()`; atributo `activo` (baja lógica); atributos `#[Fillable]`, `#[Hidden]` |
-| `Activo` | `ACTIVOS` | `estadoCatalogo`, `ubicacionCatalogo`, `modeloCatalogo`, `asignaciones`, `asignacionActiva`, `mantenimientos`, `compra`, `eventos`; accesores `asignado_a`, imagen/factura |
+| `Activo` | `ACTIVOS` | `estadoCatalogo`, `ubicacionCatalogo`, `modeloCatalogo`, `asignaciones`, `asignacionActiva`, `mantenimientos`, `compra`, `eventos`, `tarjetasRed`; accesores `asignado_a`, imagen/factura; helpers `esServidor()`, `categoriaEsServidor()`, `categoriaEsSwitch()` |
+| `TarjetaRed` | `TARJETAS_RED` | `activo`, `switchCatalogo`; `Creado_el` automático |
 | `EstadoActivo` | `ESTADOS_ACTIVO` | `activos` |
 | `Ubicacion` | `UBICACIONES` | `activos` |
 | `ModeloActivo` | `MODELOS_ACTIVO` | `activos` |
@@ -744,6 +796,9 @@ gestionando sus marcas de tiempo con hooks (`booted`) o columnas propias.
 | `ImportacionLog` | `IMPORTACIONES_LOG` | `usuario`, `detalles` |
 | `ImportacionDetalle` | `IMPORTACIONES_DETALLE` | `importacion` (cast `Datos_previos => array`) |
 | `Desincorporacion` | `DESINCORPORACIONES` | `activo`, `usuario` (cast `Monto => decimal:2`, `Fecha => date`) |
+
+Enums: `TipoDesincorporacion`, `FormatoCarta` y `EstatusServidor` (`Encendido`, `Apagado`,
+`Mantenimiento`; `etiquetaDe()` devuelve «En mantenimiento»).
 
 **Ejemplo — hook de timestamp y relación:**
 
@@ -782,7 +837,7 @@ mensajes y nombres de atributo **en español**.
 
 | Form Request | Uso | Reglas destacadas |
 |---|---|---|
-| `StoreActivoRequest` | Alta de activo | `Nombre_de_activo` `min:3|max:150`; `Etiqueta_activo` `unique:ACTIVOS`; `Serial` `unique|nullable`; `Direccion_MAC` `mac_addr`; `imagen` `image|max:10240` |
+| `StoreActivoRequest` | Alta de activo | `Nombre_de_activo` `min:3|max:150`; `Etiqueta_activo` `unique:ACTIVOS`; `Serial` `unique|nullable`; `Direccion_MAC` `mac_addr`; `imagen` `image|max:10240`; campos de servidor + `tarjetas.*` (ver `ReglasServidor`) |
 | `UpdateActivoRequest` | Edición de activo | Igual que Store pero `Rule::unique(...)->ignore($id)`; `imagen` opcional |
 | `GuardarCompraRequest` | Compra + factura | Campos opcionales; `imagen_factura` `file|mimes:jpg,jpeg,png,webp|max:10240` |
 | `CambiarEstadoRequest` | Cambio de estado | `fk_estado` `exists:ESTADOS_ACTIVO,id`; `motivo` obligatorio `max:500` |
@@ -792,6 +847,11 @@ mensajes y nombres de atributo **en español**.
 | `StorePersonalRequest` | Alta/edición personal | `Nombre_usuario` `unique:PERSONAL` |
 | `ImportarCsvRequest` | Importación | `archivo` `file|mimes:csv,txt|max:20480` |
 | `ProfileUpdateRequest` | Perfil (Breeze) | email único ignorando el propio |
+
+Los campos de servidor y tarjetas comparten el trait `App\Http\Requests\Concerns\ReglasServidor`
+(reglas, mensajes y atributos en español + `prepareForValidation()` que normaliza espacios,
+convierte vacíos en `null` y descarta filas de tarjeta totalmente vacías). Las reglas se
+validan aunque el bloque esté oculto; la UI solo lo muestra si la categoría es de servidor.
 
 (Se incluyen además Form Requests para catálogos, desincorporación masiva, eliminaciones, depuración y usuarios.)
 
@@ -807,7 +867,7 @@ responsive, badge de rol, notificaciones, selección por lote y mensajes flash.
 | Dominio | Vistas |
 |---|---|
 | Dashboard | `dashboard.blade.php` (contadores por grupo + últimos registrados) |
-| Activos | `index`, `create`, `edit`, `show`, `partials/form` |
+| Activos | `index`, `create`, `edit`, `show`, `partials/form`, `partials/servidor`, `partials/tarjeta` |
 | Desincorporados | `desincorporados/index` |
 | Personal | `index`, `create`, `edit`, `show`, `partials/form` |
 | Mantenimientos | `index`, `por-activo` |
@@ -826,6 +886,11 @@ responsive, badge de rol, notificaciones, selección por lote y mensajes flash.
 - **Selección por lote**: checkboxes + acciones masivas (desincorporación de equipos, baja de personal, eliminación de importaciones/mantenimientos) con modal de confirmación.
 - **Fotos y facturas**: previsualización, subida y visualización autenticada (controladores `imagen`/`imagenFactura`).
 - **Búsqueda rápida**: barra en activos con soporte para lector USB/cámara.
+- **Datos de servidor**: fieldset condicional (componente Alpine `panelServidor`, `resources/js/servidor.js`)
+  con IP, sistema operativo, RAM, disco y estatus + filas dinámicas de tarjetas de red
+  (clonadas desde `<template x-ref="plantilla">`). El buscador de switch es `x-search-select`
+  sobre el inventario con respaldo de texto libre. La ficha (`show`) muestra una pestaña
+  «Servidor» con el detalle y la tabla de tarjetas.
 
 ### 13.3 Componentes Blade propios y de Breeze
 
@@ -985,6 +1050,12 @@ Importación verificada del reporte real (1.167 filas):
     de mantenimientos servidas mediante descarga autenticada).
 11. **Acceso a imágenes**: `Imagen_Activo` y `Imagen_Factura` se almacenan en disco `local`
     y se sirven vía `activos.imagen` / `activos.factura` con `auth`.
+12. **Datos de servidor**: IP, sistema operativo, RAM, disco y estatus son opcionales y
+    exclusivos de equipos con `Categoria` de servidor (la UI los oculta en el resto).
+13. **Tarjetas de red**: máximo 8 por equipo; n.º único por activo (`distinct`); el switch
+    referenciado (`fk_switch`) debe existir y su nombre se denormaliza en `Switch`. El
+    bloque enviado se sincroniza completo (las filas omitidas se borran) y todo cambio
+    queda en `HISTORIAL_EVENTOS`. Sin bloque de servidor en el formulario, no se tocan.
 
 ---
 
@@ -994,7 +1065,7 @@ Importación verificada del reporte real (1.167 filas):
   para entornos ligeros puede forzarse SQLite en memoria mediante variables de entorno
   (`$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'`).
 - **Salida:** `laravel/pao` (JSON de resultados).
-- **Estado actual:** **189 tests / 625 aserciones — todos en verde.**
+- **Estado actual:** **239 tests / 824 aserciones — todos en verde.**
 
 | Archivo | Cobertura |
 |---|---|
@@ -1013,6 +1084,7 @@ Importación verificada del reporte real (1.167 filas):
 | `ModeloActivoCRUDTest` (7) | Catálogo de modelos |
 | `ProfileTest` (6) | Perfil (Breeze) |
 | `ReporteTest` (8) | Exportación CSV |
+| `ServidorTest` (17) | Datos de servidor, tarjetas de red, validación, UI, CSV y vistas Power BI |
 | `DesincorporacionTest` (8) | Apartado de desincorporados: lectura, edición, reincorporación |
 | `SincronizacionSnipecTest` (4) | Sincronización Snipec IT |
 | `SmokePantallasTest` (1) | Render de pantallas críticas |

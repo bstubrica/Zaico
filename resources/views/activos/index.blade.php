@@ -54,6 +54,11 @@
                        placeholder="Nombre de la persona" class="form-control">
             </div>
             <div>
+                <label for="ip" class="form-label">IP</label>
+                <input type="text" id="ip" name="ip" value="{{ $filtros['ip'] ?? '' }}"
+                       placeholder="192.168.0.10" class="form-control">
+            </div>
+            <div>
                 <label for="ubicacion" class="form-label">Ubicación</label>
                 <x-search-select
                     name="ubicacion"
@@ -301,7 +306,7 @@
                             </button>
                         </div>
                     </div>
-                    @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a'] as $campo)
+                    @foreach (['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip'] as $campo)
                         @if (filled($filtros[$campo] ?? null))
                             <input type="hidden" name="{{ $campo }}" value="{{ $filtros[$campo] }}">
                         @endif

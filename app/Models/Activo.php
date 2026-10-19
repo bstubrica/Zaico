@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class Activo extends Model
 {
@@ -27,6 +28,11 @@ class Activo extends Model
         'Etiqueta_activo',
         'Estado',
         'Direccion_MAC',
+        'IP',
+        'Sistema_Operativo',
+        'Memoria_RAM',
+        'Capacidad_Disco',
+        'Estatus_Servidor',
         'Imagen_Activo',
         'fk_estado',
         'fk_ubicacion',
@@ -82,6 +88,54 @@ class Activo extends Model
     public function mantenimientos(): HasMany
     {
         return $this->hasMany(Mantenimiento::class, 'fk_activo', 'id');
+    }
+
+    /**
+     * Tarjetas de red del equipo, ordenadas por número de tarjeta.
+     *
+     * @return HasMany<TarjetaRed, $this>
+     */
+    public function tarjetasRed(): HasMany
+    {
+        return $this->hasMany(TarjetaRed::class, 'fk_activo', 'id')->orderBy('Numero');
+    }
+
+    /**
+     * ¿La categoría del activo corresponde a un servidor? `Categoria` es texto
+     * libre, por eso se compara normalizada contra `config('zaico.servidores')`.
+     */
+    public function esServidor(): bool
+    {
+        return self::categoriaEsServidor($this->Categoria);
+    }
+
+    public static function categoriaEsServidor(?string $categoria): bool
+    {
+        return self::categoriaEnLista($categoria, 'zaico.servidores.categorias');
+    }
+
+    /**
+     * ¿La categoría corresponde a un switch del inventario? Se usa para armar
+     * el catálogo de switches a los que conectan las tarjetas de red.
+     */
+    public static function categoriaEsSwitch(?string $categoria): bool
+    {
+        return self::categoriaEnLista($categoria, 'zaico.servidores.categorias_switch');
+    }
+
+    private static function categoriaEnLista(?string $categoria, string $claveConfig): bool
+    {
+        if ($categoria === null) {
+            return false;
+        }
+
+        $normalizada = Str::lower(trim($categoria));
+
+        if ($normalizada === '') {
+            return false;
+        }
+
+        return in_array($normalizada, (array) config($claveConfig, []), true);
     }
 
     public function compra(): HasOne

@@ -2,12 +2,20 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReglasServidor;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateActivoRequest extends FormRequest
 {
+    use ReglasServidor;
+
+    protected function prepareForValidation(): void
+    {
+        $this->normalizarDatosServidor();
+    }
+
     public function authorize(): bool
     {
         return $this->user()?->puedeEscribir() ?? false;
@@ -46,7 +54,7 @@ class UpdateActivoRequest extends FormRequest
                 Rule::exists('ESTADOS_ACTIVO', 'id')->where('Grupo', $grupo),
             ],
             'imagen' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
-        ];
+        ] + $this->reglasServidor();
     }
 
     /**
@@ -68,7 +76,7 @@ class UpdateActivoRequest extends FormRequest
             'imagen.file' => 'La imagen debe ser un archivo',
             'imagen.mimes' => 'La imagen debe ser JPG, PNG o WEBP',
             'imagen.max' => 'La imagen no puede exceder 10 MB',
-        ];
+        ] + $this->mensajesServidor();
     }
 
     /**
@@ -85,6 +93,6 @@ class UpdateActivoRequest extends FormRequest
             'Direccion_MAC' => 'dirección MAC',
             'fk_estado' => 'estado de catálogo',
             'imagen' => 'imagen del activo',
-        ];
+        ] + $this->atributosServidor();
     }
 }

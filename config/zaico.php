@@ -18,6 +18,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Servidores
+    |--------------------------------------------------------------------------
+    |
+    | `ACTIVOS.Categoria` es texto libre, así que la categoría se compara
+    | normalizada (minúsculas y sin espacios) contra esta lista para decidir si
+    | un equipo es un servidor y si puede usarse como switch del inventario.
+    | `maximo_tarjetas` acota las tarjetas de red por equipo en el formulario.
+    |
+    */
+
+    'servidores' => [
+        'categorias' => ['servidor', 'servidores'],
+        'categorias_switch' => ['switch', 'switches'],
+        'maximo_tarjetas' => 8,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Alertas de inventario (Fase 8)
     |--------------------------------------------------------------------------
     |

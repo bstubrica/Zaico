@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -41,12 +42,15 @@ class ActivoService
      */
     private const DISCO = 'local';
 
-    public function __construct(private readonly HistorialService $historial) {}
+    public function __construct(
+        private readonly HistorialService $historial,
+        private readonly ServidorService $servidores,
+    ) {}
 
     /**
      * Consulta base del listado de activos con filtros (sin paginar).
      *
-     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string}  $filtros
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string, ip?: string}  $filtros
      * @return Builder<Activo>
      */
     public function consultaListado(array $filtros): Builder
@@ -69,6 +73,11 @@ class ActivoService
             ))
             ->when($filtros['categoria'] ?? null,
                 fn ($query, $categoria) => $query->where('Categoria', $categoria))
+            ->when($filtros['ip'] ?? null, fn ($query, $ip) => $this->aplicarBusqueda(
+                $query,
+                ['IP'],
+                $ip,
+            ))
             ->when($filtros['estado'] ?? null, function ($query, $estado) {
                 // El grupo vive denormalizado en `Estado`; `fk_estado` puede
                 // faltar en activos importados, así que se considera también.
@@ -101,7 +110,7 @@ class ActivoService
     }
 
     /**
-     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string, tamano?: int}  $filtros
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string, ip?: string, tamano?: int}  $filtros
      */
     public function listar(array $filtros): LengthAwarePaginator
     {
@@ -118,7 +127,7 @@ class ActivoService
      * controlador que la selección excede el tope, sin materializar en memoria
      * el universo completo de coincidencias.
      *
-     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string}  $filtros
+     * @param  array{termino?: string, categoria?: string, estado?: string, ubicacion?: string, modelo?: string, asignado_a?: string, ip?: string}  $filtros
      * @return array<int, int>
      */
     public function idsDeFiltro(array $filtros): array
@@ -229,9 +238,10 @@ class ActivoService
      */
     public function crear(array $datos, int $usuarioId, ?UploadedFile $imagen = null): Activo
     {
+        [$datos, $tarjetas] = $this->extraerTarjetas($datos);
         $datos = $this->sincronizarCatalogos($datos);
 
-        return DB::transaction(function () use ($datos, $usuarioId, $imagen) {
+        return DB::transaction(function () use ($datos, $tarjetas, $usuarioId, $imagen) {
             $activo = Activo::create($datos);
 
             $this->guardarImagen($activo, $imagen);
@@ -243,6 +253,10 @@ class ActivoService
                 usuarioId: $usuarioId,
             );
 
+            if ($tarjetas !== null) {
+                $this->servidores->sincronizarTarjetas($activo, $tarjetas, $usuarioId);
+            }
+
             return $activo->load('estadoCatalogo');
         });
     }
@@ -252,9 +266,10 @@ class ActivoService
      */
     public function actualizar(Activo $activo, array $datos, int $usuarioId, ?UploadedFile $imagen = null): Activo
     {
+        [$datos, $tarjetas] = $this->extraerTarjetas($datos);
         $datos = $this->sincronizarCatalogos($datos);
 
-        return DB::transaction(function () use ($activo, $datos, $usuarioId, $imagen) {
+        return DB::transaction(function () use ($activo, $datos, $tarjetas, $usuarioId, $imagen) {
             $antes = $activo->only(array_keys($datos));
             $activo->update($datos);
 
@@ -266,6 +281,10 @@ class ActivoService
                 nuevo: json_encode($activo->only(array_keys($datos)), JSON_UNESCAPED_UNICODE),
                 usuarioId: $usuarioId,
             );
+
+            if ($tarjetas !== null) {
+                $this->servidores->sincronizarTarjetas($activo, $tarjetas, $usuarioId);
+            }
 
             if ($imagen !== null) {
                 $this->guardarImagen($activo, $imagen);
@@ -280,6 +299,28 @@ class ActivoService
 
             return $activo->fresh('estadoCatalogo');
         });
+    }
+
+    /**
+     * Separa las tarjetas de red (filas hijas, no columnas del activo) de los
+     * datos escalares y devuelve `null` cuando el formulario no incluye el
+     * bloque de servidor, para no borrar tarjetas que el envío no tocó.
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array{0: array<string, mixed>, 1: array<int, array<string, mixed>>|null}
+     */
+    private function extraerTarjetas(array $datos): array
+    {
+        $presente = array_key_exists('tarjetas_presente', $datos) || array_key_exists('tarjetas', $datos);
+        $tarjetas = $datos['tarjetas'] ?? [];
+
+        $datos = Arr::except($datos, ['tarjetas', 'tarjetas_presente']);
+
+        if (! $presente || ! is_array($tarjetas)) {
+            return [$datos, null];
+        }
+
+        return [$datos, array_values($tarjetas)];
     }
 
     public function cambiarEstado(Activo $activo, int $fkEstado, string $motivo, int $usuarioId): Activo

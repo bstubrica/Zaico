@@ -16,6 +16,15 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - Solo `Admin` puede cambiar el usuario (formulario de administración); en el perfil propio aparece deshabilitado. Usuarios de desarrollo (`UserSeeder`): `admin`, `soporte`, `auditor`.
 - Al tocar autenticación, cubre `tests/Feature/Auth/*`, `AdminUsuarioTest` y `UserSecurityTest`.
 
+# Servidores y tarjetas de red
+
+- Los datos de servidor (`IP`, `Sistema_Operativo`, `Memoria_RAM`, `Capacidad_Disco`, `Estatus_Servidor`) y las `TARJETAS_RED` solo aplican a equipos con `Categoria` de servidor (`config('zaico.servidores.categorias')`, comparación `Str::lower(trim(...))`).
+- Reglas, mensajes y normalización compartidos en `App\Http\Requests\Concerns\ReglasServidor`; la sincronización de tarjetas (máx. 8, n.º único, auditoría) vive en `ServidorService` y la invoca `ActivoService`.
+- El bloque de servidor se envía completo (`tarjetas_presente`): las filas ausentes se eliminan; un formulario sin el bloque no modifica tarjetas.
+- UI (`resources/js/servidor.js`, componente Alpine `panelServidor`): el payload de `x-data` debe ser un **objeto plano** (si se anida, el Proxy raíz rompe `@click` y los botones fallan en silencio). Las filas se clonan desde `<template id="servidor-plantilla-tarjeta">` hacia `#servidor-filas-tarjetas` y hay que llamar `Alpine.initTree(fila)` tras insertarlas (Alpine no inicializa clones de `template.content`).
+- Reportes/Power BI: columnas en el CSV de activos, `vw_inventario` y `vw_tarjetas_red`; cualquier cambio exige actualizar la migración de vistas y `tests/Feature/ServidorTest.php`.
+- Tests de referencia: `ServidorTest`, `VistaInventarioTest`, `ReporteTest`.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

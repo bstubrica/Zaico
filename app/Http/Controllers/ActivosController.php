@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EstatusServidor;
 use App\Enums\TipoDesincorporacion;
 use App\Http\Requests\AsignarEquipoRequest;
 use App\Http\Requests\CambiarEstadoRequest;
@@ -14,6 +15,7 @@ use App\Http\Requests\UpdateActivoRequest;
 use App\Models\Activo;
 use App\Models\Personal;
 use App\Services\ActivoService;
+use App\Services\ServidorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,11 +30,14 @@ class ActivosController extends Controller
      */
     private const MAX_EVENTOS = 200;
 
-    public function __construct(private readonly ActivoService $activos) {}
+    public function __construct(
+        private readonly ActivoService $activos,
+        private readonly ServidorService $servidores,
+    ) {}
 
     public function index(Request $request): View
     {
-        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a']);
+        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip']);
         $filtros['tamano'] = 50;
         $activos = $this->activos->listar($filtros);
         $tipos = TipoDesincorporacion::opciones();
@@ -47,7 +52,7 @@ class ActivosController extends Controller
 
     public function show(Activo $activo): View
     {
-        $activo->load(['estadoCatalogo', 'asignacionActiva.personal', 'mantenimientos.evidencias', 'compra', 'ubicacionCatalogo', 'modeloCatalogo']);
+        $activo->load(['estadoCatalogo', 'asignacionActiva.personal', 'mantenimientos.evidencias', 'compra', 'ubicacionCatalogo', 'modeloCatalogo', 'tarjetasRed']);
         $historial = $this->activos->historialAsignaciones($activo);
         $personas = Personal::query()
             ->where('Estado', 'Activo')
@@ -84,8 +89,10 @@ class ActivosController extends Controller
         $grupos = $this->activos->gruposEstado();
         $ubicaciones = $this->activos->opcionesUbicaciones();
         $modelos = $this->activos->opcionesModelos();
+        $switches = $this->servidores->catalogoSwitches();
+        $estatuses = EstatusServidor::opciones();
 
-        return view('activos.create', compact('estados', 'grupos', 'ubicaciones', 'modelos'));
+        return view('activos.create', compact('estados', 'grupos', 'ubicaciones', 'modelos', 'switches', 'estatuses'));
     }
 
     public function store(StoreActivoRequest $request)
@@ -105,8 +112,10 @@ class ActivosController extends Controller
         $grupos = $this->activos->gruposEstado();
         $ubicaciones = $this->activos->opcionesUbicaciones($activo);
         $modelos = $this->activos->opcionesModelos($activo);
+        $switches = $this->servidores->catalogoSwitches($activo->tarjetasRed->pluck('fk_switch')->all());
+        $estatuses = EstatusServidor::opciones();
 
-        return view('activos.edit', compact('activo', 'estados', 'grupos', 'ubicaciones', 'modelos'));
+        return view('activos.edit', compact('activo', 'estados', 'grupos', 'ubicaciones', 'modelos', 'switches', 'estatuses'));
     }
 
     public function update(UpdateActivoRequest $request, Activo $activo)
@@ -191,7 +200,7 @@ class ActivosController extends Controller
     public function desincorporarMasivo(DesincorporarActivosMasivoRequest $request): RedirectResponse
     {
         $ids = $request->boolean('todos')
-            ? $this->activos->idsDeFiltro($request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a']))
+            ? $this->activos->idsDeFiltro($request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip']))
             : ($request->validated('ids') ?? []);
 
         if ($ids === []) {
@@ -237,7 +246,7 @@ class ActivosController extends Controller
 
     public function apiIndex(Request $request): JsonResponse
     {
-        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a']);
+        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip']);
         $filtros['tamano'] = (int) $request->input('tamano', 50);
 
         return response()->json($this->activos->listar($filtros));

@@ -51,6 +51,12 @@
                             ['id' => 'asignaciones', 'label' => 'Asignaciones', 'icon' => 'users'],
                             ['id' => 'mantenimientos', 'label' => 'Mantenimientos', 'icon' => 'wrench'],
                         ];
+
+                        $esServidor = $activo->esServidor() || $activo->tarjetasRed->isNotEmpty();
+
+                        if ($esServidor) {
+                            $tabs[] = ['id' => 'servidor', 'label' => 'Servidor', 'icon' => 'cpu-chip'];
+                        }
                     @endphp
                     @foreach ($tabs as $t)
                         <button type="button" role="tab" @click="tab = '{{ $t['id'] }}'"
@@ -350,6 +356,82 @@
                     </form>
                 @endif
             </div>
+
+            {{-- Servidor --}}
+            @if ($esServidor)
+                <div x-show="tab === 'servidor'" x-cloak class="card-body">
+                    <dl class="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                        <div>
+                            <dt class="text-slate-500">IP</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->IP ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Estatus</dt>
+                            <dd class="font-medium text-slate-900">
+                                @php
+                                    $colorEstatus = match ($activo->Estatus_Servidor) {
+                                        'Encendido' => 'emerald',
+                                        'Mantenimiento' => 'amber',
+                                        default => 'slate',
+                                    };
+                                @endphp
+                                @if ($activo->Estatus_Servidor)
+                                    <x-badge :color="$colorEstatus" :dot="true">
+                                        {{ \App\Enums\EstatusServidor::etiquetaDe($activo->Estatus_Servidor) }}
+                                    </x-badge>
+                                @else
+                                    —
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Sistema operativo</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->Sistema_Operativo ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Memoria RAM</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->Memoria_RAM ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-slate-500">Capacidad de disco</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->Capacidad_Disco ?? '—' }}</dd>
+                        </div>
+                    </dl>
+
+                    <h4 class="mb-2 mt-6 text-sm font-semibold text-slate-800">Tarjetas de red</h4>
+
+                    @if ($activo->tarjetasRed->isEmpty())
+                        <p class="text-sm text-slate-500">Sin tarjetas de red registradas.</p>
+                    @else
+                        <div class="table-wrap">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>N.º</th>
+                                        <th>Interfaz</th>
+                                        <th>Dirección MAC</th>
+                                        <th>IP</th>
+                                        <th>Switch</th>
+                                        <th>Puerto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($activo->tarjetasRed as $tarjeta)
+                                        <tr>
+                                            <td class="font-medium text-slate-900">{{ $tarjeta->Numero }}</td>
+                                            <td>{{ $tarjeta->Nombre ?? '—' }}</td>
+                                            <td>{{ $tarjeta->Direccion_MAC ?? '—' }}</td>
+                                            <td>{{ $tarjeta->IP ?? '—' }}</td>
+                                            <td>{{ $tarjeta->Switch ?? '—' }}</td>
+                                            <td>{{ $tarjeta->Puerto ?? '—' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            @endif
 
             {{-- Auditoría (carga diferida) --}}
             @if ($puedeVerAuditoria)

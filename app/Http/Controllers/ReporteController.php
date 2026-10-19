@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EstatusServidor;
 use App\Models\Activo;
 use App\Models\Asignacion;
 use App\Models\Mantenimiento;
@@ -28,11 +29,11 @@ class ReporteController extends Controller
 
     public function activos(Request $request): StreamedResponse
     {
-        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a']);
+        $filtros = $request->only(['termino', 'categoria', 'estado', 'ubicacion', 'modelo', 'asignado_a', 'ip']);
 
         return $this->reportes->exportar(
             'activos-'.now()->format('Y-m-d').'.csv',
-            ['Etiqueta', 'Nombre', 'Serial', 'Categoría', 'Fabricante', 'Modelo', 'Ubicación', 'Estado', 'Asignado a', 'Dirección MAC'],
+            ['Etiqueta', 'Nombre', 'Serial', 'Categoría', 'Fabricante', 'Modelo', 'Ubicación', 'Estado', 'Asignado a', 'Dirección MAC', 'IP', 'Sistema operativo', 'Memoria RAM', 'Capacidad de disco', 'Estatus'],
             $this->activos->consultaListado($filtros),
             fn (Activo $activo): array => [
                 $activo->Etiqueta_activo,
@@ -45,6 +46,11 @@ class ReporteController extends Controller
                 $activo->estadoCatalogo?->Nombre,
                 $activo->asignacionActiva?->personal?->NombreCompleto,
                 $activo->Direccion_MAC,
+                $activo->IP,
+                $activo->Sistema_Operativo,
+                $activo->Memoria_RAM,
+                $activo->Capacidad_Disco,
+                EstatusServidor::etiquetaDe($activo->Estatus_Servidor),
             ],
         );
     }

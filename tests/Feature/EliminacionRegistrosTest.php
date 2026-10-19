@@ -14,6 +14,7 @@ use App\Models\Personal;
 use App\Models\User;
 use App\Services\ActivoService;
 use App\Services\HistorialService;
+use App\Services\ServidorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -244,7 +245,7 @@ class EliminacionRegistrosTest extends TestCase
             }
         };
 
-        $service = new ActivoService($historial);
+        $service = new ActivoService($historial, app(ServidorService::class));
 
         try {
             $service->desincorporarLote([$a1->id, $a2->id], $this->datosBaja(), $this->admin->id);
