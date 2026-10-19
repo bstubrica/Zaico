@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Estados de catálogo" subtitle="Catálogo de estados de los activos" icon="tag">
             <x-slot name="actions">
@@ -29,18 +29,20 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Nombre</th>
+                                <th class="table-col-fija">Nombre</th>
                                 <th>Grupo</th>
                                 <th class="text-center">Deployed</th>
                                 <th class="text-center">Deployable</th>
                                 <th class="text-center">Activos</th>
-                                <th class="text-right">Acciones</th>
+                                @if (auth()->user()->puedeEscribir())
+                                    <th class="text-right">Acciones</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($estados as $estado)
                                 <tr>
-                                    <td class="font-medium text-slate-900">{{ $estado->Nombre }}</td>
+                                    <td class="table-col-fija font-medium text-slate-900">{{ $estado->Nombre }}</td>
                                     <td><x-status-badge :grupo="$estado->Grupo" /></td>
                                     <td class="text-center">
                                         @if ($estado->Deployed)
@@ -57,17 +59,25 @@
                                         @endif
                                     </td>
                                     <td class="text-center text-slate-500">{{ $estado->activos_count ?? $estado->activos()->count() }}</td>
-                                    <td class="text-right whitespace-nowrap">
-                                        @if (auth()->user()->puedeEscribir())
-                                            <a href="{{ route('estados.edit', $estado) }}" class="link">Editar</a>
-                                            <form method="POST" action="{{ route('estados.destroy', $estado) }}" class="inline"
-                                                  onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Eliminar el estado '.$estado->Nombre.'?') }})">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="link ms-3 text-rose-600">Eliminar</button>
-                                            </form>
-                                        @endif
-                                    </td>
+                                    @if (auth()->user()->puedeEscribir())
+                                        <td class="text-right whitespace-nowrap">
+                                            <div class="flex items-center justify-end gap-0.5">
+                                                <a href="{{ route('estados.edit', $estado) }}" class="icon-btn"
+                                                   title="Editar" aria-label="Editar {{ $estado->Nombre }}">
+                                                    <x-icon name="pencil" :size="18" />
+                                                </a>
+                                                <form method="POST" action="{{ route('estados.destroy', $estado) }}"
+                                                      onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Eliminar el estado '.$estado->Nombre.'?') }})">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="icon-btn icon-btn-danger"
+                                                            title="Eliminar" aria-label="Eliminar el estado {{ $estado->Nombre }}">
+                                                        <x-icon name="trash" :size="18" />
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>

@@ -8,7 +8,7 @@
     ];
 @endphp
 
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Alertas" subtitle="Reparaciones prolongadas y garantías por vencer" icon="bell">
             <x-slot name="actions">
@@ -55,17 +55,17 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Activo</th>
+                            <th class="table-col-fija">Activo</th>
                             <th>Tipo</th>
                             <th>Detalle</th>
-                            <th class="hidden md:table-cell">Fecha</th>
+                            <th class="hidden xl:table-cell">Fecha</th>
                             <th class="text-right">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($alertas as $alerta)
                             <tr>
-                                <td>
+                                <td class="table-col-fija">
                                     <a class="link font-medium" href="{{ route('activos.show', $alerta->fk_activo) }}">
                                         {{ $alerta->activo?->Etiqueta_activo ?? '—' }}
                                     </a>
@@ -77,11 +77,14 @@
                                     </x-badge>
                                 </td>
                                 <td class="text-slate-600">{{ $alerta->Mensaje }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">
+                                <td class="hidden text-slate-500 xl:table-cell">
                                     {{ $alerta->Fecha_referencia?->format('d/m/Y') ?? '—' }}
                                 </td>
-                                <td class="text-right">
-                                    <a href="{{ route('activos.show', $alerta->fk_activo) }}" class="link">Ver equipo</a>
+                                <td class="text-right whitespace-nowrap">
+                                    <a href="{{ route('activos.show', $alerta->fk_activo) }}" class="icon-btn"
+                                       title="Ver equipo" aria-label="Ver el equipo {{ $alerta->activo?->Etiqueta_activo }}">
+                                        <x-icon name="eye" :size="18" />
+                                    </a>
                                 </td>
                             </tr>
                         @endforeach

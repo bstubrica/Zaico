@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Personal" subtitle="Personas con equipos asignados" icon="users">
             <x-slot name="actions">
@@ -90,14 +90,14 @@
                     <thead>
                         <tr>
                             @if (auth()->user()->puedeEscribir())
-                                <th class="w-10">
+                                <th class="table-col-chk">
                                     <x-sel-todos />
                                 </th>
                             @endif
-                            <th>Nombre completo</th>
+                            <th class="{{ auth()->user()->puedeEscribir() ? 'table-col-fija-2' : 'table-col-fija' }}">Nombre completo</th>
                             <th>Usuario</th>
-                            <th class="hidden lg:table-cell">Departamento / Ubicación</th>
-                            <th class="hidden md:table-cell">Cargo</th>
+                            <th class="hidden 2xl:table-cell">Departamento / Ubicación</th>
+                            <th class="hidden xl:table-cell">Cargo</th>
                             <th class="text-center">Equipos asignados</th>
                             <th>Estado</th>
                             <th class="text-right">Acciones</th>
@@ -107,16 +107,16 @@
                         @foreach ($personas as $persona)
                             <tr>
                                 @if (auth()->user()->puedeEscribir())
-                                    <td class="w-10">
+                                    <td class="table-col-chk">
                                         <x-sel-fila :valor="$persona->id" :etiqueta="$persona->NombreCompleto" />
                                     </td>
                                 @endif
-                                <td class="font-medium">
+                                <td class="{{ auth()->user()->puedeEscribir() ? 'table-col-fija-2' : 'table-col-fija' }} max-w-[16rem] truncate font-medium" title="{{ $persona->NombreCompleto }}">
                                     <a class="link" href="{{ route('personal.show', $persona) }}">{{ $persona->NombreCompleto }}</a>
                                 </td>
                                 <td class="text-slate-500">{{ $persona->Nombre_usuario }}</td>
-                                <td class="hidden text-slate-500 lg:table-cell">{{ $persona->ubicacion?->Nombre ?? '—' }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ $persona->Cargo ?? '—' }}</td>
+                                <td class="hidden text-slate-500 2xl:table-cell">{{ $persona->ubicacion?->Nombre ?? '—' }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">{{ $persona->Cargo ?? '—' }}</td>
                                 <td class="text-center">
                                     @if ($persona->asignaciones_activas > 0)
                                         <x-badge color="sky">{{ $persona->asignaciones_activas }}</x-badge>
@@ -132,16 +132,27 @@
                                     @endif
                                 </td>
                                 <td class="text-right whitespace-nowrap">
-                                    <a href="{{ route('personal.show', $persona) }}" class="link">Ver</a>
-                                    @if (auth()->user()->puedeEscribir())
-                                        <a href="{{ route('personal.edit', $persona) }}" class="link ms-3">Editar</a>
-                                        <form method="POST" action="{{ route('personal.destroy', $persona) }}" class="inline"
-                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja a '.$persona->NombreCompleto.'?') }})">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="link ms-3 text-rose-600">Baja</button>
-                                        </form>
-                                    @endif
+                                    <div class="flex items-center justify-end gap-0.5">
+                                        <a href="{{ route('personal.show', $persona) }}" class="icon-btn"
+                                           title="Ver" aria-label="Ver {{ $persona->NombreCompleto }}">
+                                            <x-icon name="eye" :size="18" />
+                                        </a>
+                                        @if (auth()->user()->puedeEscribir())
+                                            <a href="{{ route('personal.edit', $persona) }}" class="icon-btn"
+                                               title="Editar" aria-label="Editar {{ $persona->NombreCompleto }}">
+                                                <x-icon name="pencil" :size="18" />
+                                            </a>
+                                            <form method="POST" action="{{ route('personal.destroy', $persona) }}"
+                                                  onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja a '.$persona->NombreCompleto.'?') }})">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="icon-btn icon-btn-danger"
+                                                        title="Dar de baja" aria-label="Dar de baja a {{ $persona->NombreCompleto }}">
+                                                    <x-icon name="trash" :size="18" />
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -190,15 +201,24 @@
                         </div>
 
                         <div class="mt-4 flex flex-1 items-end justify-between gap-2 border-t border-slate-100 pt-3">
-                            <a href="{{ route('personal.show', $persona) }}" class="link text-sm">Ver</a>
+                            <a href="{{ route('personal.show', $persona) }}" class="icon-btn"
+                               title="Ver" aria-label="Ver {{ $persona->NombreCompleto }}">
+                                <x-icon name="eye" :size="18" />
+                            </a>
                             @if (auth()->user()->puedeEscribir())
-                                <div class="flex items-center gap-3">
-                                    <a href="{{ route('personal.edit', $persona) }}" class="link text-sm">Editar</a>
-                                    <form method="POST" action="{{ route('personal.destroy', $persona) }}" class="inline"
+                                <div class="flex items-center gap-0.5">
+                                    <a href="{{ route('personal.edit', $persona) }}" class="icon-btn"
+                                       title="Editar" aria-label="Editar {{ $persona->NombreCompleto }}">
+                                        <x-icon name="pencil" :size="18" />
+                                    </a>
+                                    <form method="POST" action="{{ route('personal.destroy', $persona) }}"
                                           onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja a '.$persona->NombreCompleto.'?') }})">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-sm font-medium text-rose-600 hover:underline">Baja</button>
+                                        <button type="submit" class="icon-btn icon-btn-danger"
+                                                title="Dar de baja" aria-label="Dar de baja a {{ $persona->NombreCompleto }}">
+                                            <x-icon name="trash" :size="18" />
+                                        </button>
                                     </form>
                                 </div>
                             @endif

@@ -79,6 +79,19 @@
         @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400;
     }
 
+    /* Acciones de fila compactas */
+    .icon-btn {
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .icon-btn-danger {
+        @apply text-rose-600 hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-rose-500;
+    }
+
+    .icon-btn-success {
+        @apply text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:ring-emerald-500;
+    }
+
     /* Formularios */
     .form-label {
         @apply mb-1 block text-sm font-medium text-slate-700;
@@ -108,7 +121,9 @@
 
     /* Tablas */
     .table-wrap {
-        @apply overflow-x-auto;
+        @apply max-h-[70vh] overflow-x-auto overflow-y-auto;
+        overscroll-behavior-x: contain;
+        scrollbar-gutter: stable;
     }
 
     .table {
@@ -116,7 +131,7 @@
     }
 
     .table thead th {
-        @apply bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+        @apply sticky top-0 z-20 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
     }
 
     .table tbody td {
@@ -127,8 +142,57 @@
         @apply transition hover:bg-slate-50/80;
     }
 
+    /* Columnas fijas al desplazar en horizontal */
+    .table td.table-col-fija,
+    .table th.table-col-fija {
+        @apply sticky left-0 z-10 bg-white;
+        box-shadow: 10px 0 10px -10px rgba(15, 23, 42, 0.35);
+    }
+
+    .table td.table-col-fija-2,
+    .table th.table-col-fija-2 {
+        @apply sticky z-10 bg-white;
+        left: 3rem;
+        box-shadow: 10px 0 10px -10px rgba(15, 23, 42, 0.35);
+    }
+
+    .table td.table-col-chk,
+    .table th.table-col-chk {
+        @apply sticky left-0 z-10 bg-white;
+        width: 3rem;
+    }
+
+    .table thead th.table-col-fija,
+    .table thead th.table-col-fija-2,
+    .table thead th.table-col-chk {
+        @apply z-30 bg-slate-50;
+    }
+
+    .table tbody tr:hover .table-col-fija,
+    .table tbody tr:hover .table-col-fija-2,
+    .table tbody tr:hover .table-col-chk {
+        @apply bg-slate-50;
+    }
+
     /* Enlaces */
     .link {
         @apply rounded font-medium text-brand-600 hover:text-brand-500 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+    }
+}
+
+@media print {
+    .table-wrap {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .table thead th,
+    .table td.table-col-fija,
+    .table td.table-col-fija-2,
+    .table td.table-col-chk,
+    .table th.table-col-fija,
+    .table th.table-col-fija-2,
+    .table th.table-col-chk {
+        position: static;
     }
 }

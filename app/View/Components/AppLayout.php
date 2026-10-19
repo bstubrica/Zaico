@@ -7,6 +7,8 @@ use Illuminate\View\View;
 
 class AppLayout extends Component
 {
+    public function __construct(public string $ancho = 'max-w-7xl') {}
+
     /**
      * Get the view / contents that represents the component.
      */

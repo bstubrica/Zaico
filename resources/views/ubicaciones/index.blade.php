@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Ubicaciones" subtitle="Catálogo de ubicaciones físicas de los activos" icon="map-pin">
             <x-slot name="actions">
@@ -59,18 +59,20 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Nombre</th>
-                            <th class="hidden md:table-cell">Descripción</th>
+                            <th class="table-col-fija">Nombre</th>
+                            <th class="hidden xl:table-cell">Descripción</th>
                             <th class="text-center">Activos</th>
                             <th>Estado</th>
-                            <th class="text-right">Acciones</th>
+                            @if (auth()->user()->puedeEscribir())
+                                <th class="text-right">Acciones</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($ubicaciones as $ubicacion)
                             <tr>
-                                <td class="font-medium">{{ $ubicacion->Nombre }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">
+                                <td class="table-col-fija font-medium">{{ $ubicacion->Nombre }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">
                                     {{ $ubicacion->Descripcion ? \Illuminate\Support\Str::limit($ubicacion->Descripcion, 80) : '—' }}
                                 </td>
                                 <td class="text-center">
@@ -87,17 +89,25 @@
                                         <x-badge color="slate" :dot="true">{{ $ubicacion->Estado }}</x-badge>
                                     @endif
                                 </td>
-                                <td class="text-right whitespace-nowrap">
-                                    @if (auth()->user()->puedeEscribir())
-                                        <a href="{{ route('ubicaciones.edit', $ubicacion) }}" class="link">Editar</a>
-                                        <form method="POST" action="{{ route('ubicaciones.destroy', $ubicacion) }}" class="inline"
-                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja la ubicación '.$ubicacion->Nombre.'?') }})">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="link ms-3 text-rose-600">Baja</button>
-                                        </form>
-                                    @endif
-                                </td>
+                                @if (auth()->user()->puedeEscribir())
+                                    <td class="text-right whitespace-nowrap">
+                                        <div class="flex items-center justify-end gap-0.5">
+                                            <a href="{{ route('ubicaciones.edit', $ubicacion) }}" class="icon-btn"
+                                               title="Editar" aria-label="Editar {{ $ubicacion->Nombre }}">
+                                                <x-icon name="pencil" :size="18" />
+                                            </a>
+                                            <form method="POST" action="{{ route('ubicaciones.destroy', $ubicacion) }}"
+                                                  onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja la ubicación '.$ubicacion->Nombre.'?') }})">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="icon-btn icon-btn-danger"
+                                                        title="Dar de baja" aria-label="Dar de baja la ubicación {{ $ubicacion->Nombre }}">
+                                                    <x-icon name="trash" :size="18" />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>

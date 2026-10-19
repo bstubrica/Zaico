@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Importación CSV" subtitle="Reporte custom-assets-report de Snipec IT" icon="upload">
             <x-slot name="actions">
@@ -68,42 +68,50 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th class="w-10">
+                                <th class="table-col-chk">
                                     <x-sel-todos />
                                 </th>
-                                <th>Fecha</th>
+                                <th class="table-col-fija-2">Fecha</th>
                                 <th>Archivo</th>
                                 <th>Modo</th>
                                 <th class="text-center">Filas</th>
-                                <th class="text-center">Nuevas</th>
-                                <th class="text-center">Actualizadas</th>
+                                <th class="hidden text-center xl:table-cell">Nuevas</th>
+                                <th class="hidden text-center xl:table-cell">Actualizadas</th>
                                 <th class="text-center">Errores</th>
-                                <th class="text-right">Detalle</th>
+                                <th class="text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($historial as $log)
                                 <tr>
-                                    <td class="w-10">
+                                    <td class="table-col-chk">
                                         <x-sel-fila :valor="$log->id" :etiqueta="$log->Nombre_archivo" />
                                     </td>
-                                    <td class="whitespace-nowrap text-slate-500">{{ $log->Fecha?->format('d/m/Y H:i') }}</td>
+                                    <td class="table-col-fija-2 whitespace-nowrap text-slate-500">{{ $log->Fecha?->format('d/m/Y H:i') }}</td>
                                     <td class="font-medium text-slate-900">{{ \Illuminate\Support\Str::limit($log->Nombre_archivo, 32) }}</td>
                                     <td>
                                         <x-badge :color="$log->Modo === 'DryRun' ? 'slate' : 'brand'">{{ $log->Modo }}</x-badge>
                                     </td>
                                     <td class="text-center">{{ $log->Total_filas }}</td>
-                                    <td class="text-center text-emerald-700">{{ $log->Insertadas }}</td>
-                                    <td class="text-center text-sky-700">{{ $log->Actualizadas }}</td>
+                                    <td class="hidden text-center text-emerald-700 xl:table-cell">{{ $log->Insertadas }}</td>
+                                    <td class="hidden text-center text-sky-700 xl:table-cell">{{ $log->Actualizadas }}</td>
                                     <td class="text-center {{ $log->Errores > 0 ? 'font-semibold text-rose-700' : 'text-slate-400' }}">{{ $log->Errores }}</td>
                                     <td class="text-right whitespace-nowrap">
-                                        <a href="{{ route('importaciones.show', $log) }}" class="link">Ver detalle</a>
-                                        <form method="POST" action="{{ route('importaciones.destroy', $log) }}" class="inline"
-                                              onsubmit="return confirm('¿Eliminar este registro de importación y su detalle?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="link ms-3 text-rose-600">Eliminar</button>
-                                        </form>
+                                        <div class="flex items-center justify-end gap-0.5">
+                                            <a href="{{ route('importaciones.show', $log) }}" class="icon-btn"
+                                               title="Ver detalle" aria-label="Ver detalle de la importación de {{ $log->Nombre_archivo }}">
+                                                <x-icon name="eye" :size="18" />
+                                            </a>
+                                            <form method="POST" action="{{ route('importaciones.destroy', $log) }}"
+                                                  onsubmit="return confirm('¿Eliminar este registro de importación y su detalle?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="icon-btn icon-btn-danger"
+                                                        title="Eliminar" aria-label="Eliminar la importación de {{ $log->Nombre_archivo }}">
+                                                    <x-icon name="trash" :size="18" />
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

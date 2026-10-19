@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     @php
         $etiquetasRol = [
             'Admin' => 'Administrador',
@@ -82,7 +82,7 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Usuario</th>
+                            <th class="table-col-fija">Usuario</th>
                             <th>Rol</th>
                             <th>Estado</th>
                             <th class="text-right">Acciones</th>
@@ -91,7 +91,7 @@
                     <tbody>
                         @foreach ($usuarios as $usuario)
                             <tr>
-                                <td>
+                                <td class="table-col-fija">
                                     <span class="font-medium text-slate-900">{{ $usuario->name }}</span>
                                     <span class="block text-xs text-slate-500">{{ $usuario->email }}</span>
                                 </td>
@@ -108,27 +108,34 @@
                                     @endif
                                 </td>
                                 <td class="text-right whitespace-nowrap">
-                                    <a href="{{ route('admin.usuarios.edit', $usuario) }}" class="link">Editar</a>
+                                    <div class="flex items-center justify-end gap-0.5">
+                                        <a href="{{ route('admin.usuarios.edit', $usuario) }}" class="icon-btn"
+                                           title="Editar" aria-label="Editar a {{ $usuario->name }}">
+                                            <x-icon name="pencil" :size="18" />
+                                        </a>
 
-                                    @if ($usuario->is(auth()->user()))
-                                        <span class="badge ms-3 bg-brand-50 text-brand-700">Sesión actual</span>
-                                    @elseif ($usuario->estaActivo())
-                                        <form method="POST" action="{{ route('admin.usuarios.toggle', $usuario) }}" class="inline"
-                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Deshabilitar a '.$usuario->name.'? No podrá iniciar sesión hasta que se habilite de nuevo.') }})">
-                                            @csrf
-                                            <button type="submit" class="link ms-3 text-rose-600">
-                                                <x-icon name="lock-closed" :size="15" class="inline align-text-bottom" /> Deshabilitar
-                                            </button>
-                                        </form>
-                                    @else
-                                        <form method="POST" action="{{ route('admin.usuarios.toggle', $usuario) }}" class="inline"
-                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Habilitar a '.$usuario->name.'?') }})">
-                                            @csrf
-                                            <button type="submit" class="link ms-3 text-emerald-600">
-                                                <x-icon name="lock-open" :size="15" class="inline align-text-bottom" /> Habilitar
-                                            </button>
-                                        </form>
-                                    @endif
+                                        @if ($usuario->is(auth()->user()))
+                                            <span class="badge ms-1 bg-brand-50 text-brand-700">Sesión actual</span>
+                                        @elseif ($usuario->estaActivo())
+                                            <form method="POST" action="{{ route('admin.usuarios.toggle', $usuario) }}"
+                                                  onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Deshabilitar a '.$usuario->name.'? No podrá iniciar sesión hasta que se habilite de nuevo.') }})">
+                                                @csrf
+                                                <button type="submit" class="icon-btn icon-btn-danger"
+                                                        title="Deshabilitar" aria-label="Deshabilitar a {{ $usuario->name }}">
+                                                    <x-icon name="lock-closed" :size="18" />
+                                                </button>
+                                            </form>
+                                        @else
+                                            <form method="POST" action="{{ route('admin.usuarios.toggle', $usuario) }}"
+                                                  onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Habilitar a '.$usuario->name.'?') }})">
+                                                @csrf
+                                                <button type="submit" class="icon-btn icon-btn-success"
+                                                        title="Habilitar" aria-label="Habilitar a {{ $usuario->name }}">
+                                                    <x-icon name="lock-open" :size="18" />
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

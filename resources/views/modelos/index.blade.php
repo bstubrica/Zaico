@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Modelos" subtitle="Catálogo de modelos de activos" icon="cpu-chip">
             <x-slot name="actions">
@@ -59,20 +59,22 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Nombre</th>
-                            <th class="hidden md:table-cell">Fabricante</th>
-                            <th class="hidden md:table-cell">Categoría</th>
+                            <th class="table-col-fija">Nombre</th>
+                            <th class="hidden xl:table-cell">Fabricante</th>
+                            <th class="hidden xl:table-cell">Categoría</th>
                             <th class="text-center">Activos</th>
                             <th>Estado</th>
-                            <th class="text-right">Acciones</th>
+                            @if (auth()->user()->puedeEscribir())
+                                <th class="text-right">Acciones</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($modelos as $modelo)
                             <tr>
-                                <td class="font-medium">{{ $modelo->Nombre }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ $modelo->Fabricante ?? '—' }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ $modelo->Categoria ?? '—' }}</td>
+                                <td class="table-col-fija font-medium">{{ $modelo->Nombre }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">{{ $modelo->Fabricante ?? '—' }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">{{ $modelo->Categoria ?? '—' }}</td>
                                 <td class="text-center">
                                     @if ($modelo->activos_count > 0)
                                         <x-badge color="sky">{{ $modelo->activos_count }}</x-badge>
@@ -87,17 +89,25 @@
                                         <x-badge color="slate" :dot="true">{{ $modelo->Estado }}</x-badge>
                                     @endif
                                 </td>
-                                <td class="text-right whitespace-nowrap">
-                                    @if (auth()->user()->puedeEscribir())
-                                        <a href="{{ route('modelos.edit', $modelo) }}" class="link">Editar</a>
-                                        <form method="POST" action="{{ route('modelos.destroy', $modelo) }}" class="inline"
-                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja el modelo '.$modelo->Nombre.'?') }})">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="link ms-3 text-rose-600">Baja</button>
-                                        </form>
-                                    @endif
-                                </td>
+                                @if (auth()->user()->puedeEscribir())
+                                    <td class="text-right whitespace-nowrap">
+                                        <div class="flex items-center justify-end gap-0.5">
+                                            <a href="{{ route('modelos.edit', $modelo) }}" class="icon-btn"
+                                               title="Editar" aria-label="Editar {{ $modelo->Nombre }}">
+                                                <x-icon name="pencil" :size="18" />
+                                            </a>
+                                            <form method="POST" action="{{ route('modelos.destroy', $modelo) }}"
+                                                  onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Dar de baja el modelo '.$modelo->Nombre.'?') }})">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="icon-btn icon-btn-danger"
+                                                        title="Dar de baja" aria-label="Dar de baja el modelo {{ $modelo->Nombre }}">
+                                                    <x-icon name="trash" :size="18" />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>

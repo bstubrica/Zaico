@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Mantenimientos" subtitle="Registro de mantenimientos de equipos" icon="wrench">
             <x-slot name="actions">
@@ -51,15 +51,15 @@
                     <thead>
                         <tr>
                             @if (auth()->user()->puedeEscribir())
-                                <th class="w-10">
+                                <th class="table-col-chk">
                                     <x-sel-todos />
                                 </th>
                             @endif
-                            <th>Fecha</th>
+                            <th class="{{ auth()->user()->puedeEscribir() ? 'table-col-fija-2' : 'table-col-fija' }}">Fecha</th>
                             <th>Equipo</th>
                             <th>Tipo</th>
-                            <th class="hidden md:table-cell">Descripción</th>
-                            <th class="hidden md:table-cell">Registrado por</th>
+                            <th class="hidden xl:table-cell">Descripción</th>
+                            <th class="hidden xl:table-cell">Registrado por</th>
                             <th class="text-center">Evidencias</th>
                             @if (auth()->user()->puedeEscribir())
                                 <th class="text-right">Acciones</th>
@@ -70,11 +70,11 @@
                         @foreach ($mantenimientos as $mantenimiento)
                             <tr>
                                 @if (auth()->user()->puedeEscribir())
-                                    <td class="w-10">
+                                    <td class="table-col-chk">
                                         <x-sel-fila :valor="$mantenimiento->id" :etiqueta="$mantenimiento->activo?->Etiqueta_activo" />
                                     </td>
                                 @endif
-                                <td>{{ $mantenimiento->Fecha_mantenimiento?->format('d/m/Y') }}</td>
+                                <td class="{{ auth()->user()->puedeEscribir() ? 'table-col-fija-2' : 'table-col-fija' }}">{{ $mantenimiento->Fecha_mantenimiento?->format('d/m/Y') }}</td>
                                 <td class="font-medium">
                                     <a class="link" href="{{ route('activos.show', $mantenimiento->fk_activo) }}">
                                         {{ $mantenimiento->activo?->Etiqueta_activo }}
@@ -84,8 +84,8 @@
                                 <td>
                                     <x-badge :color="$mantenimiento->Tipo === 'Preventivo' ? 'sky' : 'amber'">{{ $mantenimiento->Tipo }}</x-badge>
                                 </td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ \Illuminate\Support\Str::limit($mantenimiento->Descripcion, 70) }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ $mantenimiento->usuario?->name ?? '—' }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">{{ \Illuminate\Support\Str::limit($mantenimiento->Descripcion, 70) }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">{{ $mantenimiento->usuario?->name ?? '—' }}</td>
                                 <td class="text-center">
                                     @if ($mantenimiento->evidencias->count() > 0)
                                         <x-badge color="brand">{{ $mantenimiento->evidencias->count() }}</x-badge>
@@ -96,11 +96,13 @@
                                 @if (auth()->user()->puedeEscribir())
                                     <td class="text-right whitespace-nowrap">
                                         <form method="POST" action="{{ route('mantenimientos.destroy', $mantenimiento) }}"
-                                              class="inline"
                                               onsubmit="return confirm('¿Eliminar este mantenimiento y sus evidencias?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="link text-rose-600">Eliminar</button>
+                                            <button type="submit" class="icon-btn icon-btn-danger"
+                                                    title="Eliminar" aria-label="Eliminar mantenimiento del equipo {{ $mantenimiento->activo?->Etiqueta_activo }}">
+                                                <x-icon name="trash" :size="18" />
+                                            </button>
                                         </form>
                                     </td>
                                 @endif

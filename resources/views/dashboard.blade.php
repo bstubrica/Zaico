@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Dashboard" subtitle="Resumen general del inventario de equipos" icon="home" />
     </x-slot>
@@ -97,24 +97,24 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Etiqueta</th>
+                                <th class="table-col-fija">Etiqueta</th>
                                 <th>Nombre</th>
-                                <th class="hidden md:table-cell">Categoría</th>
-                                <th class="hidden lg:table-cell">Asignado a</th>
+                                <th class="hidden xl:table-cell">Categoría</th>
+                                <th class="hidden xl:table-cell">Asignado a</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($recientes as $activo)
                                 <tr>
-                                    <td class="font-medium">
+                                    <td class="table-col-fija font-medium">
                                         <a class="link" href="{{ route('activos.show', $activo) }}">
                                             {{ $activo->Etiqueta_activo }}
                                         </a>
                                     </td>
                                     <td>{{ $activo->Nombre_de_activo }}</td>
-                                    <td class="hidden text-slate-500 md:table-cell">{{ $activo->Categoria ?? '—' }}</td>
-                                    <td class="hidden text-slate-500 lg:table-cell">
+                                    <td class="hidden text-slate-500 xl:table-cell">{{ $activo->Categoria ?? '—' }}</td>
+                                    <td class="hidden text-slate-500 xl:table-cell">
                                         {{ $activo->asignacionActiva?->personal?->NombreCompleto ?? '—' }}
                                     </td>
                                     <td>

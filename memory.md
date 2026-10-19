@@ -13,6 +13,17 @@
 - **Bases**: dev local usa `DB_CONNECTION=sqlite`; pgsql 18 nativo en 5432 (servicio `postgresql-x64-18`, scram-sha-256). Laravel Boost MCP da `database-query`/`database-schema`.
 - **2026-10-19 — fix `SQLiteDatabaseDoesNotExistException`**: faltaba `database/database.sqlite` (está gitignoreado). Laravel 11+ **no** crea el archivo: hay que crearlo (`New-Item`) y luego `php artisan migrate --seed`. Verificado: `http://127.0.0.1:8000/` responde login, 27 migraciones, 17 estados, 3 usuarios.
 
+- **2026-10-19 — acciones de fila unificadas (UI)**: en todos los listados «Ver/Editar/Baja/…» pasaron de enlaces de texto a iconos compactos con `.icon-btn` (`app.css`) + `aria-label`/`title`; columnas de texto largo con `truncate`+`title` (Nombre/Ubicación/Asignado a en activos; Nombre en personal); columna «Acciones» oculta si el usuario no tiene acciones (modelos/estados/ubicaciones). Motivo: en Equipos los botones quedaban cortados fuera de pantalla. Requiere `npm run build`.
+- **2026-10-19 — scroll de tablas cómodo (UI)**: `.table-wrap` ahora tiene `max-h-[70vh]` + scroll propio, `thead` sticky y columna de identidad fija; listados con columna secundaria en `xl` y terciaria en `2xl` (nunca `md`/`lg`); contenedor ampliado a `max-w-screen-2xl` en los listados vía prop `ancho` de `AppLayout` (ver «Convenciones de tablas»). Tests: 217/714 ✅ (incluye `ComodidadTablaTest`). Requiere `npm run build`.
+
+## Convenciones de tablas
+
+- `.table-wrap` = `max-h-[70vh] overflow-x-auto overflow-y-auto` (+ `overscroll-behavior-x: contain`, `scrollbar-gutter: stable`); así la barra horizontal queda siempre a la vista y el `thead` sticky funciona. Para altos distintos, un `max-h` inline gana (p.ej. `importaciones/show` usa `32rem`).
+- Columna fijada a la izquierda: `.table-col-fija` (izquierda del contenedor, `left:0`). Si hay checkbox de selección: el chk es `.table-col-chk` (`width: 3rem`) y la identidad es `.table-col-fija-2` (`left: 3rem`). En listados con checkbox el `th`/`td` de identidad se marca con `{{ puedeEscribir() ? 'table-col-fija-2' : 'table-col-fija' }}`.
+- Regla de visibilidad de columnas en listados: esenciales siempre, secundarias `hidden xl:table-cell`, terciarias `hidden 2xl:table-cell`. **Nunca `md`/`lg`**: el sidebar de 256px aparece en `lg` y entonces el contenedor se angosta justo cuando esas clases muestran columnas.
+- Ancho de contenido: `AppLayout` recibe `ancho` (default `max-w-7xl`); los listados pasan `ancho="max-w-screen-2xl"`. La clase está como literal en `AppLayout.php` → `tailwind.config.js` escanea `./app/View/Components/*.php`.
+- Guarda `@media print` en `app.css`: anula `max-height`/`overflow`/`position: sticky` de tablas.
+
 ## Decisiones (auditoría)
 
 - Alcance **Todo**: higiene repo, arquitectura (Services), rendimiento, a11y, docs.
@@ -29,6 +40,11 @@
 - PHP: llaves siempre, property promotion, tipos explícitos, PHPDoc sobre comentarios. Correr `vendor/bin/pint --dirty --format agent`.
 - Secrets: `.env` gitignored; redactar al mostrar env vars.
 - Windows/PowerShell 5.1: sin `rg` (usar grep tool); sin `&&` (usar `;`).
+
+## Convenciones de acciones de fila
+
+- Acciones de fila = `.icon-btn` / `.icon-btn-danger` / `.icon-btn-success` (definidas en `app.css`) con iconos del set `x-icon`, siempre con `aria-label` + `title`; formularios POST sin `class="inline"` (el `div.flex` los alinea).
+- `<th>`/`<td>` «Acciones» solo si el usuario tiene al menos una acción; texto largo con `truncate` + `title`; conservar `puedeEscribir()`, `@csrf/@method` y `onsubmit confirm()`.
 
 ## Convenciones de paginación
 

@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Equipos desincorporados" subtitle="Bajas del inventario con su tipo, destino y motivo" icon="inbox">
             <x-slot name="actions">
@@ -79,13 +79,13 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Fecha</th>
+                            <th class="table-col-fija">Fecha</th>
                             <th>Equipo</th>
-                            <th class="hidden whitespace-nowrap md:table-cell">Tipo de desincorporación</th>
-                            <th class="hidden lg:table-cell">Destinatario / destino</th>
-                            <th class="hidden xl:table-cell">Referencia</th>
-                            <th class="hidden xl:table-cell">Motivo</th>
-                            <th class="hidden md:table-cell">Registrado por</th>
+                            <th class="hidden whitespace-nowrap xl:table-cell">Tipo de desincorporación</th>
+                            <th class="hidden xl:table-cell">Destinatario / destino</th>
+                            <th class="hidden 2xl:table-cell">Referencia</th>
+                            <th class="hidden 2xl:table-cell">Motivo</th>
+                            <th class="hidden xl:table-cell">Registrado por</th>
                             @if (auth()->user()->puedeEscribir())
                                 <th class="text-right">Acciones</th>
                             @endif
@@ -95,14 +95,14 @@
                         @foreach ($desincorporados as $activo)
                             @php $baja = $activo->desincorporacion; @endphp
                             <tr>
-                                <td class="whitespace-nowrap">{{ $baja?->Fecha?->format('d/m/Y') ?? '—' }}</td>
+                                <td class="table-col-fija whitespace-nowrap">{{ $baja?->Fecha?->format('d/m/Y') ?? '—' }}</td>
                                 <td class="font-medium">
                                     <a class="link" href="{{ route('activos.show', $activo) }}">
                                         {{ $activo->Etiqueta_activo }}
                                     </a>
                                     <span class="block text-xs text-slate-500">{{ $activo->Nombre_de_activo }}</span>
                                 </td>
-                                <td class="hidden md:table-cell">
+                                <td class="hidden xl:table-cell">
                                     @php
                                         $color = match ($baja?->Tipo) {
                                             'Venta' => 'sky',
@@ -114,50 +114,58 @@
                                     @endphp
                                     <x-badge :color="$color">{{ \App\Enums\TipoDesincorporacion::etiquetaDe($baja?->Tipo) }}</x-badge>
                                 </td>
-                                <td class="hidden lg:table-cell">
+                                <td class="hidden xl:table-cell">
                                     <span class="block text-slate-700">{{ $baja?->Destinatario ?? '—' }}</span>
                                     @if ($baja?->Detalle_destino)
                                         <span class="block text-xs text-slate-500">{{ $baja->Detalle_destino }}</span>
                                     @endif
                                 </td>
-                                <td class="hidden text-slate-500 xl:table-cell">{{ $baja?->Referencia ?? '—' }}</td>
-                                <td class="hidden max-w-xs text-slate-500 xl:table-cell">{{ filled($baja?->Motivo) ? \Illuminate\Support\Str::limit($baja->Motivo, 60) : '—' }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ $baja?->usuario?->name ?? '—' }}</td>
+                                <td class="hidden text-slate-500 2xl:table-cell">{{ $baja?->Referencia ?? '—' }}</td>
+                                <td class="hidden max-w-xs text-slate-500 2xl:table-cell">{{ filled($baja?->Motivo) ? \Illuminate\Support\Str::limit($baja->Motivo, 60) : '—' }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">{{ $baja?->usuario?->name ?? '—' }}</td>
                                 @if (auth()->user()->puedeEscribir())
                                     <td class="text-right whitespace-nowrap">
-                                        @if ($baja)
-                                            <x-dropdown align="right" width="56">
-                                                <x-slot name="trigger">
-                                                    <button type="button" class="link">Carta</button>
-                                                </x-slot>
-                                                <x-slot name="content">
-                                                    @foreach (\App\Enums\FormatoCarta::opciones() as $valor => $etiqueta)
-                                                        <a class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50" href="{{ route('desincorporados.carta.activo', array_merge(['desincorporacion' => $baja->id], ['formato' => $valor])) }}">
-                                                            {{ $etiqueta }}
-                                                        </a>
-                                                    @endforeach
-                                                </x-slot>
-                                            </x-dropdown>
-                                            <button type="button" class="link ms-2"
-                                                    @click="$dispatch('open-modal', 'editar-desincorporacion'); $dispatch('set-editar-desincorporacion', @js([
-                                                        'id' => $baja->id,
-                                                        'tipo' => $baja->Tipo,
-                                                        'destinatario' => $baja->Destinatario,
-                                                        'detalle_destino' => $baja->Detalle_destino,
-                                                        'referencia' => $baja->Referencia,
-                                                        'monto' => $baja->Monto,
-                                                        'moneda' => $baja->Moneda,
-                                                        'fecha' => $baja->Fecha?->format('Y-m-d'),
-                                                        'motivo' => $baja->Motivo,
-                                                    ]))">
-                                                Editar
-                                            </button>
-                                        @endif
-                                        <form method="POST" action="{{ route('activos.reincorporar', $activo) }}" class="inline"
-                                              onsubmit="return confirm('¿Reincorporar este equipo al inventario activo? La baja quedará anulada.')">
-                                            @csrf
-                                            <button type="submit" class="link ms-2 text-emerald-600">Reincorporar</button>
-                                        </form>
+                                        <div class="flex items-center justify-end gap-0.5">
+                                            @if ($baja)
+                                                <x-dropdown align="right" width="56">
+                                                    <x-slot name="trigger">
+                                                        <button type="button" class="icon-btn" title="Carta" aria-label="Emitir carta de desincorporación" aria-haspopup="true">
+                                                            <x-icon name="document" :size="18" />
+                                                        </button>
+                                                    </x-slot>
+                                                    <x-slot name="content">
+                                                        @foreach (\App\Enums\FormatoCarta::opciones() as $valor => $etiqueta)
+                                                            <a class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50" href="{{ route('desincorporados.carta.activo', array_merge(['desincorporacion' => $baja->id], ['formato' => $valor])) }}">
+                                                                {{ $etiqueta }}
+                                                            </a>
+                                                        @endforeach
+                                                    </x-slot>
+                                                </x-dropdown>
+                                                <button type="button" class="icon-btn"
+                                                        title="Editar" aria-label="Editar la desincorporación"
+                                                        @click="$dispatch('open-modal', 'editar-desincorporacion'); $dispatch('set-editar-desincorporacion', @js([
+                                                            'id' => $baja->id,
+                                                            'tipo' => $baja->Tipo,
+                                                            'destinatario' => $baja->Destinatario,
+                                                            'detalle_destino' => $baja->Detalle_destino,
+                                                            'referencia' => $baja->Referencia,
+                                                            'monto' => $baja->Monto,
+                                                            'moneda' => $baja->Moneda,
+                                                            'fecha' => $baja->Fecha?->format('Y-m-d'),
+                                                            'motivo' => $baja->Motivo,
+                                                        ]))">
+                                                    <x-icon name="pencil" :size="18" />
+                                                </button>
+                                            @endif
+                                            <form method="POST" action="{{ route('activos.reincorporar', $activo) }}"
+                                                  onsubmit="return confirm('¿Reincorporar este equipo al inventario activo? La baja quedará anulada.')">
+                                                @csrf
+                                                <button type="submit" class="icon-btn icon-btn-success"
+                                                        title="Reincorporar" aria-label="Reincorporar {{ $activo->Etiqueta_activo }} al inventario activo">
+                                                    <x-icon name="refresh" :size="18" />
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 @endif
                             </tr>

@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Equipos" subtitle="Inventario de activos de TI" icon="cube">
             <x-slot name="actions">
@@ -115,16 +115,16 @@
                     <thead>
                         <tr>
                             @if (auth()->user()->puedeEscribir())
-                                <th class="w-10">
+                                <th class="table-col-chk">
                                     <x-sel-todos />
                                 </th>
                             @endif
-                            <th>Etiqueta</th>
+                            <th class="{{ auth()->user()->puedeEscribir() ? 'table-col-fija-2' : 'table-col-fija' }}">Etiqueta</th>
                             <th>Nombre</th>
-                            <th class="hidden md:table-cell">Serial</th>
-                            <th class="hidden md:table-cell">Categoría</th>
-                            <th class="hidden lg:table-cell">Ubicación</th>
-                            <th class="hidden lg:table-cell">Asignado a</th>
+                            <th class="hidden xl:table-cell">Serial</th>
+                            <th class="hidden xl:table-cell">Categoría</th>
+                            <th class="hidden 2xl:table-cell">Ubicación</th>
+                            <th class="hidden 2xl:table-cell">Asignado a</th>
                             <th>Estado</th>
                             <th class="text-right">Acciones</th>
                         </tr>
@@ -133,32 +133,41 @@
                         @foreach ($activos as $activo)
                             <tr>
                                 @if (auth()->user()->puedeEscribir())
-                                    <td class="w-10">
+                                    <td class="table-col-chk">
                                         <x-sel-fila :valor="$activo->id" :etiqueta="$activo->Etiqueta_activo" />
                                     </td>
                                 @endif
-                                <td class="font-medium">
+                                <td class="{{ auth()->user()->puedeEscribir() ? 'table-col-fija-2' : 'table-col-fija' }} font-medium">
                                     <a class="link" href="{{ route('activos.show', $activo) }}">
                                         {{ $activo->Etiqueta_activo }}
                                     </a>
                                 </td>
-                                <td>{{ $activo->Nombre_de_activo }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ $activo->Serial ?? '—' }}</td>
-                                <td class="hidden text-slate-500 md:table-cell">{{ $activo->Categoria ?? '—' }}</td>
-                                <td class="hidden text-slate-500 lg:table-cell">{{ $activo->Ubicacion ?? '—' }}</td>
-                                <td class="hidden text-slate-500 lg:table-cell">{{ $activo->AsignadoA ?? '—' }}</td>
+                                <td class="max-w-[16rem] truncate" title="{{ $activo->Nombre_de_activo }}">{{ $activo->Nombre_de_activo }}</td>
+                                <td class="hidden whitespace-nowrap text-slate-500 xl:table-cell">{{ $activo->Serial ?? '—' }}</td>
+                                <td class="hidden text-slate-500 xl:table-cell">{{ $activo->Categoria ?? '—' }}</td>
+                                <td class="hidden max-w-[12rem] truncate text-slate-500 2xl:table-cell" title="{{ $activo->Ubicacion }}">{{ $activo->Ubicacion ?? '—' }}</td>
+                                <td class="hidden max-w-[12rem] truncate text-slate-500 2xl:table-cell" title="{{ $activo->AsignadoA }}">{{ $activo->AsignadoA ?? '—' }}</td>
                                 <td><x-status-badge :grupo="$activo->estadoCatalogo?->Grupo" /></td>
                                 <td class="text-right whitespace-nowrap">
-                                    <a href="{{ route('activos.show', $activo) }}" class="link">Ver</a>
-                                    @if (auth()->user()->puedeEscribir())
-                                        <a href="{{ route('activos.edit', $activo) }}" class="link ms-3">Editar</a>
-                                        @if ($activo->estadoCatalogo?->Grupo !== 'Desincorporado')
-                                            <button type="button" class="link ms-3 text-rose-600"
-                                                    @click="$dispatch('open-modal', 'desincorporar-activo'); $dispatch('set-desincorporar', {{ $activo->id }})">
-                                                Desincorporar
-                                            </button>
+                                    <div class="flex items-center justify-end gap-0.5">
+                                        <a href="{{ route('activos.show', $activo) }}" class="icon-btn"
+                                           title="Ver" aria-label="Ver {{ $activo->Etiqueta_activo }}">
+                                            <x-icon name="eye" :size="18" />
+                                        </a>
+                                        @if (auth()->user()->puedeEscribir())
+                                            <a href="{{ route('activos.edit', $activo) }}" class="icon-btn"
+                                               title="Editar" aria-label="Editar {{ $activo->Etiqueta_activo }}">
+                                                <x-icon name="pencil" :size="18" />
+                                            </a>
+                                            @if ($activo->estadoCatalogo?->Grupo !== 'Desincorporado')
+                                                <button type="button" class="icon-btn icon-btn-danger"
+                                                        title="Desincorporar" aria-label="Desincorporar {{ $activo->Etiqueta_activo }}"
+                                                        @click="$dispatch('open-modal', 'desincorporar-activo'); $dispatch('set-desincorporar', {{ $activo->id }})">
+                                                    <x-icon name="trash" :size="18" />
+                                                </button>
+                                            @endif
                                         @endif
-                                    @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -216,14 +225,21 @@
                         </dl>
 
                         <div class="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-3">
-                            <a href="{{ route('activos.show', $activo) }}" class="link text-sm">Ver</a>
+                            <a href="{{ route('activos.show', $activo) }}" class="icon-btn"
+                               title="Ver" aria-label="Ver {{ $activo->Etiqueta_activo }}">
+                                <x-icon name="eye" :size="18" />
+                            </a>
                             @if (auth()->user()->puedeEscribir())
-                                <div class="flex items-center gap-3">
-                                    <a href="{{ route('activos.edit', $activo) }}" class="link text-sm">Editar</a>
+                                <div class="flex items-center gap-0.5">
+                                    <a href="{{ route('activos.edit', $activo) }}" class="icon-btn"
+                                       title="Editar" aria-label="Editar {{ $activo->Etiqueta_activo }}">
+                                        <x-icon name="pencil" :size="18" />
+                                    </a>
                                     @if ($activo->estadoCatalogo?->Grupo !== 'Desincorporado')
-                                        <button type="button" class="text-sm font-medium text-rose-600 hover:underline"
+                                        <button type="button" class="icon-btn icon-btn-danger"
+                                                title="Desincorporar" aria-label="Desincorporar {{ $activo->Etiqueta_activo }}"
                                                 @click="$dispatch('open-modal', 'desincorporar-activo'); $dispatch('set-desincorporar', {{ $activo->id }})">
-                                            Desincorporar
+                                            <x-icon name="trash" :size="18" />
                                         </button>
                                     @endif
                                 </div>

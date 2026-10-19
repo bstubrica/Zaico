@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
         <x-page-header title="Historial de asignaciones" subtitle="Trazabilidad de entregas y devoluciones" icon="clock">
             <x-slot name="actions">
@@ -55,18 +55,18 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Fecha asignación</th>
+                            <th class="table-col-fija">Fecha asignación</th>
                             <th>Equipo</th>
                             <th>Persona</th>
-                            <th class="hidden md:table-cell">Devuelto</th>
+                            <th class="hidden xl:table-cell">Devuelto</th>
                             <th>Estado</th>
-                            <th class="hidden lg:table-cell">Observaciones</th>
+                            <th class="hidden 2xl:table-cell">Observaciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($asignaciones as $asignacion)
                             <tr>
-                                <td>{{ $asignacion->Fecha_asignacion?->format('d/m/Y') }}</td>
+                                <td class="table-col-fija">{{ $asignacion->Fecha_asignacion?->format('d/m/Y') }}</td>
                                 <td class="font-medium">
                                     <a class="link" href="{{ route('activos.show', $asignacion->fk_Activo) }}">
                                         {{ $asignacion->activo?->Etiqueta_activo }}
@@ -74,7 +74,7 @@
                                     <span class="block text-xs text-slate-500">{{ $asignacion->activo?->Nombre_de_activo }}</span>
                                 </td>
                                 <td>{{ $asignacion->personal?->NombreCompleto ?? '—' }}</td>
-                                <td class="hidden md:table-cell">{{ $asignacion->Fecha_devolucion?->format('d/m/Y') ?? '—' }}</td>
+                                <td class="hidden xl:table-cell">{{ $asignacion->Fecha_devolucion?->format('d/m/Y') ?? '—' }}</td>
                                 <td>
                                     @if ($asignacion->Estado === 'Activa')
                                         <x-badge color="sky" :dot="true">Activa</x-badge>
@@ -82,7 +82,7 @@
                                         <x-badge color="slate" :dot="true">{{ $asignacion->Estado }}</x-badge>
                                     @endif
                                 </td>
-                                <td class="hidden text-slate-500 lg:table-cell">{{ filled($asignacion->Observaciones) ? \Illuminate\Support\Str::limit($asignacion->Observaciones, 60) : '—' }}</td>
+                                <td class="hidden text-slate-500 2xl:table-cell">{{ filled($asignacion->Observaciones) ? \Illuminate\Support\Str::limit($asignacion->Observaciones, 60) : '—' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
