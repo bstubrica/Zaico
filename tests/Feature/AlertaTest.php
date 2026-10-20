@@ -120,6 +120,55 @@ class AlertaTest extends TestCase
         ]);
     }
 
+    public function test_garantia_de_compra_posterior_al_horizonte_no_genera_alerta(): void
+    {
+        Notification::fake();
+
+        $activo = $this->activo();
+
+        // Compra fuera de la ventana (garantia_dias = 30 por defecto): nunca
+        // puede vencer dentro de los próximos 30 días.
+        Compra::create([
+            'fk_activo' => $activo->id,
+            'Fecha_Compra' => now()->startOfDay()->addDays(45),
+            'Tiempo_garantia' => '12 meses',
+        ]);
+
+        $this->artisan('inventario:alertas')->assertSuccessful();
+
+        $this->assertDatabaseMissing('ALERTAS', [
+            'Tipo' => Alerta::TIPO_GARANTIA,
+            'fk_activo' => $activo->id,
+        ]);
+    }
+
+    public function test_garantia_prefiltra_las_compras_por_fecha_en_sql(): void
+    {
+        Notification::fake();
+
+        $activo = $this->activo();
+
+        Compra::create([
+            'fk_activo' => $activo->id,
+            'Fecha_Compra' => now()->startOfDay()->subMonths(12)->addDays(10),
+            'Tiempo_garantia' => '12 meses',
+        ]);
+
+        DB::enableQueryLog();
+        $this->artisan('inventario:alertas')->assertSuccessful();
+        $consultas = collect(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        // El horizonte se descarta en la base, no en PHP: sin ese filtro la
+        // generación vuelve a cargar en memoria todas las COMPRAS.
+        $prefiltradas = $consultas
+            ->filter(fn (array $consulta) => str_contains($consulta['query'], 'COMPRAS')
+                && str_contains($consulta['query'], '"Fecha_Compra" <='))
+            ->count();
+
+        $this->assertSame(1, $prefiltradas);
+    }
+
     public function test_al_resolver_la_condicion_la_alerta_se_marca_resuelta(): void
     {
         Notification::fake();

@@ -8,7 +8,8 @@
 - **2026-10-19 — servidores, nomenclatura y selector de filas**: servidores + NICs, nomenclatura estricta (`Nomenclatura.md`) y selector de filas (15, 25, 50, 100) en `activos.index`. Tests y Vite build ✅.
 - **2026-10-20 — script de instalación Windows**: `setup.ps1` (+ `setup.cmd`) idempotente con **PostgreSQL por defecto** (valida PHP 8.3+/Composer 2/Node 18+ y conexión PG antes de tocar nada; aborta con instrucciones si PG caído → `-Database sqlite` como alternativa). Resumen con login por `username`. Doc en README y DOCUMENTACION §5.
 - **2026-10-20 — exportación multi-entidad CSV**: `importaciones/exportar?entidad=` con 8 entidades (activos, personal, asignaciones, mantenimientos, desincorporaciones, catálogos, auditoría y usuarios); auditoría/usuarios solo Admin. Selector en la UI, tests en verde.
-- **Tests:** 278 / 962 aserciones ✅ (SQLite en memoria):
+- **2026-10-20 — rendimiento**: migración `add_performance_indexes` (índices `ASIGNACIONES.Fecha_asignacion`, `ACTIVOS.Creado_el` + GIN `pg_trgm` **solo pgsql** sobre `Nombre_de_activo`/`Serial`/`Etiqueta_activo`/`Modelo`; `ALERTAS` no: `uniq_alertas_tipo_activo` ya cubre `(Tipo, fk_activo)`). `AlertaService`: filtro `Fecha_Compra <= límite` en SQL + `lazy(500)`. Layout: total de notificaciones con `count()` (compartido) + `take(8)`. `setup.ps1 -Optimize` (`php artisan optimize`) + docs. Reglas en `AGENTS.md # Rendimiento`.
+- **Tests:** 280 / 966 aserciones ✅ (SQLite en memoria):
   `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`.
 - **Bases:** dev local en SQLite (`database/database.sqlite`); pgsql 18 nativo en 5432. Laravel Boost MCP.
 
@@ -44,6 +45,7 @@
 - Leer `memory.md` antes de cambios; actualizarlo después; < 100 líneas (regla en `AGENTS.md`).
 - Lógica en `app/Services` (inyección por constructor); Form Requests; `RuntimeException` para reglas; auditar en `HISTORIAL_EVENTOS`; sin DELETE físico en entidades; máx. 1 asignación `Activa` por activo.
 - PHP: llaves siempre, property promotion, tipos explícitos. `vendor/bin/pint --dirty --format agent`.
+- Rendimiento (detalle en `AGENTS.md # Rendimiento`): eager + `lazy(500)`, filtros en SQL, SQL pgsql condicionado a `DB::getDriverName()`, `php artisan optimize` solo en producción (`optimize:clear` en dev).
 - Acciones de fila: `.icon-btn` con `x-icon` y `aria-label`/`title`. Tablas con `.table-wrap`.
 
 ## Desincorporaciones

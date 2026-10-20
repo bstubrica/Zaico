@@ -42,10 +42,17 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - `ImportacionService` debe mantener paridad bidireccional (*round-trip*): auto-detecta delimitador (coma o punto y coma) e interpreta los campos extendidos (`Direccion_MAC`, `IP`, datos de servidor, `Numero_factura`, `Tiempo_garantia`).
 - Cobertura de tests: `tests/Feature/ExportacionImportableTest.php`, `tests/Feature/ExportacionEntidadesTest.php` y `tests/Feature/ImportacionTest.php`.
 
+# Rendimiento
+
+- Migración `add_performance_indexes`: índices en `ASIGNACIONES.Fecha_asignacion` y `ACTIVOS.Creado_el`, y **solo en pgsql** índices GIN `pg_trgm` sobre `Nombre_de_activo`, `Serial`, `Etiqueta_activo`, `Modelo` (el `ilike` de `BusquedaAproximada` con comodín inicial no usa B-tree). Bloques pgsql siempre condicionados a `DB::getDriverName() === 'pgsql'` para no romper los tests en SQLite. `ALERTAS` no necesita índice nuevo: `uniq_alertas_tipo_activo` ya cubre `(Tipo, fk_activo)`.
+- Consultas: eager loading (`->with(...)`) en todo listado; `->lazy(500)` para recorridos que solo se itera (`AlertaService`, exportaciones); el filtro que se pueda hacer en SQL va en SQL, no en PHP (p. ej. `COMPRAS.Fecha_Compra` en `AlertaService::alertasGarantiaPorVencer`). Nada de `->get()` completo sobre tablas grandes para recorrerlas.
+- Vistas del layout (`layouts/app.blade.php` y `layouts/navigation.blade.php`): el total de notificaciones no leídas se calcula **una sola vez** por petición con `count()` + `take(8)`; no leer `unreadNotifications` completo en cada página. Cualquier badge nuevo sigue este patrón (conteo ligero, tope `min(n, 99)`).
+- Producción: `php artisan optimize` (config/rutas/vistas), vía `setup.ps1 -Optimize`. Tras cambiar `.env`, rutas o plantillas: `php artisan optimize:clear` (nunca dejar la caché vieja en desarrollo, porque oculta cambios).
+
 # Puesta en marcha (Windows)
 
 - `setup.ps1` (wrapper: `setup.cmd`) instala y configura el sistema en un equipo nuevo; es **idempotente** y valida requisitos antes de tocar nada: PHP 8.3+ con extensiones, Composer 2+, Node 18+ y **conexión a PostgreSQL** (motor por defecto).
-- Si PostgreSQL no responde, el script aborta con instrucciones; la alternativa sin servidor es `-Database sqlite`. Otros parámetros: `-Fresh` (destruye datos), `-SkipBuild`, `-Serve`, `-PgPassword`.
+- Si PostgreSQL no responde, el script aborta con instrucciones; la alternativa sin servidor es `-Database sqlite`. Otros parámetros: `-Fresh` (destruye datos), `-SkipBuild`, `-Serve`, `-PgPassword`, `-Optimize` (producción: `php artisan optimize`).
 - Crea las bases `Zaico` y `Zaico_test`, `.env` (nunca lo sobreescribe), migraciones + seeders, `storage:link` y assets Vite. Documentación en `README.md` y `DOCUMENTACION.md` §5.
 - Prueba de concepto al tocar el script: `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Database sqlite -SkipBuild` debe terminar en verde (no destructiva sin `-Fresh`).
 

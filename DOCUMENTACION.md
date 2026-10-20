@@ -208,7 +208,7 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1          # PostgreSQL (por 
 powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Database sqlite   # sin servidor
 ```
 
-El script valida versiones y conexión a PostgreSQL, y luego ejecuta los pasos 1–4 siguientes. Parámetros: `-Fresh` (recrea la BD, destruye datos), `-SkipBuild` (omite npm), `-Serve` (arranca al terminar), `-PgPassword`.
+El script valida versiones y conexión a PostgreSQL, y luego ejecuta los pasos 1–4 siguientes. Parámetros: `-Fresh` (recrea la BD, destruye datos), `-SkipBuild` (omite npm), `-Serve` (arranca al terminar), `-PgPassword`, `-Optimize` (ejecuta `php artisan optimize` al terminar: cache de config, rutas y vistas, recomendado en producción; al modificar `.env` o rutas ejecutar `php artisan optimize:clear`).
 
 **Manual (cualquier sistema):**
 
@@ -232,6 +232,8 @@ php artisan serve             # http://127.0.0.1:8000
 ```
 
 > El script `composer run setup` automatiza los pasos 1–4.
+
+> En el servidor de producción, tras la instalación, ejecuta `php artisan optimize` (cache de config, rutas y vistas; también disponible como `.\setup.ps1 -Optimize`). Después de cambiar `.env`, rutas o plantillas, corre `php artisan optimize:clear` y vuelve a optimizar.
 
 ### 5.3 Variables de entorno clave (`.env`)
 

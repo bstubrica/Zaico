@@ -149,9 +149,15 @@ class AlertaService
         $limite = $hoy->copy()->addDays($dias);
         $alertas = [];
 
+        // Prefiltro en SQL: la garantía calculada nunca vence antes de la
+        // compra, así que una compra posterior al horizonte no puede caer en
+        // la ventana; así no se cargan en memoria las COMPRAS fuera de rango.
+        // `lazy` procesa por bloques de 500 (con eager load por bloque).
         Compra::query()
             ->whereNotNull('Fecha_Compra')
+            ->where('Fecha_Compra', '<=', $limite->toDateString())
             ->with('activo')
+            ->lazy(500)
             ->each(function (Compra $compra) use (&$alertas, $hoy, $limite): void {
                 $vence = $this->vencimientoGarantia($compra);
 

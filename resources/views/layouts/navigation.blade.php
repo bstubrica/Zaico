@@ -65,7 +65,7 @@
         @endforeach
 
         @if (auth()->user()->puedeEscribir())
-            @php $noLeidas = auth()->user()->unreadNotifications->count(); @endphp
+            @php $noLeidas = $noLeidasTotal ?? auth()->user()->unreadNotifications()->count(); @endphp
             <div>
                 <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Atención</p>
                 <div class="space-y-1">

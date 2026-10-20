@@ -13,6 +13,8 @@
       5. Ejecuta migraciones + seeders (idempotente).
       6. Crea el enlace de storage para evidencias.
       7. Instala dependencias de Node y compila los assets (Vite).
+      8. Con -Optimize, ejecuta `php artisan optimize` (cache de config,
+         rutas y vistas) para el servidor de produccion.
 
     Es idempotente: puede ejecutarse las veces que haga falta sin romper nada.
 
@@ -44,6 +46,11 @@
 .PARAMETER Serve
     Levanta `php artisan serve` al terminar (bloquea la consola).
 
+.PARAMETER Optimize
+    Ejecuta `php artisan optimize` al terminar (cache de config, rutas y
+    vistas). Recomendado en el servidor de produccion; en desarrollo se omite
+    para no cachear cambios de .env, rutas o vistas.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\setup.ps1
 
@@ -52,6 +59,9 @@
 
 .EXAMPLE
     .\setup.ps1 -PgPassword "mi_clave" -Fresh -Serve
+
+.EXAMPLE
+    .\setup.ps1 -Optimize
 #>
 
 [CmdletBinding()]
@@ -67,7 +77,8 @@ param(
 
     [switch]$Fresh,
     [switch]$SkipBuild,
-    [switch]$Serve
+    [switch]$Serve,
+    [switch]$Optimize
 )
 
 $ErrorActionPreference = 'Stop'
@@ -438,6 +449,16 @@ if (-not $SkipBuild) {
     if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'public\build\manifest.json'))) {
         Write-Warn 'No existe public/build/manifest.json: la aplicacion fallara al cargar. Ejecuta `npm run build` sin -SkipBuild.'
     }
+}
+
+# --- 8. Cache de rendimiento (produccion) -------------------------------------
+
+if ($Optimize) {
+    Write-Step 'Optimizando la aplicacion (php artisan optimize)'
+    Invoke-Native -File $php -Arguments @('artisan', 'optimize', '--no-interaction') -ErrorMessage 'Fallo `php artisan optimize`'
+    Write-Ok 'Cache de config, rutas y vistas generada (al retocar .env/rutas: `php artisan optimize:clear`)'
+} else {
+    Write-Warn 'Cache de optimizacion omitida: usa -Optimize en el servidor de produccion'
 }
 
 # --- Resumen -----------------------------------------------------------------

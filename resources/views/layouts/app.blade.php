@@ -22,6 +22,18 @@
                  class="fixed inset-0 z-40 bg-slate-900/60 lg:hidden"></div>
 
             <!-- Barra lateral -->
+            @php
+                // Notificaciones: una consulta de conteo (compartida con la
+                // barra lateral) y otra limitada a las 8 filas del desplegable,
+                // en lugar de traer todas las no leídas en cada petición.
+                $noLeidasTotal = 0;
+                $noLeidas = collect();
+
+                if (Auth::user()->puedeEscribir()) {
+                    $noLeidasTotal = Auth::user()->unreadNotifications()->count();
+                    $noLeidas = Auth::user()->unreadNotifications()->take(8)->get();
+                }
+            @endphp
             @include('layouts.navigation')
 
             <!-- Contenido -->
@@ -63,9 +75,9 @@
                                 <button class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none"
                                         aria-label="Notificaciones">
                                     <x-icon name="bell" :size="20" />
-                                    @if ($noLeidas->count() > 0)
+                                    @if ($noLeidasTotal > 0)
                                         <span class="absolute -end-0.5 -top-0.5 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                                            {{ min($noLeidas->count(), 99) }}
+                                            {{ min($noLeidasTotal, 99) }}
                                         </span>
                                     @endif
                                 </button>
@@ -74,7 +86,7 @@
                             <x-slot name="content">
                                 <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                                     <p class="text-sm font-semibold text-slate-800">Notificaciones</p>
-                                    @if ($noLeidas->count() > 0)
+                                    @if ($noLeidasTotal > 0)
                                         <form method="POST" action="{{ route('notificaciones.leidas') }}">
                                             @csrf
                                             <button type="submit" class="text-xs font-medium text-brand-600 hover:text-brand-700">
@@ -85,7 +97,7 @@
                                 </div>
 
                                 <div class="max-h-80 overflow-y-auto">
-                                    @forelse ($noLeidas->take(8) as $notificacion)
+                                    @forelse ($noLeidas as $notificacion)
                                         <a href="{{ isset($notificacion->data['fk_activo']) ? route('activos.show', $notificacion->data['fk_activo']) : route('alertas.index') }}"
                                            class="block border-b border-slate-50 px-4 py-3 hover:bg-slate-50">
                                             <p class="text-sm font-medium text-slate-800">{{ $notificacion->data['titulo'] ?? 'Alerta' }}</p>

@@ -85,6 +85,7 @@ Parámetros útiles:
 | `-SkipBuild` | Omite `npm install` / `npm run build` |
 | `-Serve` | Levanta `php artisan serve` al terminar |
 | `-PgPassword "clave"` | Contraseña de PostgreSQL (si no, la pide) |
+| `-Optimize` | Al terminar: `php artisan optimize` (producción: cache de config, rutas y vistas) |
 
 ### Manual (cualquier sistema)
 
