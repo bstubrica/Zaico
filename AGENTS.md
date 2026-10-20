@@ -42,6 +42,13 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - `ImportacionService` debe mantener paridad bidireccional (*round-trip*): auto-detecta delimitador (coma o punto y coma) e interpreta los campos extendidos (`Direccion_MAC`, `IP`, datos de servidor, `Numero_factura`, `Tiempo_garantia`).
 - Cobertura de tests: `tests/Feature/ExportacionImportableTest.php`, `tests/Feature/ExportacionEntidadesTest.php` y `tests/Feature/ImportacionTest.php`.
 
+# Puesta en marcha (Windows)
+
+- `setup.ps1` (wrapper: `setup.cmd`) instala y configura el sistema en un equipo nuevo; es **idempotente** y valida requisitos antes de tocar nada: PHP 8.3+ con extensiones, Composer 2+, Node 18+ y **conexión a PostgreSQL** (motor por defecto).
+- Si PostgreSQL no responde, el script aborta con instrucciones; la alternativa sin servidor es `-Database sqlite`. Otros parámetros: `-Fresh` (destruye datos), `-SkipBuild`, `-Serve`, `-PgPassword`.
+- Crea las bases `Zaico` y `Zaico_test`, `.env` (nunca lo sobreescribe), migraciones + seeders, `storage:link` y assets Vite. Documentación en `README.md` y `DOCUMENTACION.md` §5.
+- Prueba de concepto al tocar el script: `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Database sqlite -SkipBuild` debe terminar en verde (no destructiva sin `-Fresh`).
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

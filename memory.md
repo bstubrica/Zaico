@@ -6,6 +6,7 @@
 
 - **2026-10-19 — exportación completa e interpretable CSV**: exportación streaming (coma RFC 4180 + BOM UTF-8) en paridad 1:1 con `ImportacionService`. Auto-detección delimitador `,` y `;`. Mapeo completo de red, NICs, compras y servidor.
 - **2026-10-19 — servidores, nomenclatura y selector de filas**: servidores + NICs, nomenclatura estricta (`Nomenclatura.md`) y selector de filas (15, 25, 50, 100) en `activos.index`. Tests y Vite build ✅.
+- **2026-10-20 — script de instalación Windows**: `setup.ps1` (+ `setup.cmd`) idempotente con **PostgreSQL por defecto** (valida PHP 8.3+/Composer 2/Node 18+ y conexión PG antes de tocar nada; aborta con instrucciones si PG caído → `-Database sqlite` como alternativa). Resumen con login por `username`. Doc en README y DOCUMENTACION §5.
 - **2026-10-20 — exportación multi-entidad CSV**: `importaciones/exportar?entidad=` con 8 entidades (activos, personal, asignaciones, mantenimientos, desincorporaciones, catálogos, auditoría y usuarios); auditoría/usuarios solo Admin. Selector en la UI, tests en verde.
 - **Tests:** 278 / 962 aserciones ✅ (SQLite en memoria):
   `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`.
@@ -53,6 +54,7 @@
 
 ## Comandos útiles
 
+- Instalación Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Database sqlite -SkipBuild` (verde = OK; sin `-Fresh` no destructiva)
 - Tests (SQLite): `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`
 - BD local desde cero: `New-Item database\database.sqlite -Force; php artisan migrate --seed`
 - Pint: `vendor/bin/pint --dirty --format agent`

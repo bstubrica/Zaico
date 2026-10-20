@@ -196,10 +196,21 @@ Zaico/
 
 - PHP 8.3 con extensiones `pdo_pgsql`, `pgsql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`.
 - Composer 2.
-- Node.js + npm.
-- PostgreSQL 18 en ejecución.
+- Node.js 18+ con npm.
+- PostgreSQL 18 en ejecución (base `Zaico`; `Zaico_test` para las pruebas). Como alternativa ligera sin servidor, el script de Windows permite `-Database sqlite`.
 
 ### 5.2 Puesta en marcha
+
+**Windows (script automático, idempotente):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1          # PostgreSQL (por defecto)
+powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Database sqlite   # sin servidor
+```
+
+El script valida versiones y conexión a PostgreSQL, y luego ejecuta los pasos 1–4 siguientes. Parámetros: `-Fresh` (recrea la BD, destruye datos), `-SkipBuild` (omite npm), `-Serve` (arranca al terminar), `-PgPassword`.
+
+**Manual (cualquier sistema):**
 
 ```bash
 # 1. Dependencias PHP

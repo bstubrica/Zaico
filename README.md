@@ -61,6 +61,33 @@ siguiendo el patrón **MVC + capa de servicios**.
 
 ## Instalación
 
+### Windows (recomendado): script automático
+
+```powershell
+# Ejecutar desde la raíz del repositorio
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+`setup.ps1` (con `setup.cmd` como alias) hace todo el proceso de forma idempotente:
+
+1. Verifica requisitos y los localiza automáticamente (PHP 8.3+, Composer 2, Node 18+).
+2. Comprueba que **PostgreSQL** esté accesible (si no lo está, aborta con instrucciones).
+3. `composer install`, crea `.env` (si no existe) y genera `APP_KEY`.
+4. Crea las bases `Zaico` y `Zaico_test`, ejecuta migraciones + seeders.
+5. Crea el enlace de `storage` y compila los assets (Vite).
+
+Parámetros útiles:
+
+| Parámetro | Efecto |
+|---|---|
+| `-Database sqlite` | Sin PostgreSQL: usa `database/database.sqlite` |
+| `-Fresh` | Recrea la BD desde cero (**destruye datos**) |
+| `-SkipBuild` | Omite `npm install` / `npm run build` |
+| `-Serve` | Levanta `php artisan serve` al terminar |
+| `-PgPassword "clave"` | Contraseña de PostgreSQL (si no, la pide) |
+
+### Manual (cualquier sistema)
+
 ```bash
 # 1. Dependencias PHP
 composer install
@@ -82,6 +109,8 @@ php artisan serve               # http://127.0.0.1:8000
 
 > `composer run setup` automatiza los pasos 1–4. Para desarrollo, `composer run dev`
 > levanta servidor, colas, logs (Pail) y Vite en paralelo.
+
+Los usuarios de prueba inician sesión con su **usuario** (no correo): `admin` / `soporte` / `auditor`.
 
 ---
 

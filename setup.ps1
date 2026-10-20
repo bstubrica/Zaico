@@ -8,7 +8,8 @@
          automáticamente si no están en el PATH.
       2. composer install.
       3. Crea .env desde .env.example y genera APP_KEY.
-      4. Configura la base de datos (SQLite sin instalación extra, o PostgreSQL).
+      4. Configura la base de datos (PostgreSQL por defecto, o SQLite sin
+         instalacion extra con -Database sqlite).
       5. Ejecuta migraciones + seeders (idempotente).
       6. Crea el enlace de storage para evidencias.
       7. Instala dependencias de Node y compila los assets (Vite).
@@ -16,8 +17,8 @@
     Es idempotente: puede ejecutarse las veces que haga falta sin romper nada.
 
 .PARAMETER Database
-    Motor de base de datos local. `sqlite` (por defecto) no requiere instalar
-    nada; `pgsql` requiere un servidor PostgreSQL en ejecución.
+    Motor de base de datos local. `pgsql` (por defecto) requiere un servidor
+    PostgreSQL en ejecución; `sqlite` no requiere instalar nada.
 
 .PARAMETER PgHost
     Host de PostgreSQL (por defecto 127.0.0.1).
@@ -47,13 +48,16 @@
     powershell -ExecutionPolicy Bypass -File .\setup.ps1
 
 .EXAMPLE
-    .\setup.ps1 -Database pgsql -PgPassword "mi_clave" -Fresh -Serve
+    .\setup.ps1 -Database sqlite -SkipBuild
+
+.EXAMPLE
+    .\setup.ps1 -PgPassword "mi_clave" -Fresh -Serve
 #>
 
 [CmdletBinding()]
 param(
     [ValidateSet('sqlite', 'pgsql')]
-    [string]$Database = 'sqlite',
+    [string]$Database = 'pgsql',
 
     [string]$PgHost = '127.0.0.1',
     [int]$PgPort = 5432,
@@ -100,6 +104,27 @@ function Invoke-Native {
     & $File @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "$ErrorMessage (codigo de salida $LASTEXITCODE)."
+    }
+}
+
+function Get-SalidaNativa {
+    param(
+        [Parameter(Mandatory)][string]$File,
+        [string[]]$Arguments = @()
+    )
+
+    # En PowerShell 5.1, con EAP=Stop el stderr redirigido de un comando
+    # nativo (2>&1) se convierte en excepcion; se baja el EAP solo durante
+    # la captura para recoger stdout y stderr como texto plano. Devuelve
+    # tambien el codigo de salida porque dentro de una funcion no se
+    # propaga $LASTEXITCODE al ambito que llama.
+    $previo = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $texto = (& $File @Arguments 2>&1 | Out-String)
+        return [pscustomobject]@{ Texto = $texto; Codigo = $LASTEXITCODE }
+    } finally {
+        $ErrorActionPreference = $previo
     }
 }
 
@@ -222,7 +247,23 @@ if (-not $composer) {
     Write-Fail 'Composer no encontrado. Instala Composer 2 (https://getcomposer.org).'
     exit 1
 }
-Write-Ok "Composer ($composer)"
+
+$composerVersionSalida = if ($composer -like '*.phar') {
+    Get-SalidaNativa -File $php -Arguments @($composer, '--version', '--no-ansi')
+} else {
+    Get-SalidaNativa -File $composer -Arguments @('--version', '--no-ansi')
+}
+$composerVersionLine = $composerVersionSalida.Texto
+if ($composerVersionLine -notmatch 'Composer[^\d]*(\d+)\.(\d+)') {
+    Write-Fail 'No se pudo determinar la version de Composer (se requiere Composer 2).'
+    exit 1
+}
+$composerVersionDetectada = "$($Matches[1]).$($Matches[2])"
+if ([int]$Matches[1] -lt 2) {
+    Write-Fail "Se requiere Composer 2 y hay Composer $composerVersionDetectada."
+    exit 1
+}
+Write-Ok "Composer $composerVersionDetectada ($composer)"
 
 $npm = $null
 $node = $null
@@ -233,7 +274,52 @@ if (-not $SkipBuild) {
         Write-Fail 'Node.js/npm no encontrados. Instala Node.js LTS (https://nodejs.org) o usa -SkipBuild.'
         exit 1
     }
-    Write-Ok "Node $((& $node -v).Trim()) ($node)"
+    $nodeVersion = (& $node -v).Trim()
+    if ($nodeVersion -notmatch '^v(\d+)\.') {
+        Write-Fail "No se pudo interpretar la version de Node: $nodeVersion"
+        exit 1
+    }
+    if ([int]$Matches[1] -lt 18) {
+        Write-Fail "Se requiere Node.js 18+ y hay $nodeVersion."
+        exit 1
+    }
+    Write-Ok "Node $nodeVersion ($node)"
+}
+
+$psql = $null
+if ($Database -eq 'pgsql') {
+    # La contrasena se pide aqui (si no vino por parametro) para poder probar
+    # la conexion ANTES de tocar nada: si el servidor esta caido, aborta con
+    # instrucciones en lugar de dejar la instalacion a medias.
+    if ([string]::IsNullOrEmpty($PgPassword)) {
+        $securePassword = Read-Host 'Contrasena de PostgreSQL' -AsSecureString
+        $PgPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+        )
+    }
+
+    $psql = Find-Executable -Name 'psql' -Globs @('C:\Program Files\PostgreSQL\*\bin\psql.exe')
+    if ($psql) {
+        $env:PGPASSWORD = $PgPassword
+        try {
+            $testConexion = Get-SalidaNativa -File $psql -Arguments @('-h', $PgHost, '-p', $PgPort, '-U', $PgUsername, '-d', 'postgres', '-tAc', 'SELECT 1')
+            $conexionOk = ($testConexion.Codigo -eq 0 -and ($testConexion.Texto.Trim() -eq '1'))
+        } finally {
+            Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
+        }
+
+        if (-not $conexionOk) {
+            Write-Fail "No se pudo conectar a PostgreSQL en $PgHost`:$PgPort (usuario $PgUsername)."
+            Write-Host '    El servicio puede estar detenido o la autenticacion rechazada.' -ForegroundColor Yellow
+            Write-Host '    Soluciones: iniciar el servicio de PostgreSQL (servicios de Windows),' -ForegroundColor Yellow
+            Write-Host '    verificar la contrasena, o instalar sin servidor con:' -ForegroundColor Yellow
+            Write-Host '        .\setup.ps1 -Database sqlite' -ForegroundColor Gray
+            exit 1
+        }
+        Write-Ok "PostgreSQL accesible en $PgHost`:$PgPort"
+    } else {
+        Write-Warn 'psql no encontrado: no se puede verificar la conexion. Asegurate de que PostgreSQL este en ejecucion.'
+    }
 }
 
 # --- 2. Dependencias PHP -----------------------------------------------------
@@ -245,6 +331,10 @@ Write-Ok 'Dependencias PHP instaladas'
 # --- 3. Entorno --------------------------------------------------------------
 
 Write-Step 'Configurando el entorno (.env)'
+if (-not (Test-Path -LiteralPath '.env.example')) {
+    Write-Fail 'No existe .env.example. El repositorio parece incompleto.'
+    exit 1
+}
 if (-not (Test-Path -LiteralPath '.env')) {
     Copy-Item -LiteralPath '.env.example' -Destination '.env'
     Write-Ok '.env creado desde .env.example'
@@ -281,13 +371,7 @@ if ($Database -eq 'sqlite') {
         Write-Ok 'database/database.sqlite ya existe'
     }
 } else {
-    if ([string]::IsNullOrEmpty($PgPassword)) {
-        $securePassword = Read-Host 'Contrasena de PostgreSQL' -AsSecureString
-        $PgPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
-        )
-    }
-
+    # $PgPassword se recogio (o valido) en la seccion de requisitos.
     Set-EnvVar -Path $envPath -Key 'DB_CONNECTION' -Value 'pgsql'
     Set-EnvVar -Path $envPath -Key 'DB_HOST' -Value $PgHost
     Set-EnvVar -Path $envPath -Key 'DB_PORT' -Value $PgPort
@@ -296,7 +380,6 @@ if ($Database -eq 'sqlite') {
     Set-EnvVar -Path $envPath -Key 'DB_PASSWORD' -Value $PgPassword
     Write-Ok "PostgreSQL $PgHost`:$PgPort/$PgDatabase (usuario $PgUsername)"
 
-    $psql = Find-Executable -Name 'psql' -Globs @('C:\Program Files\PostgreSQL\*\bin\psql.exe')
     if ($psql) {
         # La contrasena vive solo en el entorno de este proceso y se limpia al
         # terminar: no queda expuesta para procesos hijos ni en el historial.
@@ -352,19 +435,26 @@ if (-not $SkipBuild) {
     Write-Ok 'Assets compilados'
 } else {
     Write-Warn 'Se omitio la compilacion de assets (-SkipBuild)'
+    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'public\build\manifest.json'))) {
+        Write-Warn 'No existe public/build/manifest.json: la aplicacion fallara al cargar. Ejecuta `npm run build` sin -SkipBuild.'
+    }
 }
 
 # --- Resumen -----------------------------------------------------------------
 
 Write-Step 'Configuracion terminada'
-Write-Host '    Usuarios de prueba:' -ForegroundColor White
-Write-Host '      admin@ti.local    / Admin123!' -ForegroundColor Gray
-Write-Host '      soporte@ti.local  / Soporte123!' -ForegroundColor Gray
-Write-Host '      auditor@ti.local  / Auditor123!' -ForegroundColor Gray
+Write-Host '    Usuarios de prueba (inicio de sesion por USUARIO):' -ForegroundColor White
+Write-Host '      admin     / Admin123!      (Admin)' -ForegroundColor Gray
+Write-Host '      soporte   / Soporte123!    (SoporteTecnico)' -ForegroundColor Gray
+Write-Host '      auditor   / Auditor123!    (Auditor)' -ForegroundColor Gray
 Write-Host ''
 Write-Host '    Para arrancar la aplicacion:' -ForegroundColor White
 Write-Host '      php artisan serve        ->  http://127.0.0.1:8000' -ForegroundColor Gray
 Write-Host '      composer run dev         ->  servidor + Vite + colas + logs' -ForegroundColor Gray
+Write-Host ''
+Write-Host '    Otras utilidades:' -ForegroundColor White
+Write-Host '      .\setup.ps1 -Fresh       ->  recrea la BD y siembra de cero' -ForegroundColor Gray
+Write-Host '      .\setup.ps1 -Database sqlite  ->  sin PostgreSQL instalado' -ForegroundColor Gray
 Write-Host ''
 
 if ($Serve) {
