@@ -48,7 +48,19 @@ class ImportacionService
         }
 
         try {
-            $cabeceraCruda = fgetcsv($handle, 0, ',', '"', '\\');
+            $primeraLinea = fgets($handle);
+
+            if ($primeraLinea === false || trim($primeraLinea) === '') {
+                throw new InvalidArgumentException('El archivo CSV está vacío.');
+            }
+
+            // Detección automática del delimitador (, o ;)
+            $cuentaComas = substr_count($primeraLinea, ',');
+            $cuentaPuntosYComas = substr_count($primeraLinea, ';');
+            $delimitador = ($cuentaPuntosYComas > $cuentaComas) ? ';' : ',';
+
+            rewind($handle);
+            $cabeceraCruda = fgetcsv($handle, 0, $delimitador, '"', '\\');
 
             if ($cabeceraCruda === false) {
                 throw new InvalidArgumentException('El archivo CSV está vacío.');
@@ -68,7 +80,7 @@ class ImportacionService
 
             $filas = [];
             $numero = 0;
-            while (($registro = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+            while (($registro = fgetcsv($handle, 0, $delimitador, '"', '\\')) !== false) {
                 $numero++;
 
                 if ($this->filaVacia($registro) || count($registro) < 3) {
@@ -340,6 +352,12 @@ class ImportacionService
             'Ubicacion' => $this->normalizarUbicacion($ubicacion),
             'Ubicacion_Predeterminada' => $this->normalizarUbicacion(trim($fila['ubicacion predeterminada'] ?? '')),
             'Observaciones' => $observaciones !== [] ? implode("\n", $observaciones) : null,
+            'Direccion_MAC' => ($mac = trim($fila['direccion mac'] ?? $fila['mac'] ?? '')) !== '' ? $mac : null,
+            'IP' => ($ip = trim($fila['ip'] ?? '')) !== '' ? $ip : null,
+            'Sistema_Operativo' => ($so = trim($fila['sistema operativo'] ?? '')) !== '' ? $so : null,
+            'Memoria_RAM' => ($ram = trim($fila['memoria ram'] ?? '')) !== '' ? $ram : null,
+            'Capacidad_Disco' => ($disco = trim($fila['capacidad disco'] ?? '')) !== '' ? $disco : null,
+            'Estatus_Servidor' => ($estatus = trim($fila['estatus servidor'] ?? '')) !== '' ? $estatus : null,
         ], fn ($valor) => $valor !== null);
 
         $attrs['Estado'] = $grupo;
@@ -442,6 +460,8 @@ class ImportacionService
             'Costo_compra' => ($costo = trim($fila['costo'] ?? '')) !== '' ? $costo : null,
             'Numero_Requisicion' => ($orden = trim($fila['numero de orden'] ?? '')) !== '' ? $orden : null,
             'Proveedor' => ($proveedor = trim($fila['proveedor'] ?? '')) !== '' ? $proveedor : null,
+            'Numero_factura' => ($factura = trim($fila['factura'] ?? $fila['numero de factura'] ?? '')) !== '' ? $factura : null,
+            'Tiempo_garantia' => ($garantia = trim($fila['garantia (meses)'] ?? $fila['tiempo de garantia'] ?? $fila['garantia'] ?? '')) !== '' && is_numeric($garantia) ? (int) $garantia : null,
         ], fn ($valor) => $valor !== null);
 
         $crearCompra = false;

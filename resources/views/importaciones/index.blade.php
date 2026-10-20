@@ -1,7 +1,20 @@
 <x-app-layout ancho="max-w-screen-2xl">
     <x-slot name="header">
-        <x-page-header title="Importación CSV" subtitle="Reporte custom-assets-report de Snipec IT" icon="upload">
+        <x-page-header title="Importación y Exportación CSV" subtitle="Gestión e intercambio de inventario en CSV (Snipec IT)" icon="upload">
             <x-slot name="actions">
+                <form method="GET" action="{{ route('importaciones.exportar') }}" class="flex items-end gap-2">
+                    <div>
+                        <label for="entidad" class="mb-1 block text-xs font-medium text-slate-500">Entidad a exportar</label>
+                        <select id="entidad" name="entidad" class="form-control">
+                            @foreach ($entidades as $clave => $etiqueta)
+                                <option value="{{ $clave }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-secondary">
+                        <x-icon name="download" :size="18" /> Exportar
+                    </button>
+                </form>
                 <x-badge color="slate">{{ $historial->total() }} importaciones</x-badge>
             </x-slot>
         </x-page-header>

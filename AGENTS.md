@@ -33,6 +33,15 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - Los registros legados no se rompen: solo se valida al escribir. En `UpdateActivoRequest` los campos usan `sometimes`, así que una edición parcial no revalida el nombre, pero si se envía un nombre debe cumplir la estructura del estado resultante.
 - UI: `Categoria` es un `<select>` de `CategoriaActivo::valores()` (el controlador pasa `$categorias`); `Fabricante`/`Modelo` son `required`. Al tocar nomenclatura, cubre `tests/Feature/NomenclaturaTest.php` y los formularios de activos.
 
+# Exportación e Importación CSV
+
+- El servicio `ExportacionCompletaService` genera streaming CSV (delimitador coma RFC 4180 con BOM UTF-8) y soporta **multi-entidad** vía `GET importaciones/exportar?entidad=...` (whitelist en `ExportacionCompletaService::ETIQUETAS`): `activos` (por defecto), `personal`, `asignaciones`, `mantenimientos`, `desincorporaciones`, `catalogos`, `historial`, `usuarios`.
+- El CSV de la entidad `activos` **no cambia de formato**: mantiene paridad 1:1 con `ImportacionService` (compras, asignaciones, NICs, desincorporaciones). Las demás entidades son volcados propios (no importables).
+- Restricción de rol: `historial` y `usuarios` son **solo Admin** (`ExportacionCompletaService::SOLO_ADMIN`, validado en el controlador con 403, no solo oculto en la UI); el resto Admin/SoporteTecnico como la ruta ya existente. La exportación de `usuarios` **nunca** incluye `password` ni `remember_token`.
+- La UI (`importaciones.index`) muestra un `<select>` de entidades que el controlador filtra según `isAdmin()`.
+- `ImportacionService` debe mantener paridad bidireccional (*round-trip*): auto-detecta delimitador (coma o punto y coma) e interpreta los campos extendidos (`Direccion_MAC`, `IP`, datos de servidor, `Numero_factura`, `Tiempo_garantia`).
+- Cobertura de tests: `tests/Feature/ExportacionImportableTest.php`, `tests/Feature/ExportacionEntidadesTest.php` y `tests/Feature/ImportacionTest.php`.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

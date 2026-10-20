@@ -5,24 +5,48 @@ namespace App\Http\Controllers;
 use App\Http\Requests\EliminarImportacionesRequest;
 use App\Http\Requests\ImportarCsvRequest;
 use App\Models\ImportacionLog;
+use App\Services\ExportacionCompletaService;
 use App\Services\ImportacionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ImportacionesController extends Controller
 {
-    public function __construct(private readonly ImportacionService $importaciones) {}
+    public function __construct(
+        private readonly ImportacionService $importaciones,
+        private readonly ExportacionCompletaService $exportador,
+    ) {}
 
     public function index(Request $request): View
     {
         $historial = $this->importaciones->historialImportaciones();
         $pendiente = session('importacion_pendiente');
+        $esAdmin = $request->user()->isAdmin();
+        $entidades = collect(ExportacionCompletaService::ETIQUETAS)
+            ->except($esAdmin ? [] : ExportacionCompletaService::SOLO_ADMIN)
+            ->all();
 
-        return view('importaciones.index', compact('historial', 'pendiente'));
+        return view('importaciones.index', compact('historial', 'pendiente', 'entidades'));
+    }
+
+    public function exportar(Request $request): StreamedResponse
+    {
+        $entidad = $request->query('entidad', 'activos');
+
+        if (! is_string($entidad) || ! array_key_exists($entidad, ExportacionCompletaService::ETIQUETAS)) {
+            abort(422, 'Entidad de exportación no válida.');
+        }
+
+        if (in_array($entidad, ExportacionCompletaService::SOLO_ADMIN, true) && ! $request->user()->isAdmin()) {
+            abort(403);
+        }
+
+        return $this->exportador->exportarEntidad($entidad);
     }
 
     public function store(ImportarCsvRequest $request): RedirectResponse

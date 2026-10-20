@@ -65,8 +65,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('personal/baja', [PersonalController::class, 'bajaMasiva'])
             ->name('personal.baja-masiva');
 
-        // Importación CSV: visible solo para Admin / SoporteTecnico
+        // Importación y Exportación CSV: visible solo para Admin / SoporteTecnico
         Route::get('importaciones', [ImportacionesController::class, 'index'])->name('importaciones.index');
+        Route::get('importaciones/exportar', [ImportacionesController::class, 'exportar'])
+            ->name('importaciones.exportar');
         Route::post('importaciones', [ImportacionesController::class, 'store'])
             ->middleware('throttle:importacion')
             ->name('importaciones.store');
