@@ -96,6 +96,7 @@ class SmokePantallasTest extends TestCase
             route('importaciones.show', $importacion),
             route('alertas.index'),
             route('activos.buscar'),
+            route('indicadores.index'),
         ];
 
         foreach ($rutas as $ruta) {

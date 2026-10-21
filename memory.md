@@ -9,7 +9,8 @@
 - **2026-10-20 — script de instalación Windows**: `setup.ps1` (+ `setup.cmd`) idempotente con **PostgreSQL por defecto** (valida PHP 8.3+/Composer 2/Node 18+ y conexión PG antes de tocar nada; aborta con instrucciones si PG caído → `-Database sqlite` como alternativa). Resumen con login por `username`. Doc en README y DOCUMENTACION §5.
 - **2026-10-20 — exportación multi-entidad CSV**: `importaciones/exportar?entidad=` con 8 entidades (activos, personal, asignaciones, mantenimientos, desincorporaciones, catálogos, auditoría y usuarios); auditoría/usuarios solo Admin. Selector en la UI, tests en verde.
 - **2026-10-20 — rendimiento**: migración `add_performance_indexes` (índices `ASIGNACIONES.Fecha_asignacion`, `ACTIVOS.Creado_el` + GIN `pg_trgm` **solo pgsql** sobre `Nombre_de_activo`/`Serial`/`Etiqueta_activo`/`Modelo`; `ALERTAS` no: `uniq_alertas_tipo_activo` ya cubre `(Tipo, fk_activo)`). `AlertaService`: filtro `Fecha_Compra <= límite` en SQL + `lazy(500)`. Layout: total de notificaciones con `count()` (compartido) + `take(8)`. `setup.ps1 -Optimize` (`php artisan optimize`) + docs. Reglas en `AGENTS.md # Rendimiento`.
-- **Tests:** 280 / 966 aserciones ✅ (SQLite en memoria):
+- **2026-10-21 — Reportes y KPIs**: módulo `indicadores.index`/`exportar` (`IndicadoresService`, filtros `desde/hasta` solo movimientos + `categoria/grupo` todo; 7 reportes → PDF dompdf, KPIs → CSV; gráficas SVG server-side en `components/charts/*`, en PDF como data-URI `<img>` vía `Blade::render`). Trait `Concerns\VencimientoGarantia` compartido con `AlertaService`. Índice `COMPRAS.Fecha_Compra` (ambos motores). Reglas en `AGENTS.md # Reportes y KPIs`.
+- **Tests:** 290 / 1031 aserciones ✅ (SQLite en memoria):
   `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php artisan test --compact`.
 - **Bases:** dev local en SQLite (`database/database.sqlite`); pgsql 18 nativo en 5432. Laravel Boost MCP.
 

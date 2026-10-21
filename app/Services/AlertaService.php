@@ -8,6 +8,7 @@ use App\Models\Compra;
 use App\Models\HistorialEvento;
 use App\Models\User;
 use App\Notifications\AlertaInventario;
+use App\Services\Concerns\VencimientoGarantia;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -27,6 +28,8 @@ use Illuminate\Support\Facades\Notification;
  */
 class AlertaService
 {
+    use VencimientoGarantia;
+
     /**
      * Listado paginado de alertas activas, opcionalmente filtrado por tipo.
      */
@@ -220,68 +223,5 @@ class AlertaService
         }
 
         return $activo->Actualizado_el ?? $activo->Creado_el;
-    }
-
-    private function vencimientoGarantia(Compra $compra): ?Carbon
-    {
-        $explicita = $this->fechaExplicita($compra->Garantia);
-
-        if ($explicita !== null) {
-            return $explicita;
-        }
-
-        if ($compra->Fecha_Compra === null) {
-            return null;
-        }
-
-        return $this->sumarDuracion($compra->Fecha_Compra->copy(), (string) $compra->Tiempo_garantia);
-    }
-
-    private function fechaExplicita(?string $valor): ?Carbon
-    {
-        $valor = trim((string) $valor);
-
-        if ($valor === '') {
-            return null;
-        }
-
-        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $formato) {
-            try {
-                $fecha = Carbon::createFromFormat('!'.$formato, $valor);
-            } catch (\Throwable) {
-                continue;
-            }
-
-            if ($fecha !== false && $fecha->format($formato) === $valor) {
-                return $fecha;
-            }
-        }
-
-        return null;
-    }
-
-    private function sumarDuracion(Carbon $base, string $texto): ?Carbon
-    {
-        $texto = mb_strtolower(trim($texto));
-
-        if ($texto === '' || preg_match('/(\d+(?:[.,]\d+)?)/', $texto, $coincidencia) !== 1) {
-            return null;
-        }
-
-        $cantidad = (int) round((float) str_replace(',', '.', $coincidencia[1]));
-
-        if ($cantidad <= 0) {
-            return null;
-        }
-
-        if (str_contains($texto, 'año') || str_contains($texto, 'ano') || str_contains($texto, 'year')) {
-            return $base->addYears($cantidad);
-        }
-
-        if (str_contains($texto, 'día') || str_contains($texto, 'dia') || str_contains($texto, 'day')) {
-            return $base->addDays($cantidad);
-        }
-
-        return $base->addMonths($cantidad);
     }
 }

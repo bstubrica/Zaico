@@ -39,6 +39,34 @@ class ReporteService
     }
 
     /**
+     * Genera una descarga CSV en streaming a partir de filas ya agregadas
+     * (listas cortas de arrays, p. ej. KPIs o cortes estratégicos), con el
+     * mismo formato que `exportar`: BOM UTF-8, delimitador `;` y celdas
+     * sanitizadas contra la inyección de fórmulas.
+     *
+     * @param  array<int, string>  $cabeceras
+     * @param  iterable<array<int, mixed>>  $filas
+     */
+    public function exportarFilas(string $nombreArchivo, array $cabeceras, iterable $filas): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($cabeceras, $filas) {
+            $salida = fopen('php://output', 'w');
+
+            fwrite($salida, "\xEF\xBB\xBF");
+            fputcsv($salida, array_map($this->sanearCelda(...), $cabeceras), self::DELIMITADOR);
+
+            foreach ($filas as $fila) {
+                fputcsv($salida, array_map($this->sanearCelda(...), $fila), self::DELIMITADOR);
+            }
+
+            fclose($salida);
+        }, $nombreArchivo, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache',
+        ]);
+    }
+
+    /**
      * Neutraliza la inyección de fórmulas (CSV injection): Excel/LibreOffice
      * ejecutan celdas que empiezan por `=`, `+`, `-`, `@`, tabulador o CR.
      * Se antepone un apóstrofo (forzando texto) salvo en valores numéricos.

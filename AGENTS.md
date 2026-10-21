@@ -56,6 +56,16 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - Crea las bases `Zaico` y `Zaico_test`, `.env` (nunca lo sobreescribe), migraciones + seeders, `storage:link` y assets Vite. Documentación en `README.md` y `DOCUMENTACION.md` §5.
 - Prueba de concepto al tocar el script: `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Database sqlite -SkipBuild` debe terminar en verde (no destructiva sin `-Fresh`).
 
+# Reportes y KPIs
+
+- Módulo `indicadores.index` / `indicadores.exportar` (`IndicadoresController` + `IndicadoresService`, `throttle:consulta` 120/min, cualquier usuario autenticado, solo lectura). **No tocar** el dashboard (`dashboard.blade.php`/`DashboardService`): es un módulo independiente.
+- Semántica de filtros: `categoria`/`grupo` acotan stock **y** movimientos; `desde`/`hasta` (defecto: últimos 12 meses) acotan **solo** movimientos (altas, bajas, mantenimientos, compras). El stock es fotografía actual, no se reconstruye en el pasado.
+- Agregados portables SQLite/pgsql: `mesSql()`/`aniosSql()`/`columnaSql()` condicionados a `DB::getDriverName()`. **Regla clave**: `columnaSql()` pre-entrecomilla, así que **solo** va en SQL crudo (`selectRaw`, `groupByRaw`, concatenaciones); nunca como argumento de `select()`/`where()`/`sum()`/`whereBetween()`, que vuelven a envolver y duplican comillas («no such column»). Para esos métodos usar `Tabla.Columna` sin comillas.
+- Garantías: comparten `Concerns\VencimientoGarantia` con `AlertaService` (ventana `config('zaico.alertas.garantia_dias', 30)`); al cambiar esa lógica, cubrir ambos módulos.
+- Exportación (`ExportarIndicadoresRequest`, distinto de `IndicadoresFiltrosRequest`): los 7 reportes de `IndicadoresService::REPORTES` → PDF dompdf; `KPI_RESUMEN` → CSV (`ReporteService::exportarFilas`, BOM + `;`). El `reporte()` del hijo admite `kpi-resumen`, que la pantalla rechaza.
+- Gráficas SVG server-side: componentes `resources/views/components/charts/{barras,donut,linea}.blade.php`, solo atributos de presentación y `font-family="sans-serif"` en la raíz `<svg>`. En el PDF dompdf **no** dibuja `<svg>` inline: `reporte-pdf.blade.php` serializa el gráfico con `Blade::render('<x-charts.* />', ...)` y lo embebe como `<img src="data:image/svg+xml;base64,...">`.
+- Cobertura: `tests/Feature/IndicadoresTest.php` (10 tests) + `route('indicadores.index')` en `SmokePantallasTest`.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

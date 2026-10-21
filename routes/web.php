@@ -10,6 +10,7 @@ use App\Http\Controllers\DesincorporadosController;
 use App\Http\Controllers\EstadosController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\ImportacionesController;
+use App\Http\Controllers\IndicadoresController;
 use App\Http\Controllers\MantenimientosController;
 use App\Http\Controllers\ModeloActivoController;
 use App\Http\Controllers\NotificacionesController;
@@ -108,6 +109,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('historial', [ReporteController::class, 'historial'])->name('historial');
         Route::get('mantenimientos', [ReporteController::class, 'mantenimientos'])->name('mantenimientos');
         Route::get('desincorporados', [ReporteController::class, 'desincorporados'])->name('desincorporados');
+    });
+
+    // Reportes y KPIs (pantalla + exportación): cualquier usuario autenticado
+    Route::middleware('throttle:consulta')->group(function () {
+        Route::get('indicadores', [IndicadoresController::class, 'index'])->name('indicadores.index');
+        Route::get('indicadores/exportar', [IndicadoresController::class, 'exportar'])->name('indicadores.exportar');
     });
 
     // Consulta: cualquier usuario autenticado

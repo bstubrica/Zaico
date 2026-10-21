@@ -23,6 +23,7 @@
             'enlaces' => [
                 ['ruta' => 'mantenimientos.index', 'patron' => 'mantenimientos.*', 'icono' => 'wrench', 'texto' => 'Mantenimientos'],
                 ['ruta' => 'historial.index', 'patron' => 'historial.*', 'icono' => 'clock', 'texto' => 'Historial'],
+                ['ruta' => 'indicadores.index', 'patron' => 'indicadores.*', 'icono' => 'chart', 'texto' => 'Reportes y KPIs'],
             ],
         ],
     ];
