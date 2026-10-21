@@ -61,7 +61,7 @@
             </div>
         </div>
         <p class="mt-3 text-xs text-slate-500">
-            El periodo acota los movimientos (altas, bajas, mantenimientos y compras); el stock es la fotografía actual.
+            El periodo filtra solo los movimientos (altas, bajas, mantenimientos y compras); los indicadores de stock muestran siempre el inventario actual.
         </p>
     </form>
 
@@ -72,7 +72,7 @@
         <x-stat-card label="Tasa de utilización" :value="number_format($kpis['utilizacion'], 1).' %'" icon="chart" color="emerald" />
         <x-stat-card label="Equipos disponibles" :value="number_format($kpis['disponibles'])" icon="check-circle" color="emerald" />
         <x-stat-card label="En reparación o defectuosos" :value="number_format($kpis['reparacion'])" icon="wrench" color="amber" />
-        <x-stat-card label="Garantías por vencer (30 días)" :value="number_format($kpis['garantias_por_vencer'])" icon="warning" color="amber" />
+        <x-stat-card :label="'Garantías por vencer ('.config('zaico.alertas.garantia_dias', 30).' días)'" :value="number_format($kpis['garantias_por_vencer'])" icon="warning" color="amber" />
         <x-stat-card label="Garantías vencidas" :value="number_format($kpis['garantias_vencidas'])" icon="warning" color="rose" />
         <x-stat-card label="Costo total del inventario" :value="number_format($kpis['costo_total'], 2)" icon="currency" color="slate" />
         <x-stat-card label="Altas en el periodo" :value="number_format($kpis['altas'])" icon="plus" color="sky" />

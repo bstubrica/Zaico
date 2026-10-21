@@ -20,6 +20,6 @@
     </span>
     <div class="min-w-0">
         <p class="truncate text-xs font-medium uppercase tracking-wide text-slate-500">{{ $label }}</p>
-        <p class="mt-0.5 text-2xl font-bold text-slate-900">{{ $value }}</p>
+        <p class="mt-0.5 text-2xl font-bold break-words leading-tight text-slate-900">{{ $value }}</p>
     </div>
 </{{ $tag }}>

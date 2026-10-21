@@ -46,12 +46,12 @@ class IndicadoresService
      * @var array<string, string>
      */
     public const REPORTES = [
-        'por-categoria' => 'Resumen por categoría',
-        'por-ubicacion' => 'Resumen por ubicación',
+        'por-categoria' => 'Inventario por categoría',
+        'por-ubicacion' => 'Inventario por ubicación',
         'antiguedad' => 'Antigüedad del inventario',
         'garantias' => 'Estado de garantías',
         'mantenimiento' => 'Equipos más intervenidos',
-        'rotacion' => 'Rotación mensual',
+        'rotacion' => 'Altas y bajas por mes',
         'costos' => 'Costos del inventario',
     ];
 
@@ -424,7 +424,7 @@ class IndicadoresService
             ['Tasa de utilización (%)', $kpis['utilizacion']],
             ['Equipos disponibles', $kpis['disponibles']],
             ['Equipos en reparación o defectuosos', $kpis['reparacion']],
-            ['Garantías por vencer (30 días)', $kpis['garantias_por_vencer']],
+            ['Garantías por vencer ('.config('zaico.alertas.garantia_dias', 30).' días)', $kpis['garantias_por_vencer']],
             ['Garantías vencidas', $kpis['garantias_vencidas']],
             ['Costo total del inventario', $kpis['costo_total']],
             ['Altas en el periodo', $kpis['altas']],
@@ -607,16 +607,16 @@ class IndicadoresService
                 ['clave' => 'equipos', 'etiqueta' => 'Equipos', 'tipo' => 'numero'],
                 ['clave' => 'asignados', 'etiqueta' => 'Asignados', 'tipo' => 'numero'],
                 ['clave' => 'disponibles', 'etiqueta' => 'Disponibles', 'tipo' => 'numero'],
-                ['clave' => 'reparacion', 'etiqueta' => 'En reparación', 'tipo' => 'numero'],
+                ['clave' => 'reparacion', 'etiqueta' => 'Reparación / defecto', 'tipo' => 'numero'],
                 ['clave' => 'desincorporados', 'etiqueta' => 'Desincorporados', 'tipo' => 'numero'],
-                ['clave' => 'costo', 'etiqueta' => 'Costo', 'tipo' => 'dinero'],
+                ['clave' => 'costo', 'etiqueta' => 'Costo total', 'tipo' => 'dinero'],
             ]
             : [
                 ['clave' => 'ubicacion', 'etiqueta' => 'Ubicación', 'tipo' => 'texto'],
                 ['clave' => 'equipos', 'etiqueta' => 'Equipos', 'tipo' => 'numero'],
                 ['clave' => 'asignados', 'etiqueta' => 'Asignados', 'tipo' => 'numero'],
                 ['clave' => 'disponibles', 'etiqueta' => 'Disponibles', 'tipo' => 'numero'],
-                ['clave' => 'costo', 'etiqueta' => 'Costo', 'tipo' => 'dinero'],
+                ['clave' => 'costo', 'etiqueta' => 'Costo total', 'tipo' => 'dinero'],
             ];
 
         $items = $filas;
@@ -789,7 +789,7 @@ class IndicadoresService
             'columnas' => $columnas,
             'filas' => $filas,
             'totales' => [],
-            'nota' => count($filas).' equipos con registro de compra. Ventana de «por vencer»: '
+            'nota' => 'Solo equipos con compra registrada; «por vencer» = dentro de los próximos '
                 .config('zaico.alertas.garantia_dias', 30).' días.',
             'grafico' => ['tipo' => 'donut', 'items' => $items, 'etiquetas' => null, 'series' => null],
         ];
@@ -904,7 +904,7 @@ class IndicadoresService
             'columnas' => $columnas,
             'filas' => $filas,
             'totales' => $totales,
-            'nota' => null,
+            'nota' => 'Neto = altas menos bajas; el acumulado parte de cero al inicio del periodo.',
             'grafico' => [
                 'tipo' => 'linea',
                 'items' => [],

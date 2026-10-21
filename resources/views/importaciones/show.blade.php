@@ -15,7 +15,7 @@
         <x-stat-card label="Nuevas" :value="$importacion->Insertadas" icon="plus" color="emerald" />
         <x-stat-card label="Actualizadas" :value="$importacion->Actualizadas" icon="refresh" color="sky" />
         <x-stat-card label="Errores" :value="$importacion->Errores" icon="warning" :color="$importacion->Errores > 0 ? 'rose' : 'slate'" />
-        <x-stat-card label="Archivo" :value="$importacion->Estado" icon="document" color="brand" />
+        <x-stat-card label="Archivo" :value="$importacion->Estado" icon="document" color="brand" class="col-span-2 lg:col-span-1" />
     </div>
 
     @if ($importacion->Modo === 'DryRun')

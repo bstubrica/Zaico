@@ -152,8 +152,8 @@ class IndicadoresTest extends TestCase
             ->assertSee('Reportes y KPIs')
             ->assertSee('Movimientos mensuales')
             ->assertSee('<svg', false)
-            ->assertSee('Resumen por categoría')
-            ->assertSee('Rotación mensual');
+            ->assertSee('Inventario por categoría')
+            ->assertSee('Altas y bajas por mes');
     }
 
     public function test_exporta_pdf_para_los_siete_reportes(): void
