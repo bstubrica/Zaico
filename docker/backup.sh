@@ -20,6 +20,20 @@ destino="$BACKUP_DIR/zaico_${stamp}.dump"
 
 export PGPASSWORD="${DB_PASSWORD:-}"
 
+echo "Esperando a PostgreSQL en ${DB_HOST}:${DB_PORT}..."
+for intento in $(seq 1 60); do
+    if pg_isready --host="$DB_HOST" --port="$DB_PORT" --username="${DB_USERNAME}" --dbname="${DB_DATABASE}" >/dev/null 2>&1; then
+        break
+    fi
+
+    if [ "$intento" -eq 60 ]; then
+        echo "ERROR: PostgreSQL no respondió a tiempo." >&2
+        exit 1
+    fi
+
+    sleep 2
+done
+
 echo "Respaldando ${DB_DATABASE} en ${destino}..."
 pg_dump \
     --host="$DB_HOST" \

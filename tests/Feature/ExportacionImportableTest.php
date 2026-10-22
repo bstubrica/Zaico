@@ -168,4 +168,53 @@ class ExportacionImportableTest extends TestCase
         // Debe reconocer que el activo ya existe y procesarlo sin errores
         $this->assertContains($log->detalles->first()->Accion, ['SinCambios', 'Actualizado']);
     }
+
+    public function test_el_round_trip_conserva_la_ip_de_un_equipo_no_servidor(): void
+    {
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop Dell Latitude 5520 TB0002',
+            'Etiqueta_activo' => 'TB-LAP-0002',
+            'Serial' => 'LAP-DEL-5520',
+            'Categoria' => 'Laptops',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude 5520',
+            'Ubicacion' => 'Oficina Sistemas',
+            'Estado' => 'Disponible',
+            'IP' => '192.168.0.77',
+        ]);
+
+        $exportador = app(ExportacionCompletaService::class);
+        $fila = $exportador->mapearFila($activo->fresh([
+            'compra',
+            'asignacionActiva.personal.ubicacion',
+            'ubicacionCatalogo',
+            'modeloCatalogo',
+            'estadoCatalogo',
+            'tarjetasRed.switchCatalogo',
+            'desincorporacion',
+        ]));
+
+        $cabeceras = ExportacionCompletaService::CABECERAS;
+        $this->assertCount(count($cabeceras), $fila);
+        $this->assertEquals('192.168.0.77', $fila[24]);
+
+        $stream = fopen('php://temp', 'r+');
+        fputcsv($stream, $cabeceras, ',', '"', '\\');
+        fputcsv($stream, $fila, ',', '"', '\\');
+        rewind($stream);
+        $csvContenido = stream_get_contents($stream);
+        fclose($stream);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'csv_test_');
+        file_put_contents($tempFile, $csvContenido);
+
+        $importador = app(ImportacionService::class);
+        $log = $importador->importarCsv($tempFile, 'exportacion_ip.csv', false, $this->soporte->id);
+
+        @unlink($tempFile);
+
+        $this->assertEquals(1, $log->Total_filas);
+        $this->assertEquals(0, $log->Errores);
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TB-LAP-0002', 'IP' => '192.168.0.77']);
+    }
 }

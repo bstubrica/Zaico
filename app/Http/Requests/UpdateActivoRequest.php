@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ReglasNomenclatura;
+use App\Http\Requests\Concerns\ReglasRed;
 use App\Http\Requests\Concerns\ReglasServidor;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,10 +12,12 @@ use Illuminate\Validation\Rule;
 class UpdateActivoRequest extends FormRequest
 {
     use ReglasNomenclatura;
+    use ReglasRed;
     use ReglasServidor;
 
     protected function prepareForValidation(): void
     {
+        $this->normalizarRed();
         $this->normalizarDatosServidor();
         $this->normalizarCategoria();
     }
@@ -57,7 +60,7 @@ class UpdateActivoRequest extends FormRequest
                 Rule::exists('ESTADOS_ACTIVO', 'id')->where('Grupo', $grupo),
             ],
             'imagen' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
-        ] + $this->reglasServidor();
+        ] + $this->reglasRed() + $this->reglasServidor();
     }
 
     /**
@@ -81,7 +84,7 @@ class UpdateActivoRequest extends FormRequest
             'imagen.file' => 'La imagen debe ser un archivo',
             'imagen.mimes' => 'La imagen debe ser JPG, PNG o WEBP',
             'imagen.max' => 'La imagen no puede exceder 10 MB',
-        ] + $this->mensajesNomenclatura() + $this->mensajesServidor();
+        ] + $this->mensajesNomenclatura() + $this->mensajesRed() + $this->mensajesServidor();
     }
 
     /**
@@ -98,6 +101,6 @@ class UpdateActivoRequest extends FormRequest
             'Direccion_MAC' => 'dirección MAC',
             'fk_estado' => 'estado de catálogo',
             'imagen' => 'imagen del activo',
-        ] + $this->atributosNomenclatura() + $this->atributosServidor();
+        ] + $this->atributosNomenclatura() + $this->atributosRed() + $this->atributosServidor();
     }
 }

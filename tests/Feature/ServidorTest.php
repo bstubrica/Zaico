@@ -187,6 +187,24 @@ class ServidorTest extends TestCase
         $this->assertSame(1, TarjetaRed::where('fk_activo', $servidor->id)->count());
     }
 
+    public function test_la_edicion_del_servidor_conserva_la_ip_del_bloque_general(): void
+    {
+        $servidor = Activo::create($this->datosServidor([
+            'Nombre_de_activo' => 'Servidor Dell PowerEdge TBSRV0003',
+            'Etiqueta_activo' => 'TBSRV0003',
+        ]));
+
+        // El bloque de servidor permanece en el DOM (lo oculta Alpine): si volviera
+        // a pintar un `name="IP"`, PHP conservaría el último valor enviado y el
+        // servidor se quedaría sin la IP capturada en el bloque general.
+        $this->actingAs($this->admin)->put("/activos/{$servidor->id}", $this->datosServidor([
+            'Nombre_de_activo' => 'Servidor Dell PowerEdge TBSRV0003',
+            'Etiqueta_activo' => 'TBSRV0003',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('10.0.0.5', $servidor->fresh()->IP);
+    }
+
     public function test_valida_ip_de_servidor_y_mac_de_tarjeta(): void
     {
         $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosServidor([

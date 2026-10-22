@@ -126,6 +126,110 @@ class ActivoCRUDTest extends TestCase
         $respuesta->assertSessionHasErrors('Direccion_MAC');
     }
 
+    public function test_acepta_una_ip_valida_en_un_equipo_no_servidor(): void
+    {
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0001',
+            'Etiqueta_activo' => 'TBIP0001',
+            'IP' => '192.168.0.10',
+        ]));
+
+        $respuesta->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIP0001', 'IP' => '192.168.0.10']);
+    }
+
+    public function test_acepta_una_ip_ipv6(): void
+    {
+        $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0002',
+            'Etiqueta_activo' => 'TBIP0002',
+            'IP' => '2001:db8::1',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIP0002', 'IP' => '2001:db8::1']);
+    }
+
+    public function test_rechaza_una_ip_invalida(): void
+    {
+        $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0003',
+            'Etiqueta_activo' => 'TBIP0003',
+            'IP' => 'no-es-una-ip',
+        ]));
+
+        $respuesta->assertSessionHasErrors('IP');
+        $this->assertDatabaseMissing('ACTIVOS', ['Etiqueta_activo' => 'TBIP0003']);
+    }
+
+    public function test_la_ip_es_opcional(): void
+    {
+        $this->actingAs($this->admin)->post('/activos', $this->datosActivo([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0004',
+            'Etiqueta_activo' => 'TBIP0004',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIP0004', 'IP' => null]);
+    }
+
+    public function test_conserva_la_ip_al_editar_el_equipo(): void
+    {
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0005',
+            'Etiqueta_activo' => 'TBIP0005',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
+            'Estado' => 'Disponible',
+            'IP' => '10.0.0.9',
+        ]);
+
+        $this->actingAs($this->admin)->put("/activos/{$activo->id}", [
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0005',
+            'Etiqueta_activo' => 'TBIP0005',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
+            'Estado' => 'Disponible',
+            'IP' => '10.0.0.9',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', ['id' => $activo->id, 'IP' => '10.0.0.9']);
+    }
+
+    public function test_una_edicion_sin_ip_no_borra_la_ip_registrada(): void
+    {
+        $activo = Activo::create([
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0006',
+            'Etiqueta_activo' => 'TBIP0006',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
+            'Estado' => 'Disponible',
+            'IP' => '10.0.0.10',
+        ]);
+
+        $this->actingAs($this->admin)->put("/activos/{$activo->id}", [
+            'Nombre_de_activo' => 'Laptop Dell Latitude TBIP0006',
+            'Etiqueta_activo' => 'TBIP0006',
+            'Categoria' => 'Laptop',
+            'Fabricante' => 'Dell',
+            'Modelo' => 'Latitude',
+            'Estado' => 'Disponible',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', ['id' => $activo->id, 'IP' => '10.0.0.10']);
+    }
+
+    public function test_el_formulario_expone_un_solo_campo_ip(): void
+    {
+        // Un `name="IP"` duplicado haría que PHP conservase el último valor
+        // enviado y se perdiera el dato: el campo debe existir una sola vez.
+        $respuesta = $this->actingAs($this->admin)->get('/activos/nuevo');
+
+        $respuesta->assertOk();
+        $this->assertSame(1, substr_count($respuesta->getContent(), 'name="IP"'));
+    }
+
     public function test_rechaza_un_grupo_de_estado_inexistente(): void
     {
         $respuesta = $this->actingAs($this->admin)->post('/activos', $this->datosActivo([

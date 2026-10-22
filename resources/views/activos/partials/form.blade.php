@@ -108,6 +108,16 @@
     </div>
 
     <div>
+        <x-input-label for="IP" value="IP" />
+        <x-text-input id="IP" name="IP" type="text" class="mt-1" maxlength="45"
+                      :value="old('IP', $activo->IP)" placeholder="192.168.0.10" />
+        <p class="mt-1 text-xs text-slate-500">
+            Opcional. IPv4 (p. ej. 192.168.0.10); también se admite IPv6.
+        </p>
+        <x-input-error :messages="$errors->get('IP')" />
+    </div>
+
+    <div>
         <x-input-label for="fk_ubicacion" value="Ubicación (catálogo)" />
         <x-search-select
             name="fk_ubicacion"

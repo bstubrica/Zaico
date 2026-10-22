@@ -22,7 +22,6 @@ trait ReglasServidor
     protected function reglasServidor(): array
     {
         return [
-            'IP' => ['nullable', 'string', 'ip', 'max:45'],
             'Sistema_Operativo' => ['nullable', 'string', 'max:100'],
             'Memoria_RAM' => ['nullable', 'string', 'max:100'],
             'Capacidad_Disco' => ['nullable', 'string', 'max:100'],
@@ -44,8 +43,6 @@ trait ReglasServidor
     protected function mensajesServidor(): array
     {
         return [
-            'IP.ip' => 'La IP del servidor no es válida',
-            'IP.max' => 'La IP no puede exceder 45 caracteres',
             'Sistema_Operativo.max' => 'El sistema operativo no puede exceder 100 caracteres',
             'Memoria_RAM.max' => 'La memoria RAM no puede exceder 100 caracteres',
             'Capacidad_Disco.max' => 'La capacidad de disco no puede exceder 100 caracteres',
@@ -69,7 +66,6 @@ trait ReglasServidor
     protected function atributosServidor(): array
     {
         return [
-            'IP' => 'IP',
             'Sistema_Operativo' => 'sistema operativo',
             'Memoria_RAM' => 'memoria RAM',
             'Capacidad_Disco' => 'capacidad de disco',
@@ -88,10 +84,13 @@ trait ReglasServidor
      * Limpia los datos antes de validar: recorta espacios, convierte cadenas
      * vacías en `null` y descarta las filas de tarjeta completamente vacías
      * (las que el formulario dinámico deja al agregar y no completar).
+     *
+     * La IP del equipo no se normaliza aquí: es un campo general y lo
+     * normaliza `ReglasRed::normalizarRed()`.
      */
     protected function normalizarDatosServidor(): void
     {
-        foreach (['IP', 'Sistema_Operativo', 'Memoria_RAM', 'Capacidad_Disco'] as $campo) {
+        foreach (['Sistema_Operativo', 'Memoria_RAM', 'Capacidad_Disco'] as $campo) {
             $valor = $this->input($campo);
 
             if (is_string($valor)) {

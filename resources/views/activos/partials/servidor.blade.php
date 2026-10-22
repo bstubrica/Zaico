@@ -41,17 +41,10 @@
     <h3 class="text-sm font-semibold text-slate-800">Datos del servidor</h3>
     <p class="mt-1 text-xs text-slate-500">
         Se muestran cuando la categoría corresponde a un servidor ({{ implode(', ', config('zaico.servidores.categorias', [])) }}).
-        Todos los campos son opcionales.
+        Todos los campos son opcionales. La dirección IP se registra en el bloque general del equipo.
     </p>
 
     <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-            <x-input-label for="IP" value="IP" />
-            <x-text-input id="IP" name="IP" type="text" class="mt-1"
-                          :value="old('IP', $activo->IP)" placeholder="192.168.0.10" />
-            <x-input-error :messages="$errors->get('IP')" />
-        </div>
-
         <div>
             <x-input-label for="Sistema_Operativo" value="Sistema operativo" />
             <x-text-input id="Sistema_Operativo" name="Sistema_Operativo" type="text" class="mt-1"

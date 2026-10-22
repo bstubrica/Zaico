@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ImportacionDetalle;
 use App\Models\ImportacionLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,7 +32,7 @@ class ImportacionTest extends TestCase
         $columnas = ['Compaña', 'Nombre de Activo', 'Etiqueta de Activo', 'Modelo', 'Modelo n.',
             'Categoría', 'Fabricante', 'Serial', 'Comprado', 'Costo', 'Número de Orden', 'Proveedor',
             'Localización', 'Ubicación Predeterminada', 'Asignado', 'Tipo', 'Username', 'Responsable',
-            'Departamento', 'Estado', 'Notas'];
+            'Departamento', 'Estado', 'Notas', 'IP'];
 
         $stream = fopen('php://temp', 'r+');
         fputcsv($stream, $columnas, ',', '"', '\\');
@@ -325,6 +326,86 @@ class ImportacionTest extends TestCase
             'archivo' => UploadedFile::fake()->create('malware.exe', 100, 'application/x-msdownload'),
             'modo' => 'dryrun',
         ])->assertSessionHasErrors('archivo');
+    }
+
+    public function test_una_ip_invalida_no_se_importa_y_se_avisa_en_el_log(): void
+    {
+        Storage::fake('local');
+
+        $csv = $this->csvFilas([
+            [
+                'Nombre de Activo' => 'Laptop Dell 5520',
+                'Etiqueta de Activo' => 'TBIP0001',
+                'Categoría' => 'Laptops',
+                'Fabricante' => 'Dell',
+                'IP' => 'no-es-una-ip',
+                'Estado' => 'Disponible (deployable)',
+            ],
+            [
+                'Nombre de Activo' => 'Monitor LG',
+                'Etiqueta de Activo' => 'TBIP0002',
+                'Categoría' => 'Monitores',
+                'Fabricante' => 'LG',
+                'IP' => '192.168.0.25',
+                'Estado' => 'Disponible (deployable)',
+            ],
+        ]);
+
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('ips.csv', $csv),
+            'modo' => 'commit',
+        ])->assertSessionHasNoErrors();
+
+        // La IP válida se guarda; la inválida se deja vacía sin fallar la fila.
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIP0002', 'IP' => '192.168.0.25']);
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIP0001', 'IP' => null]);
+
+        $log = ImportacionLog::latest('id')->first();
+        $this->assertSame(2, $log->Insertadas);
+        $this->assertSame(0, $log->Errores);
+
+        // El aviso queda registrado en el detalle de la fila.
+        $mensaje = (string) ImportacionDetalle::where('fk_importacion', $log->id)
+            ->where('Etiqueta', 'TBIP0001')
+            ->value('Mensaje');
+
+        $this->assertStringContainsString('no es válida', $mensaje);
+    }
+
+    public function test_una_ip_invalida_no_pisa_la_ip_ya_registrada(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('ip_ok.csv', $this->csvFilas([
+                [
+                    'Nombre de Activo' => 'Laptop Dell 5520',
+                    'Etiqueta de Activo' => 'TBIP0003',
+                    'Categoría' => 'Laptops',
+                    'Fabricante' => 'Dell',
+                    'IP' => '10.0.0.7',
+                    'Estado' => 'Disponible (deployable)',
+                ],
+            ])),
+            'modo' => 'commit',
+        ])->assertSessionHasNoErrors();
+
+        // Segunda importación con la IP corrupta: el equipo conserva la válida.
+        $this->actingAs($this->soporte)->post('/importaciones', [
+            'archivo' => UploadedFile::fake()->createWithContent('ip_mala.csv', $this->csvFilas([
+                [
+                    'Nombre de Activo' => 'Laptop Dell 5520',
+                    'Etiqueta de Activo' => 'TBIP0003',
+                    'Categoría' => 'Laptops',
+                    'Fabricante' => 'Dell',
+                    'IP' => '999.999.999.999',
+                    'Estado' => 'Disponible (deployable)',
+                ],
+            ])),
+            'modo' => 'commit',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ACTIVOS', ['Etiqueta_activo' => 'TBIP0003', 'IP' => '10.0.0.7']);
     }
 
     public function test_auditor_no_puede_importar(): void

@@ -342,6 +342,14 @@ class ImportacionService
             $ubicacion = $asignado;
         }
 
+        $ipBruta = trim($fila['ip'] ?? '');
+        $ip = $this->ipNormalizada($ipBruta);
+        $avisoIp = null;
+
+        if ($ipBruta !== '' && $ip === null) {
+            $avisoIp = "La IP «{$ipBruta}» no es válida; se deja vacía.";
+        }
+
         $attrs = array_filter([
             'Nombre_de_activo' => $nombre,
             'Etiqueta_activo' => $etiqueta,
@@ -353,7 +361,7 @@ class ImportacionService
             'Ubicacion_Predeterminada' => $this->normalizarUbicacion(trim($fila['ubicacion predeterminada'] ?? '')),
             'Observaciones' => $observaciones !== [] ? implode("\n", $observaciones) : null,
             'Direccion_MAC' => ($mac = trim($fila['direccion mac'] ?? $fila['mac'] ?? '')) !== '' ? $mac : null,
-            'IP' => ($ip = trim($fila['ip'] ?? '')) !== '' ? $ip : null,
+            'IP' => $ip,
             'Sistema_Operativo' => ($so = trim($fila['sistema operativo'] ?? '')) !== '' ? $so : null,
             'Memoria_RAM' => ($ram = trim($fila['memoria ram'] ?? '')) !== '' ? $ram : null,
             'Capacidad_Disco' => ($disco = trim($fila['capacidad disco'] ?? '')) !== '' ? $disco : null,
@@ -423,6 +431,10 @@ class ImportacionService
 
         if ($avisoSerial !== null) {
             $mensaje = trim(($mensaje ?? '').' '.$avisoSerial);
+        }
+
+        if ($avisoIp !== null) {
+            $mensaje = trim(($mensaje ?? '').' '.$avisoIp);
         }
 
         // PERSONAL + ASIGNACIÓN (solo Tipo = user)
@@ -763,6 +775,26 @@ class ImportacionService
         $plan['mensaje'] = $mensaje;
 
         return $plan;
+    }
+
+    /**
+     * Normaliza la IP del CSV: devuelve la dirección si cumple el formato
+     * (IPv4 o IPv6) y `null` si viene vacía o no es válida.
+     *
+     * Usa el mismo criterio que la regla `ip` del formulario (`filter_var`),
+     * de modo que una IP aceptada al registrar un equipo también lo es al
+     * importar. Una IP inválida no se guarda: se avisa en el detalle de la
+     * importación y el equipo conserva la IP que ya tuviera.
+     */
+    private function ipNormalizada(string $ipBruta): ?string
+    {
+        $ip = trim($ipBruta);
+
+        if ($ip === '') {
+            return null;
+        }
+
+        return filter_var($ip, FILTER_VALIDATE_IP) !== false ? $ip : null;
     }
 
     /**

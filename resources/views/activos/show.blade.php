@@ -113,6 +113,12 @@
                         <dt class="text-slate-500">Dirección MAC</dt>
                         <dd class="font-medium text-slate-900">{{ $activo->Direccion_MAC ?? '—' }}</dd>
                     </div>
+                    @unless ($esServidor)
+                        <div>
+                            <dt class="text-slate-500">IP</dt>
+                            <dd class="font-medium text-slate-900">{{ $activo->IP ?? '—' }}</dd>
+                        </div>
+                    @endunless
                     <div>
                         <dt class="text-slate-500">Estado de catálogo</dt>
                         <dd class="font-medium text-slate-900">{{ $activo->estadoCatalogo?->Nombre ?? '—' }}</dd>

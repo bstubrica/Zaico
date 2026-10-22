@@ -18,12 +18,21 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 
 # Servidores y tarjetas de red
 
-- Los datos de servidor (`IP`, `Sistema_Operativo`, `Memoria_RAM`, `Capacidad_Disco`, `Estatus_Servidor`) y las `TARJETAS_RED` solo aplican a equipos con `Categoria` de servidor (`config('zaico.servidores.categorias')`, comparación `Str::lower(trim(...))`).
+- Los datos de servidor (`Sistema_Operativo`, `Memoria_RAM`, `Capacidad_Disco`, `Estatus_Servidor`) y las `TARJETAS_RED` solo aplican a equipos con `Categoria` de servidor (`config('zaico.servidores.categorias')`, comparación `Str::lower(trim(...))`). La `IP` **no** es un dato de servidor: es general (ver «IP del equipo»).
 - Reglas, mensajes y normalización compartidos en `App\Http\Requests\Concerns\ReglasServidor`; la sincronización de tarjetas (máx. 8, n.º único, auditoría) vive en `ServidorService` y la invoca `ActivoService`.
 - El bloque de servidor se envía completo (`tarjetas_presente`): las filas ausentes se eliminan; un formulario sin el bloque no modifica tarjetas.
 - UI (`resources/js/servidor.js`, componente Alpine `panelServidor`): el payload de `x-data` debe ser un **objeto plano** (si se anida, el Proxy raíz rompe `@click` y los botones fallan en silencio). Las filas se clonan desde `<template id="servidor-plantilla-tarjeta">` hacia `#servidor-filas-tarjetas` y hay que llamar `Alpine.initTree(fila)` tras insertarlas (Alpine no inicializa clones de `template.content`).
 - Reportes/Power BI: columnas en el CSV de activos, `vw_inventario` y `vw_tarjetas_red`; cualquier cambio exige actualizar la migración de vistas y `tests/Feature/ServidorTest.php`.
 - Tests de referencia: `ServidorTest`, `VistaInventarioTest`, `ReporteTest`.
+
+# IP del equipo (dato general, opcional)
+
+- `ACTIVOS.IP` es un campo **general** y opcional, igual que `Direccion_MAC`: aplica a cualquier categoría de equipo (no solo servidores) y **no es único**.
+- Reglas, mensajes y normalización en `App\Http\Requests\Concerns\ReglasRed` (`nullable|string|ip|max:45` → IPv4 e IPv6; el IPv4 es el caso habitual). Se usa en `StoreActivoRequest`/`UpdateActivoRequest`.
+- UI: un **único** `name="IP"` en `resources/views/activos/partials/form.blade.php` (junto a la MAC). El bloque de servidor **no** pinta campo `IP`: antes lo hacía y, al estar siempre en el DOM (lo oculta Alpine), enviaba `IP=""` en los no servidores y **borraba la IP** en cada edición. La ficha la muestra en la pestaña «Datos» de los no servidores.
+- Importación CSV: `ImportacionService::ipNormalizada()` valida con el mismo criterio (`filter_var`); una IP inválida no se guarda (no pisa la existente) y se avisa en `IMPORTACIONES_DETALLE.Mensaje`.
+- Índice GIN `pg_trgm` sobre `ACTIVOS."IP"` (`idx_activos_ip_trgm`, solo pgsql) porque el filtro por IP busca con `%término%`.
+- Tests de referencia: `ActivoCRUDTest` (alta/edición/IP inválida/un solo `name="IP"`), `ServidorTest` (el servidor conserva la IP), `ImportacionTest` (IP inválida en el CSV).
 
 # Nomenclatura de activos
 
@@ -55,6 +64,14 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - Si PostgreSQL no responde, el script aborta con instrucciones; la alternativa sin servidor es `-Database sqlite`. Otros parámetros: `-Fresh` (destruye datos), `-SkipBuild`, `-Serve`, `-PgPassword`, `-Optimize` (producción: `php artisan optimize`).
 - Crea las bases `Zaico` y `Zaico_test`, `.env` (nunca lo sobreescribe), migraciones + seeders, `storage:link` y assets Vite. Documentación en `README.md` y `DOCUMENTACION.md` §5.
 - Prueba de concepto al tocar el script: `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Database sqlite -SkipBuild` debe terminar en verde (no destructiva sin `-Fresh`).
+
+# Docker (stack completo)
+
+- `docker compose up -d --build` levanta `app` (PHP 8.5-FPM + Nginx + Supervisor), `db` (PostgreSQL 17) y `scheduler`; la app queda en `http://localhost:8000`.
+- El compose **no** usa `env_file: .env`: la BD se configura con `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` (defecto `zaico`/`zaico`/`secret`) para no heredar SQLite. `APP_KEY` se genera y persiste en `storage/.app_key`.
+- El entrypoint espera PostgreSQL, migra, siembra **solo si `users` está vacía** (`UserSeeder` resetea claves) y cachea config/rutas/vistas. En producción: `RUN_SEEDERS=false`.
+- Backup con imagen `postgres:17` (`docker/backup.Dockerfile`) para que `pg_dump` coincida con el servidor: `docker compose --profile backup run --rm backup`.
+- El código va dentro de la imagen: tras cambios, `docker compose up -d --build`. Volúmenes `storage`, `dbdata` y `backups`; `docker compose down -v` los destruye.
 
 # Reportes y KPIs
 

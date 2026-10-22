@@ -339,7 +339,7 @@ Quince tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI
 | Etiqueta_activo | varchar(100) **unique** | Clave de upsert de importación |
 | Estado | varchar(20) | Grupo de estado |
 | Direccion_MAC | varchar(17) null | |
-| **IP** | varchar(45) null | Datos de servidor (opcionales) |
+| **IP** | varchar(45) null | Dirección IP del equipo (IPv4/IPv6), opcional en **todas** las categorías |
 | **Sistema_Operativo** | varchar(100) null | |
 | **Memoria_RAM** | varchar(100) null | Texto libre (ej. `32 GB`) |
 | **Capacidad_Disco** | varchar(100) null | Texto libre (ej. `2 x 1 TB SSD`) |
@@ -352,11 +352,22 @@ Quince tablas de negocio. Nombres en mayúsculas por compatibilidad con Power BI
 
 Índices: `idx_activos_nombre`, `idx_activos_categoria`, `idx_activos_estado`,
 `idx_activos_ubicacion`, `idx_activos_modelo`, `idx_activos_estado_valor`,
-`idx_activos_ip` (columna `Estado`, añadido en la corrección de auditoría 2026-10-15).
+`idx_activos_ip` (columna `Estado`, añadido en la corrección de auditoría 2026-10-15) e
+`idx_activos_ip_trgm` (GIN `pg_trgm` sobre `"IP"`, solo PostgreSQL: el filtro por IP busca con
+`%término%` y el `ilike` con comodín al inicio no aprovecha el índice B-tree).
 
-Los campos de servidor son opcionales y solo se muestran/editan cuando `Categoria` es
+Los campos de servidor (`Sistema_Operativo`, `Memoria_RAM`, `Capacidad_Disco`, `Estatus_Servidor`)
+son opcionales y solo se muestran/editan cuando `Categoria` es
 `Servidor`/`Servidores` (comparación normalizada con `Str::lower(trim(...))`; lista
 configurable en `zaico.servidores.categorias`).
+
+**IP del equipo.** `IP` es un dato **general** y opcional, como `Direccion_MAC`: se registra en el
+formulario general (junto a la MAC) para cualquier categoría y se valida con la regla `ip` de
+Laravel (`nullable|string|ip|max:45`, IPv4 e IPv6; el IPv4 es el caso habitual). Las reglas,
+mensajes y normalización viven en `App\Http\Requests\Concerns\ReglasRed`, compartidas entre el
+alta y la edición. La IP **no es única**. El bloque de servidor ya no pinta su propio campo `IP`
+(había dos `name="IP"` en el DOM y el valor del bloque de servidor pisaba al del bloque general);
+la ficha la muestra en la pestaña «Datos» de los equipos que no son servidor.
 
 **Nomenclatura de activos.** En la captura manual (alta/edición) `Categoria` debe pertenecer al
 catálogo canónico de `App\Enums\CategoriaActivo` (25 categorías; los sinónimos se normalizan al
@@ -860,7 +871,7 @@ mensajes y nombres de atributo **en español**.
 
 | Form Request | Uso | Reglas destacadas |
 |---|---|---|
-| `StoreActivoRequest` | Alta de activo | `Nombre_de_activo` `min:3|max:150`; `Etiqueta_activo` `unique:ACTIVOS`; `Serial` `unique|nullable`; `Direccion_MAC` `mac_addr`; `imagen` `image|max:10240`; campos de servidor + `tarjetas.*` (ver `ReglasServidor`) |
+| `StoreActivoRequest` | Alta de activo | `Nombre_de_activo` `min:3|max:150`; `Etiqueta_activo` `unique:ACTIVOS`; `Serial` `unique|nullable`; `Direccion_MAC` `mac_addr`; `IP` `ip|max:45` (ver `ReglasRed`); `imagen` `image|max:10240`; campos de servidor + `tarjetas.*` (ver `ReglasServidor`) |
 | `UpdateActivoRequest` | Edición de activo | Igual que Store pero `Rule::unique(...)->ignore($id)`; `imagen` opcional |
 | `GuardarCompraRequest` | Compra + factura | Campos opcionales; `imagen_factura` `file|mimes:jpg,jpeg,png,webp|max:10240` |
 | `CambiarEstadoRequest` | Cambio de estado | `fk_estado` `exists:ESTADOS_ACTIVO,id`; `motivo` obligatorio `max:500` |
@@ -875,6 +886,11 @@ Los campos de servidor y tarjetas comparten el trait `App\Http\Requests\Concerns
 (reglas, mensajes y atributos en español + `prepareForValidation()` que normaliza espacios,
 convierte vacíos en `null` y descarta filas de tarjeta totalmente vacías). Las reglas se
 validan aunque el bloque esté oculto; la UI solo lo muestra si la categoría es de servidor.
+
+Los datos de red generales del equipo (hoy la `IP`) comparten el trait
+`App\Http\Requests\Concerns\ReglasRed`: `nullable|string|ip|max:45` (IPv4 e IPv6, sin unicidad),
+mensajes en español y normalización (recorte + cadena vacía → `null`). Al ser un campo del
+formulario general, la IP aplica a cualquier categoría de equipo.
 
 (Se incluyen además Form Requests para catálogos, desincorporación masiva, eliminaciones, depuración y usuarios.)
 
@@ -910,10 +926,12 @@ responsive, badge de rol, notificaciones, selección por lote y mensajes flash.
 - **Fotos y facturas**: previsualización, subida y visualización autenticada (controladores `imagen`/`imagenFactura`).
 - **Búsqueda rápida**: barra en activos con soporte para lector USB/cámara.
 - **Datos de servidor**: fieldset condicional (componente Alpine `panelServidor`, `resources/js/servidor.js`)
-  con IP, sistema operativo, RAM, disco y estatus + filas dinámicas de tarjetas de red
+  con sistema operativo, RAM, disco y estatus + filas dinámicas de tarjetas de red
   (clonadas desde `<template x-ref="plantilla">`). El buscador de switch es `x-search-select`
   sobre el inventario con respaldo de texto libre. La ficha (`show`) muestra una pestaña
   «Servidor» con el detalle y la tabla de tarjetas.
+- **IP del equipo**: campo general opcional junto a «Dirección MAC» (IPv4 con IPv6 admitido);
+  la ficha la muestra en la pestaña «Datos» de los equipos que no son servidor.
 
 ### 13.3 Componentes Blade propios y de Breeze
 
@@ -1027,6 +1045,9 @@ Subir CSV  →  Previsualizar (DryRun, no modifica nada)  →  Confirmar (Commit
 - **Idempotencia:** reimportar el mismo archivo produce `SinCambios` (0 inserciones/actualizaciones).
 - **Serial `N/A`/vacío → `NULL`**; si el serial ya existe en otro activo → se conserva el
   existente y se deja vacío, con aviso.
+- **IP:** se valida con el mismo criterio que el formulario (`filter_var` → IPv4/IPv6). Una IP
+  inválida no se guarda (el equipo conserva la que tuviera) y se avisa en el detalle de la
+  fila del log de importación (`IMPORTACIONES_DETALLE.Mensaje`).
 - **Duplicados dentro del archivo:**
   - Etiqueta repetida → se conserva el primer registro (`SinCambios` + aviso).
   - Serial repetido → se deja vacío y se conserva el primer registro.
@@ -1073,8 +1094,9 @@ Importación verificada del reporte real (1.167 filas):
     de mantenimientos servidas mediante descarga autenticada).
 11. **Acceso a imágenes**: `Imagen_Activo` y `Imagen_Factura` se almacenan en disco `local`
     y se sirven vía `activos.imagen` / `activos.factura` con `auth`.
-12. **Datos de servidor**: IP, sistema operativo, RAM, disco y estatus son opcionales y
+12. **Datos de servidor**: sistema operativo, RAM, disco y estatus son opcionales y
     exclusivos de equipos con `Categoria` de servidor (la UI los oculta en el resto).
+    La `IP` es general: se registra para cualquier equipo (junto a la MAC).
 13. **Tarjetas de red**: máximo 8 por equipo; n.º único por activo (`distinct`); el switch
     referenciado (`fk_switch`) debe existir y su nombre se denormaliza en `Switch`. El
     bloque enviado se sincroniza completo (las filas omitidas se borran) y todo cambio

@@ -57,6 +57,8 @@ siguiendo el patrón **MVC + capa de servicios**.
 - Node.js + npm
 - PostgreSQL 18 en ejecución (base `Zaico`; `Zaico_test` para las pruebas)
 
+> También puedes ejecutar todo el stack con Docker (no necesitas PHP, Node ni PostgreSQL en el host); ver [Docker](#docker-laravel--postgresql--nginx).
+
 ---
 
 ## Instalación
@@ -113,6 +115,39 @@ php artisan serve               # http://127.0.0.1:8000
 
 Los usuarios de prueba inician sesión con su **usuario** (no correo): `admin` / `soporte` / `auditor`.
 
+### Docker (Laravel + PostgreSQL + Nginx)
+
+Requisito: Docker Desktop con el motor Linux iniciado.
+
+```bash
+docker compose up -d --build
+```
+
+- Aplicación: <http://localhost:8000>
+- Servicios: `app` (PHP 8.5-FPM + Nginx + Supervisor), `db` (PostgreSQL 17) y `scheduler` (`php artisan schedule:work`).
+- Datos persistentes: volúmenes `storage`, `dbdata` y `backups`.
+- El `APP_KEY` se genera en el primer arranque y se guarda en `storage/.app_key`.
+- Los seeders solo se ejecutan si la tabla `users` está vacía (no resetean contraseñas en cada reinicio).
+- Variables de conexión: `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD` (por defecto `zaico` / `zaico` / `secret`). Cámbialas en producción.
+- El código va dentro de la imagen: tras cambiar PHP, Blade o JS, reconstruye con `docker compose up -d --build`.
+
+Comandos útiles:
+
+```bash
+docker compose logs -f app
+docker compose exec app php artisan migrate:status
+docker compose exec app php artisan about
+docker compose exec db psql -U zaico -d zaico
+docker compose --profile backup run --rm backup
+docker compose down          # conserva los volúmenes
+docker compose down -v       # destruye BD, uploads y backups
+```
+
+> `pg_trgm`, `vw_inventario` y `vw_tarjetas_red` los crean las migraciones. El scheduler
+> ejecuta `inventario:sincronizar` (06:30) e `inventario:alertas` (07:00) con la zona
+> horaria de la aplicación (UTC). Para producción: `APP_ENV=production`,
+> `APP_DEBUG=false`, contraseña fuerte, `RUN_SEEDERS=false`, HTTPS y backups programados.
+
 ---
 
 ## Configuración
@@ -138,6 +173,10 @@ QUEUE_CONNECTION=database
 ```
 
 > Los secretos viven **solo** en `.env` (nunca se versionan).
+>
+> En Docker la conexión se define en `docker-compose.yml` (`POSTGRES_DB`, `POSTGRES_USER`,
+> `POSTGRES_PASSWORD`). El `.env` local no se inyecta en los contenedores para no heredar
+> la configuración SQLite.
 
 ---
 
