@@ -72,6 +72,7 @@ El inicio de sesión es por **usuario** (`users.username`), no por correo.
 - El entrypoint espera PostgreSQL, migra, siembra **solo si `users` está vacía** (`UserSeeder` resetea claves) y cachea config/rutas/vistas. En producción: `RUN_SEEDERS=false`.
 - Backup con imagen `postgres:17` (`docker/backup.Dockerfile`) para que `pg_dump` coincida con el servidor: `docker compose --profile backup run --rm backup`.
 - El código va dentro de la imagen: tras cambios, `docker compose up -d --build`. Volúmenes `storage`, `dbdata` y `backups`; `docker compose down -v` los destruye.
+- **PHP 8.5 en el `Dockerfile`**: compilar cada extensión en su propia invocación (`for ext in ...; do docker-php-ext-install "$ext"; done`). En lote, cada build limpia `modules/` y el `make install` final falla con `cp: cannot stat 'modules/*'`. `opcache` viene en el núcleo: no listarlo ni poner `zend_extension=opcache` (produce `Failed loading Zend extension`).
 
 # Reportes y KPIs
 
